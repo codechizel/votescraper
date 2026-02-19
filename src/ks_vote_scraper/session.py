@@ -24,6 +24,7 @@ SPECIAL_SESSION_YEARS = [2024, 2021, 2020, 2016, 2013]
 @dataclass(frozen=True)
 class KSSession:
     """Represents a Kansas Legislature biennium session and its URL patterns."""
+
     start_year: int
     special: bool = False
 

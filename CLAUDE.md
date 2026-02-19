@@ -2,15 +2,24 @@
 
 Scrapes Kansas Legislature roll call votes from kslegislature.gov into CSV files for statistical/Bayesian analysis.
 
+## Commits
+
+- **No Co-Authored-By lines.** Never append co-author trailers.
+- Use conventional commits with version tags: `type(scope): description [vYYYY.MM.DD.N]`
+- Never push without explicit permission.
+- See `.claude/rules/commit-workflow.md` for full details.
+
 ## Commands
 
 ```bash
-uv run ks-vote-scraper 2025                  # current session
-uv run ks-vote-scraper 2025 --clear-cache    # fresh scrape
+just scrape 2025                             # scrape (cached)
+just scrape-fresh 2025                       # scrape (fresh)
+just lint                                    # lint + format
+just lint-check                              # check only
+just sessions                                # list available sessions
+just check                                   # full check
 uv run ks-vote-scraper 2023                  # historical session
 uv run ks-vote-scraper 2024 --special        # special session
-uv run ruff check src/                       # lint
-uv run ruff format src/                      # format
 ```
 
 ## Code Style
@@ -45,6 +54,8 @@ These are real bugs that were found and fixed. Do NOT regress on them:
 1. **Tag hierarchy on vote pages is NOT what you'd expect.** The vote page uses `<h2>` for bill number, `<h4>` for bill title, and `<h3>` for chamber/date/motion AND vote category headings (Yea, Nay, etc). If you search `<h2>` for title or motion data, you get nothing.
 
 2. **Party detection via full page text will always match "Republican".** Every legislator page has a party filter dropdown containing `<option value="republican">Republican</option>`. Searching `page.get_text()` for "Republican" matches this dropdown for ALL legislators. Must parse the specific `<h2>` containing "District \d+" (e.g., `"District 27 - Republican"`).
+
+2b. **Legislator `<h1>` is NOT the member name.** The first `<h1>` on member pages is a generic "Legislators" nav heading. The actual name is in a later `<h1>` starting with "Senator " or "Representative ". Must use `soup.find("h1", string=re.compile(r"^(Senator|Representative)\s+"))`. Also strip leadership suffixes like " - House Minority Caucus Chair".
 
 3. **Vote category parsing requires scanning BOTH h2 and h3.** The `Yea - (33):` heading can appear as either `<h2>` or `<h3>` depending on the page. The parser correctly uses `soup.find_all(["h2", "h3", "a"])` — do not simplify this to only one tag.
 

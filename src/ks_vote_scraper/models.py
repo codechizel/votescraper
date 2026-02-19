@@ -7,6 +7,7 @@ from typing import Optional
 @dataclass
 class IndividualVote:
     """One legislator's vote on one roll call."""
+
     session: str
     bill_number: str
     bill_title: str
@@ -23,6 +24,7 @@ class IndividualVote:
 @dataclass
 class RollCall:
     """Summary of one roll call vote."""
+
     session: str
     bill_number: str
     bill_title: str

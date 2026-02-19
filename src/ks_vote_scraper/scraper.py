@@ -162,9 +162,7 @@ class KSVoteScraper:
 
     # -- Step 1b: KLISS API pre-filter -----------------------------------------
 
-    def _filter_bills_with_votes(
-        self, bill_urls: list[str]
-    ) -> tuple[list[str], dict[str, dict]]:
+    def _filter_bills_with_votes(self, bill_urls: list[str]) -> tuple[list[str], dict[str, dict]]:
         """Use the KLISS API to identify bills that have roll call votes.
 
         Fetches the bill_status API endpoint and checks each bill's history
@@ -255,12 +253,14 @@ class KSVoteScraper:
             for link in soup.find_all("a", href=re.compile(r"vote_view")):
                 href = link["href"]
                 text = link.get_text(strip=True)
-                vote_links.append({
-                    "bill_number": bill_number,
-                    "bill_path": bill_path,
-                    "vote_url": href if href.startswith("http") else BASE_URL + href,
-                    "vote_text": text,
-                })
+                vote_links.append(
+                    {
+                        "bill_number": bill_number,
+                        "bill_path": bill_path,
+                        "vote_url": href if href.startswith("http") else BASE_URL + href,
+                        "vote_text": text,
+                    }
+                )
                 found_votes = True
 
             if found_votes:
@@ -411,10 +411,12 @@ class KSVoteScraper:
                     slug = slug.group(1) if slug else ""
 
                     if name:
-                        vote_categories[current_category].append({
-                            "name": name,
-                            "slug": slug,
-                        })
+                        vote_categories[current_category].append(
+                            {
+                                "name": name,
+                                "slug": slug,
+                            }
+                        )
 
                         if slug and slug not in self.legislators:
                             leg_chamber = ""
@@ -505,7 +507,7 @@ class KSVoteScraper:
         ]
         for vote_type, prefix in type_prefixes:
             if motion_lower.startswith(prefix):
-                remainder = motion[len(prefix):].strip(" -;")
+                remainder = motion[len(prefix) :].strip(" -;")
                 return vote_type, remainder if remainder else motion
 
         # Keyword-based classification
@@ -543,13 +545,8 @@ class KSVoteScraper:
         print("Step 4: Enriching legislator data (full name, party, district)...")
         print("=" * 60)
 
-        slugs_to_fetch = [
-            slug for slug, info in self.legislators.items() if "party" not in info
-        ]
-        urls_to_fetch = [
-            self.legislators[slug].get("member_url", "")
-            for slug in slugs_to_fetch
-        ]
+        slugs_to_fetch = [slug for slug, info in self.legislators.items() if "party" not in info]
+        urls_to_fetch = [self.legislators[slug].get("member_url", "") for slug in slugs_to_fetch]
         urls_to_fetch = [u for u in urls_to_fetch if u]
 
         # Fetch phase (concurrent)
@@ -568,14 +565,13 @@ class KSVoteScraper:
 
             soup = BeautifulSoup(html, "lxml")
 
-            # Full name from <h1>
-            h1 = soup.find("h1")
-            if h1:
-                full_name = h1.get_text(strip=True)
-                # Strip title prefix
-                full_name = re.sub(
-                    r"^(Senator|Representative)\s+", "", full_name
-                )
+            # Full name from <h1> containing "Senator" or "Representative"
+            name_h1 = soup.find("h1", string=re.compile(r"^(Senator|Representative)\s+"))
+            if name_h1:
+                full_name = name_h1.get_text(strip=True)
+                # Strip title prefix and leadership suffix
+                full_name = re.sub(r"^(Senator|Representative)\s+", "", full_name)
+                full_name = re.sub(r"\s*-\s*(Senate|House)\s+.*$", "", full_name)
                 info["full_name"] = full_name
             else:
                 info["full_name"] = info.get("name", "")
@@ -599,26 +595,45 @@ class KSVoteScraper:
 
     # -- Main runner -----------------------------------------------------------
 
+    @staticmethod
+    def _fmt_elapsed(seconds: float) -> str:
+        """Format elapsed seconds as 'Xm Ys' or 'X.Xs'."""
+        if seconds >= 60:
+            return f"{int(seconds // 60)}m {int(seconds % 60)}s"
+        return f"{seconds:.1f}s"
+
     def run(self, enrich: bool = True):
         """Run the full scraping pipeline."""
         start = time.time()
+        step_times: list[tuple[str, float]] = []
         print("=" * 60)
         print(f"  Kansas Legislature {self.session.label} Vote Scraper")
         print(f"  Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"  Target: {BASE_URL}{self.session.bills_path}")
         print("=" * 60)
 
+        t = time.time()
         bill_urls = self.get_bill_urls()
+        step_times.append(("Bill URLs + API filter", 0.0))
 
         # Pre-filter using KLISS API to avoid fetching bills without votes
         filtered_urls, self.bill_metadata = self._filter_bills_with_votes(bill_urls)
+        step_times[-1] = ("Bill URLs + API filter", time.time() - t)
 
+        t = time.time()
         vote_links = self.get_vote_links(filtered_urls)
+        step_times.append(("Scan bill pages", time.time() - t))
+
+        t = time.time()
         self.parse_vote_pages(vote_links)
+        step_times.append(("Parse vote pages", time.time() - t))
 
         if enrich and self.legislators:
+            t = time.time()
             self.enrich_legislators()
+            step_times.append(("Enrich legislators", time.time() - t))
 
+        t = time.time()
         save_csvs(
             output_dir=self.output_dir,
             output_name=self.session.output_name,
@@ -626,26 +641,37 @@ class KSVoteScraper:
             rollcalls=self.rollcalls,
             legislators=self.legislators,
         )
+        step_times.append(("Save CSVs", time.time() - t))
 
         elapsed = time.time() - start
-        minutes = int(elapsed // 60)
-        seconds = int(elapsed % 60)
 
         print("\n" + "=" * 60)
-        print(f"  Complete! Elapsed: {minutes}m {seconds}s")
+        print(f"  Complete! Total elapsed: {self._fmt_elapsed(elapsed)}")
         print(f"  Output directory: {self.output_dir.absolute()}")
         print("=" * 60)
+        print("\nStep timing:")
+        for label, secs in step_times:
+            print(f"  {label:30s} {self._fmt_elapsed(secs):>8s}")
+        print(f"  {'':30s} {'--------':>8s}")
+        print(f"  {'Total':30s} {self._fmt_elapsed(elapsed):>8s}")
         print("\nFiles created:")
-        print(f"  ks_{self.session.output_name}_votes.csv"
-              f"         - {len(self.individual_votes)} individual votes")
-        print(f"  ks_{self.session.output_name}_rollcalls.csv"
-              f"     - {len(self.rollcalls)} roll call summaries")
-        print(f"  ks_{self.session.output_name}_legislators.csv"
-              f"   - {len(self.legislators)} legislators")
+        print(
+            f"  ks_{self.session.output_name}_votes.csv"
+            f"         - {len(self.individual_votes)} individual votes"
+        )
+        print(
+            f"  ks_{self.session.output_name}_rollcalls.csv"
+            f"     - {len(self.rollcalls)} roll call summaries"
+        )
+        print(
+            f"  ks_{self.session.output_name}_legislators.csv"
+            f"   - {len(self.legislators)} legislators"
+        )
 
     def clear_cache(self):
         """Remove cached HTML files to force fresh fetches."""
         import shutil
+
         if self.cache_dir.exists():
             shutil.rmtree(self.cache_dir)
             self.cache_dir.mkdir(parents=True, exist_ok=True)

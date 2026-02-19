@@ -26,7 +26,8 @@ def main(argv: list[str] | None = None) -> None:
         help="Scrape a special session (e.g., 2024 special session)",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=Path,
         default=None,
         help="Output directory (default: data/ks_{session}/)",
