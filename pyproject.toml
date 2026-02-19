@@ -1,0 +1,32 @@
+[project]
+name = "ks-vote-scraper"
+version = "0.2.0"
+description = "Scrape roll call votes from the Kansas Legislature website"
+requires-python = ">=3.14"
+dependencies = [
+    "requests>=2.28",
+    "beautifulsoup4>=4.12",
+    "tqdm>=4.65",
+    "lxml>=5.0",
+]
+
+[project.scripts]
+ks-vote-scraper = "ks_vote_scraper.cli:main"
+
+[dependency-groups]
+dev = [
+    "pandas>=2.0",
+    "ruff>=0.9",
+    "ipython>=8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
