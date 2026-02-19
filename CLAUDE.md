@@ -89,6 +89,39 @@ Three CSVs in `data/ks_{session}/`:
 
 Cache lives in `data/ks_{session}/.cache/`. Use `--clear-cache` to force fresh fetches.
 
+## Analytics
+
+The `Analytic_Methods/` directory contains 28 documents covering every analytical method applicable to our data. See `Analytic_Methods/00_overview.md` for the full index and recommended pipeline.
+
+### Document Naming Convention
+```
+NN_CAT_method_name.md
+```
+Categories: `DATA`, `EDA`, `IDX`, `DIM`, `BAY`, `CLU`, `NET`, `PRD`, `TSA`
+
+### Key Data Structures for Analysis
+
+The **vote matrix** (legislators x roll calls, binary) is the foundation. Build it from `votes.csv` by pivoting `legislator_slug` x `vote_id` with Yea=1, Nay=0, absent=NaN.
+
+**Critical preprocessing:**
+- Filter near-unanimous votes (minority < 2.5%) — they carry no ideological signal
+- Filter legislators with < 20 votes — unreliable estimates
+- Analyze chambers separately (House and Senate vote on different bills)
+
+### Analysis Libraries
+```bash
+uv add pandas numpy scipy matplotlib seaborn scikit-learn  # Phase 1-2
+uv add networkx python-louvain prince umap-learn           # Phase 3-5
+uv add pymc arviz                                          # Phase 4 (Bayesian)
+uv add xgboost shap ruptures                               # Phase 6
+```
+
+### Kansas-Specific Analysis Notes
+- Republican supermajority (~72%) means intra-party variation is more interesting than inter-party
+- Expect 3 natural clusters: conservative Republicans, moderate Republicans, Democrats
+- 34 veto override votes are analytically rich (cross-party coalitions, 2/3 threshold)
+- Beta-Binomial and Bayesian IRT are the recommended Bayesian starting points
+
 ## Testing
 
 No test suite yet. Verify manually:
