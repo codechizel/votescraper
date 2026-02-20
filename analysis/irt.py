@@ -76,7 +76,7 @@ P(Yea | xi_i, alpha_j, beta_j) = logit^-1(beta_j * xi_i - alpha_j)
 
 xi_i    ~ Normal(0, 1)          -- legislator ideal point
 alpha_j ~ Normal(0, 5)          -- bill difficulty (diffuse)
-beta_j  ~ LogNormal(0.5, 0.5)   -- discrimination (positive-constrained)
+beta_j  ~ Normal(0, 1)           -- discrimination (unconstrained; anchors identify sign)
 ```
 
 **Identification** via anchor method:
@@ -1408,7 +1408,7 @@ def main() -> None:
             "priors": {
                 "xi": "Normal(0, 1) with two anchors",
                 "alpha": "Normal(0, 5)",
-                "beta": "LogNormal(0.5, 0.5)",
+                "beta": "Normal(0, 1)",
             },
             "sampling": {
                 "n_samples": args.n_samples,

@@ -19,6 +19,7 @@ Read these sequentially. Each phase inherits data from the previous one, so assu
 | Document | Summary |
 |----------|---------|
 | [beta_prior_investigation.md](beta_prior_investigation.md) | LogNormal β prior creates a blind spot for D-Yea bills. Normal(0,1) fixes it with +3.5% holdout accuracy. |
+| [tyson_paradox.md](tyson_paradox.md) | Why the senator with the most Nay votes ranks as the most conservative in IRT. A case study in 1D model limitations. |
 
 ## How to Use These
 

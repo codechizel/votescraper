@@ -57,23 +57,24 @@
 
 ## Methodological Choices
 
-### LogNormal discrimination prior (beta)
+### Discrimination prior (beta)
 
-**Decision:** Use LogNormal(0.5, 0.5) instead of the textbook Normal(0, 2.5) for the discrimination parameter.
+**Current decision:** Normal(0, 1) — unconstrained. Anchors provide sign identification.
 
-**What this does:** Constrains beta > 0. Bills can only discriminate in one direction: higher ideal points predict Yea (positive beta). The alpha (difficulty) parameter handles directionality — it shifts the probability curve left or right on the ideological spectrum.
+**What this does:** Allows beta to be positive (conservative Yea) or negative (liberal Yea). The sign of beta encodes which end of the spectrum favors Yea; the magnitude encodes how partisan the vote is. The two hard anchors (xi = +1 and -1) break the sign ambiguity, making a positive constraint unnecessary.
 
-**Why:**
-- **Solves sign identification.** With Normal priors, beta can be positive or negative. Flipping the sign of both beta_j and xi_i leaves the likelihood unchanged, causing sign-switching across chains and bimodal posteriors. LogNormal eliminates this entirely.
-- **Reasonable shape.** LogNormal(0.5, 0.5) has mode ~1.0 (unit discrimination), mean ~2.1, and 95% mass in [0.3, 5.5]. This matches the empirical distribution of discrimination values in legislative data.
-- **Standard in modern IRT.** Bafumi et al. (2005), Clinton & Jackman (2009) use positive-constrained discrimination.
+**Why Normal(0, 1):**
+- **Uses all data.** With unconstrained beta, both R-Yea bills (beta > 0) and D-Yea bills (beta < 0) contribute to ideal point estimation.
+- **Anchors handle identification.** The sign-switching problem that motivates positive-constrained priors is already solved by the hard anchors.
+- **Best convergence.** In a 3-way experiment (LogNormal(0.5,0.5), Normal(0,2.5), Normal(0,1)), Normal(0,1) had the highest ESS, fastest sampling, and zero divergences.
+- **Best accuracy.** Holdout accuracy +3.5%, AUC +0.025, PCA correlation +0.022 vs LogNormal.
+
+**History:** The initial implementation used LogNormal(0.5, 0.5), following the standard recommendation for soft-identified IRT models. Investigation revealed this silenced 12.5% of bills (all D-Yea votes assigned beta near zero). See `analysis/design/beta_prior_investigation.md` for the full investigation, experiment results, and mathematical proof that alpha cannot compensate for constrained beta.
 
 **Alternatives considered:**
-- Normal(0, 2.5) with post-hoc sign correction — rejected because post-hoc correction is fragile and can produce artifacts if chains explored different modes
-- Half-Normal (folded normal) — viable but LogNormal has a better shape (lower density near zero, which is appropriate since zero-discrimination bills are uninformative)
-- Exponential — rejected because it lacks the peaked shape around 1.0
-
-**Impact:** ~~Bills where the liberal position is Yea will have positive beta and negative alpha. This is mathematically equivalent to the negative-beta formulation.~~ **CORRECTED (2026-02-20):** This claim was wrong. With β > 0, P(Yea) always increases with ξ regardless of α. Alpha shifts the probability curve up/down but cannot flip its direction. Bills where Democrats vote Yea (β should be negative) are assigned near-zero discrimination and treated as uninformative. In the 2025-26 House, all 37 D-Yea bills have β < 0.39. See `analysis/design/beta_prior_investigation.md` for the full investigation and fix experiments.
+- LogNormal(0.5, 0.5) — rejected: positive constraint silences D-Yea bills. Was standard advice but assumes soft identification, not hard anchors.
+- Normal(0, 2.5) — viable but wider prior produces slightly slower convergence than Normal(0, 1) with nearly identical accuracy.
+- Half-Normal — viable but lacks negative support needed for D-Yea bills.
 
 ### PCA-based anchor selection
 

@@ -8,10 +8,13 @@ This is a living document — add entries as each analysis phase surfaces new fi
 
 ### Sen. Caryn Tyson (R, District 12)
 
-- **Phase:** PCA
-- **Observation:** Extreme PC2 outlier (-24.8, more than double the next-most-extreme senator). PC1 is solidly Republican (+5.2).
-- **Explanation:** Tyson has a 61.9% Yea rate — far below the Republican norm. She frequently casts lone or near-lone Nay votes on routine legislation that passes with near-unanimous support. PC2 captures this "contrarianism on routine bills" pattern.
-- **Downstream:** Investigate whether this reflects a principled libertarian/limited-government stance (voting against bills she views as unnecessary) or something else. Check which specific bill categories she dissents on. In IRT, expect her ideal point to be well-estimated but offset from the main Republican cluster on a second dimension.
+- **Phase:** PCA, IRT
+- **Observation:** Extreme PC2 outlier at -24.8 (3x the next senator). PCA PC1 rank: 23rd of 32 Rs. **IRT rank: 1st (most conservative, xi=+4.17).** Jumped 22 ranks from PCA to IRT — the largest shift in the chamber.
+- **Explanation:** Tyson has a 61.9% Yea rate and 74 Nay votes — more than double the Republican median. But her contrarian Nay votes are concentrated on low-discrimination bills (|beta| <= 1.5), which IRT downweights. On high-discrimination bills (|beta| > 1.5), she is 100% conservative: 63/63 Yea on R-Yea, 18/18 Nay on D-Yea. No other senator has a perfect record. Additionally, 31 of her 41 dissent votes (Nay where >80% Rs = Yea) are on negative-beta bills, meaning her dissent actually *reinforces* her conservative score rather than moderating it. This is a 1D model limitation: her two-dimensional behavior (ideology + contrarianism) is compressed into a single axis, and the axis captures the dimension that's most informative about ideology.
+- **Downstream:**
+  - **Clustering:** Tyson's IRT position will pull any cluster she's in toward an extreme. Consider supplementing IRT with a party loyalty metric to distinguish "ideologically extreme" from "unreliable caucus member."
+  - **Prediction:** IRT ideal points will predict her partisan votes well but miss her contrarian dissent on routine bills. A 2D model would improve predictions for Tyson specifically.
+  - **Interpretation:** Always present Tyson's ranking with the caveat that 1D IRT conflates "consistently conservative on partisan votes" with "most conservative overall." See `analysis/design/tyson_paradox.md` for full investigation.
 
 ### Sen. Mike Thompson (R, District 10)
 
@@ -55,12 +58,12 @@ This is a living document — add entries as each analysis phase surfaces new fi
 - **Explanation:** Likely low participation on contested votes or voting pattern that doesn't align cleanly with the 1D model. Warrants investigation.
 - **Downstream:** Cluster assignment is lowest-confidence in Senate. Flag in any ranking or comparison.
 
-### House ESS Warning
+### House ESS Warning — Resolved
 
 - **Phase:** IRT
-- **Observation:** Minimum ESS for House ideal points is 214 (threshold: 400). All other diagnostics pass (R-hat < 1.01, 0 divergences, E-BFMI > 0.9).
-- **Explanation:** One or a few House ideal points have lower effective sample size, likely legislators at the extreme of the distribution where the sampler explores less efficiently. With 2 chains × 2000 draws, ESS=214 still provides reasonable posterior summaries but is suboptimal.
-- **Downstream:** If precise ranking of extreme legislators matters, re-run House with `--n-chains 4` to double ESS. For current purposes (forest plots, clustering inputs), ESS=214 is adequate.
+- **Observation:** With LogNormal beta prior, minimum ESS for House ideal points was 214 (threshold: 400). **After switching to Normal(0,1) beta prior, ESS min improved to 894 — well above threshold.** All convergence checks now pass.
+- **Explanation:** The LogNormal prior created poor posterior geometry (bimodal beta distribution, ceiling effects). The unconstrained Normal prior resolved this, improving ESS by 4x and eliminating the only convergence warning.
+- **Status:** Resolved as of 2026-02-20 (Normal(0,1) beta prior).
 
 ## Flagged Voting Patterns — IRT
 
@@ -73,9 +76,9 @@ This is a living document — add entries as each analysis phase surfaces new fi
 ### PCA-IRT Agreement
 
 - **Phase:** IRT
-- **Observation:** Pearson r with PCA PC1: House r=0.9499, Senate r=0.9242. Both above 0.90, House just below the 0.95 "strong" threshold.
-- **Interpretation:** High agreement confirms both methods recover the same 1D structure. The slight reduction from 0.95 in House may reflect IRT's ability to weight discriminating bills differently (via beta parameters) rather than treating all votes equally like PCA. Senate's lower r=0.92 likely reflects IRT better handling the sparse data (Miller, etc.) that PCA imputes.
-- **Downstream:** Use IRT ideal points (not PCA scores) as the primary input for clustering and network analysis. IRT provides uncertainty estimates and handles missing data properly.
+- **Observation:** Pearson r with PCA PC1: House r=0.972, Senate r=0.939. Both above 0.90; House exceeds the 0.95 "strong" threshold.
+- **Interpretation:** High agreement confirms both methods recover the same 1D structure. The Senate's lower r=0.939 reflects two things: (1) IRT weights discriminating bills more heavily (inflating Tyson/Thompson), and (2) IRT handles sparse data (Miller) without imputation artifacts. See `analysis/design/tyson_paradox.md` for a detailed investigation of the largest PCA-IRT rank divergences.
+- **Downstream:** Use IRT ideal points (not PCA scores) as the primary input for clustering and network analysis. IRT provides uncertainty estimates and handles missing data properly. But be aware that IRT ideal points systematically inflate the ranking of contrarian legislators (Tyson, Thompson) relative to PCA.
 
 ## Template
 

@@ -121,7 +121,7 @@ Each analysis phase has a design document in `analysis/design/` recording the st
 
 - `analysis/design/eda.md` — Binary encoding, filtering thresholds, agreement metrics
 - `analysis/design/pca.md` — Imputation, standardization, sign convention, holdout design
-- `analysis/design/irt.md` — Priors (LogNormal discrimination, anchors), MCMC settings, missing data handling
+- `analysis/design/irt.md` — Priors (Normal(0,1) discrimination, anchors), MCMC settings, missing data handling
 
 ## Analytics
 
