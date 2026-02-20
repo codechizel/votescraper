@@ -156,6 +156,16 @@ Each analysis phase produces a self-contained HTML report (`{analysis}_report.ht
 
 Tables use great_tables with polars DataFrames (no pandas conversion). Plots are base64-embedded PNGs. See ADR-0004 for rationale.
 
+### Analytic Flags
+
+`docs/analytic-flags.md` is a living document that accumulates observations across analysis phases. Add an entry whenever you encounter:
+- **Outlier legislators** — extreme scores, unusual voting patterns, imputation artifacts
+- **Methodological flags** — legislators needing special handling (e.g., bridging observations for cross-chamber members, low-participation exclusions)
+- **Unexpected patterns** — dimensions or clusters that need qualitative explanation
+- **Downstream actions** — things to check or handle differently in later phases (IRT, clustering, network)
+
+Each entry records what was observed, which phase found it, why it matters, and what to do about it. Check this file at the start of each new analysis phase for prior flags that affect the current work.
+
 ### Kansas-Specific Analysis Notes
 - Republican supermajority (~72%) means intra-party variation is more interesting than inter-party
 - Expect 3 natural clusters: conservative Republicans, moderate Republicans, Democrats

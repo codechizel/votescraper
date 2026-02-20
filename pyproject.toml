@@ -27,6 +27,7 @@ dev = [
     "great-tables>=0.15",
     "jinja2>=3.1",
     "css-inline>=0.20.0",
+    "scikit-learn>=1.6",
 ]
 
 [build-system]

@@ -30,6 +30,14 @@ install:
 sessions:
     uv run ks-vote-scraper --list-sessions
 
+# Run EDA analysis
+eda *args:
+    uv run python analysis/eda.py {{args}}
+
+# Run PCA analysis
+pca *args:
+    uv run python analysis/pca.py {{args}}
+
 # Full check (lint)
 check:
     just lint-check

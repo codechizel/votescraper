@@ -32,6 +32,7 @@ What are the trade-offs?
 | [0002](0002-polars-over-pandas.md) | Polars over pandas | Accepted | 2026-02-19 |
 | [0003](0003-two-phase-fetch-parse.md) | Two-phase fetch/parse pattern | Accepted | 2026-02-19 |
 | [0004](0004-html-report-system.md) | HTML report system | Accepted | 2026-02-19 |
+| [0005](0005-pca-implementation-choices.md) | PCA implementation choices | Accepted | 2026-02-19 |
 
 ## Creating a New ADR
 
