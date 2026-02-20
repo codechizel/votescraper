@@ -34,7 +34,7 @@
 |-------|-------------|---------------|
 | xi (ideal point) | Normal(0, 1) + two anchors fixed at +1/-1 | Standard normal center with unit scale. Anchors fix location and scale. |
 | alpha (difficulty) | Normal(0, 5) | Diffuse prior. Allows difficulty to range widely — some bills are easy, some are hard. The SD of 5 means 95% prior mass covers [-10, +10], which is much wider than the ideal-point scale. |
-| beta (discrimination) | LogNormal(0.5, 0.5) | **Positive-constrained.** Mode ~1.0, 95% mass in [0.3, 5.5]. See "LogNormal discrimination" below for rationale. |
+| beta (discrimination) | Normal(0, 1) | **Unconstrained.** Anchors provide sign identification; positive β = conservative Yea, negative β = liberal Yea. See `beta_prior_investigation.md` for rationale. |
 
 ### Filtering & Validation
 
@@ -137,5 +137,5 @@
 ### For interpretation
 - **Ideal points are on an arbitrary scale** (anchored at +1/-1, but the units are not "degrees of conservatism"). Compare legislators to each other, not to absolute values.
 - **HDI overlap = indistinguishable.** Two legislators whose 95% HDIs overlap cannot be reliably ranked. The forest plot visualizes this.
-- **Discrimination is always positive** (LogNormal prior). A bill with beta = 3 is highly discriminating; beta = 0.5 is weakly discriminating. There are no "reversed" bills in this parameterization — direction is captured by alpha.
+- **Discrimination sign indicates direction.** Positive β = conservative position is Yea. Negative β = liberal position is Yea. |β| measures discriminating power. A bill with |β| > 1.5 is highly discriminating; |β| < 0.5 is weakly discriminating.
 - **The 1D model is a simplification.** Tyson's contrarianism on routine bills, Thompson's mild version of the same, and any other multi-dimensional pattern will be compressed into a single number. If a legislator's ideal point seems surprising, check whether they have unusual PC2 behavior (see `docs/analytic-flags.md`).

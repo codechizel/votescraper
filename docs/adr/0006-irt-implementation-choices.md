@@ -7,7 +7,7 @@
 
 Bayesian IRT is the canonical baseline analysis per the analytic workflow rules: "1D Bayesian IRT on Yea/Nay only." PCA (Phase 2) confirmed strong 1D ideological structure (PC1 explains 53% House, 46% Senate). Several implementation choices needed to be resolved:
 
-1. **Discrimination prior.** The standard IRT formulation uses Normal priors for discrimination (beta), which allows negative values. Negative beta reverses the ideological interpretation of a vote and creates sign identification problems.
+1. **Discrimination prior.** The standard IRT formulation allows discrimination (beta) to be positive or negative. The sign of beta determines whether conservative legislators (positive beta) or liberal legislators (negative beta) are more likely to vote Yea. A sign identification problem arises when the model is not anchored: flipping the sign of all beta and xi simultaneously leaves the likelihood unchanged.
 
 2. **Identification method.** The 2PL IRT model is not identified without constraints (sign, location, and scale invariance). Multiple approaches exist: fix two legislators, order constraints, or soft identification via priors.
 
@@ -21,7 +21,7 @@ Bayesian IRT is the canonical baseline analysis per the analytic workflow rules:
 
 ## Decision
 
-1. **LogNormal(0.5, 0.5) prior for discrimination.** Constrains beta > 0, solving sign identification without post-hoc correction. The LogNormal(0.5, 0.5) has mode ~1.0 and 95% mass in [0.3, 5.5], which covers the realistic range of discrimination values. This is the modern standard in IRT (e.g., Bafumi et al. 2005). The trade-off: bills where the liberal position is Yea will have the direction captured by the alpha (difficulty) parameter rather than a negative beta. This is correct — alpha shifts the probability curve left/right, beta only controls steepness.
+1. **Normal(0, 1) prior for discrimination (unconstrained).** Allows beta to be positive (conservative Yea) or negative (liberal Yea). Sign identification is provided by the hard anchors (Decision 2), making a positive constraint unnecessary. The original implementation used LogNormal(0.5, 0.5) following the standard recommendation for soft-identified models. However, investigation revealed this silenced 12.5% of bills (all D-Yea votes got beta ≈ 0, treated as uninformative). With `P(Yea) = logit⁻¹(β·ξ - α)` and β > 0, the probability of Yea always increases with conservatism — alpha shifts the threshold but cannot flip the direction. Switching to Normal(0, 1) improved holdout accuracy by +3.5%, ESS by 10×, and sampling speed by 18%, with zero sign-switching. See `analysis/design/beta_prior_investigation.md` for the full investigation and `docs/lessons-learned.md` Lesson 6.
 
 2. **PCA-based anchor method.** Fix the most conservative legislator (highest PCA PC1) at xi=+1 and most liberal (lowest PC1) at xi=-1. Anchors must have >= 50% participation to ensure tight estimation. This leverages the PCA results we already have and avoids requiring manual knowledge of Kansas legislators. The alternative (soft identification via priors + post-hoc correction) was rejected because it requires checking sign orientation across chains and can produce label-switching artifacts.
 
@@ -36,16 +36,20 @@ Bayesian IRT is the canonical baseline analysis per the analytic workflow rules:
 ## Consequences
 
 **Benefits:**
-- LogNormal discrimination eliminates the most common IRT debugging issue (sign flips) with no loss of expressiveness.
-- PCA-based anchors are automated and reproducible — no manual legislator selection required.
+- Unconstrained Normal(0, 1) discrimination uses all contested bills — both R-Yea and D-Yea votes contribute to ideal point estimation. The sign of beta encodes direction (positive = conservative Yea, negative = liberal Yea), while the magnitude encodes how partisan the vote was.
+- PCA-based anchors are automated and reproducible — no manual legislator selection required. They also provide the sign identification that makes the unconstrained beta prior safe.
 - 2 chains cuts runtime nearly in half while maintaining adequate diagnostic coverage.
 - In-sample holdout + PPC together provide comprehensive validation without the cost of refitting.
 - Per-chamber models are simple, standard, and sufficient for the 1D baseline.
 - NetCDF files enable full posterior reuse in downstream phases (clustering, network analysis).
 
 **Trade-offs:**
-- LogNormal beta cannot model bills where higher ideal points predict Nay (the alpha parameter absorbs this). If a future 2D model is needed, this prior would need revisiting.
-- PCA anchors assume PCA and IRT agree on who is most extreme. This is validated by the PCA-IRT correlation check (r > 0.95 expected).
+- Unconstrained beta requires hard anchors for identification. If the anchor selection is wrong (e.g., PCA PC1 sign convention flipped), the model will be mis-identified. This is validated by the PCA-IRT correlation check (r > 0.95 expected).
+- PCA anchors assume PCA and IRT agree on who is most extreme. Same validation applies.
 - 2 chains provide less multi-modal detection power than 4. If R-hat > 1.01 or ESS < 400, the user should re-run with `--n-chains 4`.
 - In-sample holdout overstates predictive performance. This is clearly documented in the output and is supplemented by PPC.
 - Per-chamber models cannot leverage bridging legislators. This is deferred, not abandoned.
+
+**Revision history:**
+- 2026-02-19: Initial decision — LogNormal(0.5, 0.5) discrimination prior.
+- 2026-02-20: Changed to Normal(0, 1) after discovering the D-Yea blind spot. See `analysis/design/beta_prior_investigation.md`.

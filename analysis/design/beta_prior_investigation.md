@@ -1,131 +1,152 @@
-# Beta Prior Investigation: The D-Yea Blind Spot
+# When Your Model Can Only Hear One Side of the Argument
 
-**Date:** 2026-02-20
-**Status:** Active investigation
-**Related:** `analysis/design/irt.md`, `docs/adr/0006-irt-implementation-choices.md`
+**A case study in how a "standard" statistical choice silenced 12% of our data — and how we found and fixed it.**
 
-## The Problem
+## The Setup
 
-The IRT model uses a LogNormal(0.5, 0.5) prior on the discrimination parameter (beta), constraining it to be positive. With the parameterization `P(Yea) = logit⁻¹(β·ξ - α)` and `β > 0`, the probability of voting Yea **always increases** with the ideal point ξ. This means the model can only represent bills where more-conservative legislators (higher ξ) prefer Yea.
+We're building a statistical model of the Kansas Legislature. The goal: estimate where each legislator falls on an ideological spectrum, from most liberal to most conservative, using nothing but their roll-call votes (Yea or Nay on each bill).
 
-Bills where the liberal position is Yea — i.e., Democrats vote Yea and Republicans vote Nay — cannot be fitted with positive beta. The model's only recourse is to assign near-zero discrimination, treating these bills as uninformative noise.
+The method is called **Item Response Theory (IRT)**, borrowed from educational testing. In a classroom, IRT figures out how skilled each student is based on which test questions they got right. In a legislature, it figures out how conservative each legislator is based on which bills they voted for. Each legislator gets an "ideal point" (their position on the spectrum), and each bill gets two numbers: how "hard" it is (what fraction of legislators vote Yea) and how "discriminating" it is (how well it separates liberals from conservatives).
 
-## The Evidence
+A highly discriminating bill is one where knowing a legislator's ideology almost perfectly predicts their vote — a classic party-line fight. A low-discrimination bill is one where ideology tells you nothing — maybe it's bipartisan, maybe it's about renaming a bridge.
 
-From the 2025-26 House data (297 contested votes, 130 legislators):
+## The Model, Simply
 
-| Bill direction | Count | % of bills | Mean β | Max β |
-|---|---|---|---|---|
-| R-Yea (majority of Rs vote Yea) | 259 | 87% | 3.46 | 7.21 |
-| D-Yea (majority of Ds vote Yea) | 37 | 13% | 0.19 | 0.39 |
-
-**100% of D-Yea bills have β < 0.5.** Every single one is treated as uninformative. On a typical D-Yea bill, the model predicts ~28% Yea rate for all legislators regardless of ideology, while the actual pattern is a clean party split (37 Ds vote Yea, 84 Rs vote Nay).
-
-This creates a bimodal beta distribution:
-- A cluster at β ≈ 7 (party-line R-Yea bills, hitting a practical ceiling)
-- A cluster at β ≈ 0.17 (D-Yea bills, pushed to the LogNormal floor)
-- A spread in between (crosscutting or partially-partisan bills)
-
-## Why the Design Doc Was Wrong
-
-The original `analysis/design/irt.md` stated:
-
-> "Bills where the liberal position is Yea will have positive beta (since higher xi still predicts Yea) and negative alpha (the difficulty parameter shifts to make high-xi legislators vote Yea). This is mathematically equivalent to the negative-beta formulation."
-
-This is **incorrect**. Here's the math:
+The core equation is:
 
 ```
-P(Yea) = logit⁻¹(β·ξ - α)
+P(Yea) = logistic(discrimination × ideology - difficulty)
 ```
 
-- The sign of `β` determines the **direction**: whether P(Yea) increases or decreases with ξ.
-- The value of `α` determines the **cutpoint**: the overall probability level.
+For any given bill, the probability that a legislator votes Yea depends on:
+- Their **ideology** (higher = more conservative)
+- The bill's **discrimination** (how much ideology matters for this vote)
+- The bill's **difficulty** (the overall threshold — is this an easy Yea or a hard one?)
 
-With `β > 0`, no value of α can make P(Yea) *decrease* with ξ. Alpha shifts the entire curve up or down, but the slope is always positive. For a D-Yea bill, you need `β < 0` so that P(Yea) decreases with ξ (i.e., liberals are more likely to vote Yea). Constraining `β > 0` eliminates this possibility entirely.
+The logistic function squishes the result into a probability between 0% and 100%. If `discrimination × ideology - difficulty` is a big positive number, the legislator almost certainly votes Yea. If it's a big negative number, they almost certainly vote Nay.
 
-**The claim that alpha handles directionality conflated two different things:** alpha handles the *threshold* (how easy/hard the bill is to pass), but beta alone determines the *direction* (which end of the spectrum favors Yea).
+## The Choice That Seemed Safe
 
-## Why This Matters
+Here's where it gets interesting. The discrimination parameter can theoretically be positive or negative:
 
-### Information loss
-The model discards ideological signal from 37/297 House bills (12.5%). These bills could help differentiate moderate Republicans who occasionally cross party lines from hardliners who never do. That information is treated as noise.
+- **Positive discrimination:** More conservative legislators are more likely to vote Yea. (A typical Republican-sponsored bill.)
+- **Negative discrimination:** More *liberal* legislators are more likely to vote Yea. (A typical Democrat-sponsored bill.)
 
-### Asymmetric weighting
-Only R-Yea bills contribute to ideal point estimation. A legislator's position is determined almost entirely by their behavior on bills where Republicans vote Yea. Their votes on D-Yea bills barely affect their estimated ideal point.
+When fitting the model, the computer explores millions of possible combinations of parameters. There's a well-known problem: if you flip the sign of *both* the discrimination *and* every legislator's ideology score, the math works out identically. The model can't tell the difference. This is called the **sign identification problem**, and it causes the fitting algorithm to wander between two mirror-image solutions, producing garbage.
 
-### HDI widening at the conservative extreme
-The D-Yea bills would help distinguish ultra-conservative legislators from mainstream conservatives (based on how consistently they vote Nay even on bills Democrats support). Without this information, the conservative tail has wider credible intervals than necessary.
+The standard fix from the academic literature: **force discrimination to be positive.** If discrimination can only be positive, the mirror-image solution is impossible, and the model behaves. We used a LogNormal prior — a statistical constraint that ensures discrimination is always greater than zero.
 
-### Misleading bill parameters
-The beta values for D-Yea bills are meaningless — they're artifacts of the prior constraint, not measures of ideological content. Any downstream analysis using bill discrimination values (e.g., selecting high-discrimination bills for network analysis) will systematically exclude D-Yea bills.
+This is textbook. It's what the papers recommend. It seemed safe.
 
-## Why It's Not Catastrophic
+## The Problem We Didn't See
 
-1. **Only 12.5% of bills affected** (in Kansas). The Republican supermajority means most contested votes have R-Yea majorities. In a more balanced legislature, the proportion of D-Yea bills could be much higher (~50%), making this problem far worse.
+Forcing discrimination to be positive means the model can only represent one direction: more conservative = more likely to vote Yea. But legislatures vote on bills from both sides of the aisle. When Democrats propose a bill and vote Yea while Republicans vote Nay, the "correct" discrimination is *negative* — more liberal legislators are more likely to vote Yea.
 
-2. **Information is correlated.** A legislator who votes Nay on R-Yea bills will typically vote Yea on D-Yea bills. The R-Yea bills alone contain most of the ranking information — the D-Yea bills add precision but not fundamentally different signal.
+With positive-only discrimination, the model has no way to express this. Its only option is to set discrimination to nearly zero, which is the model's way of saying "this bill tells me nothing about ideology." But that's wrong — a clean party-line vote where Democrats vote Yea and Republicans vote Nay is *extremely* informative about ideology. The model just can't hear it.
 
-3. **Validation metrics are strong.** Holdout accuracy: 90.6% (House), 91.5% (Senate). PPC Bayesian p-values: 0.49, 0.42. PCA correlation: r = 0.95, 0.92. The ideal points are approximately correct.
+We didn't notice this during development because the model's overall accuracy was good (91%) and all the standard diagnostic checks passed. The problem only became visible when we audited the bill-level parameters and asked: "Why do some highly partisan votes have near-zero discrimination?"
 
-4. **Sensitivity analysis is excellent.** r > 0.99 between 2.5% and 10% threshold runs. The 1D structure is robust.
+## What the Data Showed
 
-## Why the Anchors Change the Calculus
+We classified every contested House bill by which party formed the Yea majority:
 
-The original rationale for LogNormal was sign identification: with Normal priors on beta, flipping the sign of (β_j, ξ_i) leaves the likelihood unchanged, causing sign-switching between chains.
+| Bill type | Count | Model's discrimination |
+|-----------|-------|----------------------|
+| Republican-Yea bills | 259 (87%) | Average: 3.46 (high — model sees these) |
+| Democrat-Yea bills | 37 (13%) | Average: 0.19 (near zero — model is blind) |
 
-But our model has **hard anchors**: two legislators are fixed at ξ = +1 and ξ = -1. These anchors break the sign symmetry for ξ. Once ξ is identified, the sign of β is also identified:
-- If ξ_anchor = +1 is the conservative anchor, and the bill is R-Yea, then β > 0 is the only explanation (higher ξ → higher P(Yea))
-- If the bill is D-Yea, then β < 0 is the only explanation (higher ξ → lower P(Yea))
+**Every single Democrat-Yea bill** had a discrimination below 0.5. The model treated all 37 of them as pure noise. On a bill where all 37 Democrats voted Yea and all 84 Republicans voted Nay — a perfect ideological split — the model's prediction was "everyone has about a 28% chance of voting Yea, regardless of their ideology."
 
-**The anchors make the LogNormal constraint unnecessary.** The sign identification problem that LogNormal solves has already been solved by the anchors. We're paying the cost (D-Yea blind spot) without getting the benefit (sign identification is already handled).
+That's like a teacher grading a test and deciding that the questions where the smart kids got them right and the struggling kids got them wrong are... uninformative. Only the reverse pattern counts.
 
-## Fixes to Try
+## Why We Missed It (And Why You Might Too)
 
-### Fix A: Normal(0, 2.5) prior — unconstrained
+Three things conspired to hide the problem:
 
-Replace LogNormal with a symmetric Normal prior centered at zero. The sign of beta is free to be positive (R-Yea bills) or negative (D-Yea bills). The anchors ensure the sign is identified.
+**1. Kansas has a Republican supermajority.** With 92 Republicans and 38 Democrats in the House, most contested bills pass with Republican support. Only 13% of contested bills had Democrat-Yea majorities. In a more evenly divided legislature, this number could be 40-50%, making the problem devastating.
 
-**Expected benefits:** D-Yea bills get properly discriminating beta values. All 297 bills contribute to ideal point estimation.
+**2. The information loss was partially redundant.** A legislator who consistently votes Nay on Republican-Yea bills will typically vote Yea on Democrat-Yea bills. So the Republican-Yea votes already capture *most* of the ranking information. The Democrat-Yea votes add precision — they help separate legislators who are similar — but they don't fundamentally reorder everyone.
 
-**Expected risks:** If the anchors provide weaker identification than expected, we might see sign-switching between chains (beta alternating between +/- across chains for the same bill). Check for: bimodal trace plots, R-hat > 1.01 on beta parameters, divergences.
+**3. The standard diagnostics didn't flag it.** Holdout accuracy was 91%. The posterior predictive checks passed. The sensitivity analysis showed robust results. Everything looked fine because the model was getting the *direction* right for most legislators — it just wasn't using all available information to get the *spacing* right.
 
-### Fix B: Normal(0, 1) prior — tighter unconstrained
+## The Key Insight: We Already Solved the Problem Another Way
 
-Same as Fix A but with a tighter prior (SD = 1 instead of 2.5). This regularizes more strongly, pulling extreme discrimination values toward zero.
+Remember the sign identification problem — the reason we constrained discrimination to be positive in the first place? We had actually already solved it using a different technique: **anchoring**.
 
-**Expected benefits:** Same as Fix A, with less risk of extreme beta values.
+Before fitting the model, we permanently fixed two legislators' ideology scores: the most conservative Republican at +1 and the most liberal Democrat at -1. These "anchors" break the mirror-image symmetry. Once the model knows that Legislator A is at +1 and Legislator B is at -1, there's only one consistent solution for everyone else.
 
-**Expected risks:** May over-regularize — highly discriminating bills might have their beta pulled toward zero.
+And here's the key: **once the ideology scores have a fixed direction (positive = conservative), the discrimination parameter's sign is determined by the data.** If conservatives tend to vote Yea on a bill, discrimination comes out positive. If liberals tend to vote Yea, it comes out negative. No ambiguity. No sign-switching.
 
-### Fix C: Pre-flip D-Yea bills
+We were wearing both a belt and suspenders. The anchors (belt) were doing the job. The positive constraint (suspenders) was redundant — and it was so tight it was cutting off circulation to our legs.
 
-Before fitting, identify D-Yea bills and flip their vote encoding (1→0, 0→1) in the vote matrix. Keep the LogNormal prior. After fitting, note the flipped bills — their beta values represent the absolute discrimination, and the flip indicates direction.
+## The Fix
 
-**Expected benefits:** All bills are now "R-Yea direction" in the model, so LogNormal works for all of them. No changes to the sampling algorithm.
+One line of code. Change:
 
-**Expected risks:** Adds preprocessing complexity. The flip decision must be correct and consistent. Edge cases (bipartisan bills where neither party has a clear majority direction) could be mishandled.
+```python
+# Before: constrained positive (LogNormal)
+beta = pm.LogNormal("beta", mu=0.5, sigma=0.5, ...)
 
-## Experiment Protocol
+# After: unconstrained (Normal, centered at zero)
+beta = pm.Normal("beta", mu=0, sigma=1, ...)
+```
 
-Run each fix on House data only (larger chamber, more signal) with reduced MCMC for speed:
-- 500 draws, 300 tune, 2 chains (vs. 2000/1000/2 production)
-- Compare: beta distributions, D-Yea bill handling, ideal point correlations, holdout accuracy, convergence
+This lets discrimination be positive (Republican-Yea bills) or negative (Democrat-Yea bills), with the anchors ensuring the sign is always meaningful.
 
-Record results below as each experiment completes.
+## The Experiment
+
+We ran both versions on the same data (House chamber, 130 legislators, 297 bills) and compared everything:
+
+| What we measured | Constrained (LogNormal) | Unconstrained (Normal) | Change |
+|---|---|---|---|
+| Holdout accuracy | 90.8% | 94.3% | **+3.5%** |
+| Holdout AUC-ROC | 0.954 | 0.979 | **+0.025** |
+| D-Yea bill discrimination | 0.19 (blind) | 2.38 (sees them) | **12× better** |
+| Effective sample size | 21 (struggling) | 203 (healthy) | **10× better** |
+| Sampling speed | 62 seconds | 51 seconds | **18% faster** |
+| Sign-switching problems | N/A | None (0 divergences) | No issues |
+| Correlation with PCA | 0.950 | 0.972 | **+0.022** |
+
+The unconstrained model is better on every single metric. It's more accurate, converges faster, runs faster, and uses all the data. The feared sign-switching problem — the entire reason for the constraint — simply didn't happen.
+
+## What Changed in the Results
+
+The most visible difference is in the **beta (discrimination) distribution**:
+
+- **Before:** A bimodal pile-up. Republican-Yea bills clustered around +7 (hitting a ceiling), Democrat-Yea bills crushed near zero. A gap in between.
+- **After:** A clean, symmetric spread. Republican-Yea bills are positive, Democrat-Yea bills are negative, and the magnitude reflects how partisan each vote was.
+
+The ideal point estimates (the legislator scores) shifted modestly. The overall ranking barely changed — the correlation between old and new scores is r = 0.983. But the *spacing* changed meaningfully. Democrats became more spread out, because the model now has 37 additional discriminating votes to tell them apart. The most extreme conservatives have tighter credible intervals, because those same 37 votes (on which they uniformly voted Nay) provide additional confirming evidence.
+
+## The Broader Lesson
+
+**Standard recommendations exist for a reason — but they encode assumptions. When your model doesn't share those assumptions, the recommendation can quietly work against you.**
+
+The LogNormal prior for IRT discrimination is standard advice in political science. It works well when the model uses "soft identification" — relying entirely on priors to keep the parameters from wandering. But our model uses "hard identification" — two legislators are pinned to fixed values. The advice was designed for a different situation, and applying it uncritically cost us 3.5 percentage points of accuracy and 10× convergence efficiency.
+
+The fix wasn't complicated. The investigation took longer than the repair. The real cost was the time between "this looks fine" and "wait, why are all these partisan votes showing zero discrimination?" — a question that only arose because we audited the bill-level parameters instead of just checking the headline accuracy number.
+
+Statistical models can pass every standard diagnostic while still having a structural blind spot. The diagnostics test whether the model is *internally consistent*. They don't test whether it's *using all your data*.
 
 ---
 
-## Results
+## Technical Reference
 
-### Experiment setup
+**Date:** 2026-02-20
+**Status:** Resolved. Normal(0,1) prior adopted.
+**Script:** `analysis/irt_beta_experiment.py`
+**Output:** `results/2025-2026/irt/beta_experiment/`
+**Related files:** `analysis/design/irt.md`, `docs/adr/0006-irt-implementation-choices.md`, `docs/lessons-learned.md` (Lesson 6)
 
-- **Data:** House only (130 legislators × 297 votes)
-- **MCMC:** 500 draws, 300 tune, 2 chains (reduced for speed; convergence warnings expected)
-- **Bill directions:** 259 R-Yea, 37 D-Yea (classified by which party's majority votes Yea)
-- **Script:** `analysis/irt_beta_experiment.py`
-- **Output:** `results/2025-2026/irt/beta_experiment/`
+### Experiment details
 
-### Metrics comparison
+- **Data:** Kansas House, 2025-26 session (130 legislators × 297 contested votes)
+- **MCMC:** 500 draws, 300 tune, 2 chains (reduced for speed; full production run uses 2000/1000/2)
+- **Bill classification:** R-Yea = majority of Republicans vote Yea (259 bills); D-Yea = majority of Democrats vote Yea (37 bills)
+- **Variants tested:** LogNormal(0.5, 0.5), Normal(0, 2.5), Normal(0, 1)
+- **Winner:** Normal(0, 1) — best convergence, fastest sampling, highest PCA correlation, holdout accuracy within 0.1% of wider Normal(0, 2.5)
+
+### Full metrics
 
 | Metric | LogNormal(0.5,0.5) | Normal(0,2.5) | Normal(0,1) |
 |---|---|---|---|
@@ -142,62 +163,25 @@ Record results below as each experiment completes.
 | R-Yea β mean | 3.45 | 2.68 | 1.37 |
 | Bills with β < 0 | 0 | 63 | 67 |
 
-### Key findings
+### The math in detail
 
-**1. Both Normal variants dramatically improve holdout accuracy (+3.5%).**
+The IRT model: `P(Yea) = logit⁻¹(β_j · ξ_i - α_j)`
 
-LogNormal: 90.8% accuracy, 0.954 AUC. Normal(0,1): 94.3% accuracy, 0.979 AUC. The improvement comes entirely from properly modeling the 37 D-Yea bills that LogNormal treated as noise. When the model can represent "Democrats vote Yea on this bill," its predictions for those bills improve from chance to correct.
+- `ξ_i` = legislator i's ideal point (higher = more conservative)
+- `β_j` = bill j's discrimination (how much ideology predicts the vote)
+- `α_j` = bill j's difficulty (overall Yea threshold)
 
-**2. The sign-switching fear was unfounded.**
+With `β > 0`: `∂P/∂ξ > 0` always. More conservative legislators always have higher P(Yea). No value of α changes this — α shifts the logistic curve left/right but never flips it. For a D-Yea bill (where `∂P/∂ξ < 0` is the truth), the model must set β ≈ 0, collapsing to `P(Yea) ≈ logit⁻¹(-α)` for everyone.
 
-Zero divergences across all three models. No sign-switching between chains. The hard anchors (ξ fixed at ±1) provide sufficient identification — the LogNormal constraint was solving a problem that the anchors had already solved. This is the central insight: **when anchors fix the sign of ξ, the sign of β is determined by the data**, not the prior.
+With unconstrained β: D-Yea bills get `β < 0`, giving `∂P/∂ξ < 0` — more conservative legislators have *lower* P(Yea), matching reality. The sign of β now encodes the direction of the vote, and the magnitude encodes how partisan it was.
 
-**3. Normal(0,1) is the best overall.**
+### Why anchors provide sufficient identification
 
-- Best convergence: lowest R-hat, highest ESS (10× the LogNormal ESS)
-- Fastest sampling: 51s vs 62s (LogNormal) and 79s (Normal(0,2.5))
-- Highest PCA correlation: r = 0.972 (vs 0.950 for LogNormal)
-- Holdout nearly identical to Normal(0,2.5): 94.3% vs 94.4%
-- The tighter prior provides useful regularization — it prevents the β ≈ 7 ceiling seen in LogNormal and the β ≈ 6 spread seen in Normal(0,2.5), while still giving D-Yea bills |β| ≈ 2.4 (well above zero)
+The sign ambiguity in IRT arises because `(β, ξ)` and `(-β, -ξ)` produce identical likelihoods. Hard anchors break this symmetry by fixing specific ξ values:
 
-**4. D-Yea bills are now properly modeled.**
+- Anchor conservative at ξ = +1
+- Anchor liberal at ξ = -1
 
-Under LogNormal, all 37 D-Yea bills had |β| < 0.39 (effectively zero). Under Normal(0,1), they have |β| mean = 2.38 with negative sign — the model correctly identifies that higher ξ predicts Nay on these bills. The beta distribution plot shows clean separation: R-Yea bills cluster on the positive side, D-Yea bills cluster on the negative side.
+These constraints eliminate the `(-β, -ξ)` solution entirely. For any bill, the data uniquely determines whether β is positive (conservatives favor Yea) or negative (liberals favor Yea). No additional constraint on β is needed.
 
-**5. More bills contribute negative β than expected.**
-
-67 bills (not just 37) have β < 0 under Normal(0,1). The extra ~30 bills are crosscutting votes where the minority Yea coalition skews liberal — not pure D-Yea bills but votes where ideology partially predicts in the reverse direction. These were previously invisible.
-
-**6. The ideal point scale stretches under Normal(0,1).**
-
-The xi comparison scatter shows Normal(0,1) produces a wider spread, especially on the liberal end (Democrats at ξ ≈ -4 instead of ξ ≈ -2). This is because D-Yea bills now provide discriminating information that helps separate Democrats from each other. The overall correlation with LogNormal remains very high (r = 0.983, ρ = 0.974) — the ranking is preserved but the spacing changes.
-
-### Interpretation
-
-The LogNormal(0.5, 0.5) prior was a double-edged sword:
-
-**What it was supposed to do:** Prevent sign-switching by constraining β > 0. This is the standard approach in IRT models without hard anchors (soft identification via priors).
-
-**What it actually did in our model:** Since our anchors already provide hard identification, the positive constraint was redundant — and actively harmful. It silenced 12.5% of bills, degraded holdout accuracy by 3.5 percentage points, and produced worse convergence diagnostics (10× lower ESS).
-
-**Why the literature recommendation didn't apply:** Most IRT implementations in the political science literature use either (a) soft identification (priors only, no anchors) or (b) post-hoc rotation. In these setups, positive-constrained β is genuinely helpful for identification. But we use **hard anchors** (two legislators fixed at ξ = ±1), which is a different identification strategy. The combination of hard anchors + positive β is over-identified and loses information unnecessarily.
-
-### Recommendation
-
-**Switch the production IRT model to Normal(0, 1) for the beta (discrimination) prior.**
-
-This is a one-line code change (`pm.Normal` instead of `pm.LogNormal`) that:
-- Uses all 297 bills instead of only 259
-- Improves holdout accuracy by ~3.5%
-- Improves convergence (10× ESS, lower R-hat)
-- Runs faster (18% wall-clock reduction)
-- Requires no post-hoc sign correction (anchors handle identification)
-
-The design docs, ADR-0006, and the IRT primer should be updated to reflect this change and document the investigation.
-
-### Plots
-
-See `results/2025-2026/irt/beta_experiment/`:
-- `beta_distributions.png` — Side-by-side histograms showing D-Yea bills crushed at zero under LogNormal vs properly negative under Normal variants
-- `xi_comparison.png` — Scatter plots of ideal points: Normal variants vs LogNormal baseline (r > 0.98)
-- `metrics_comparison.png` — Summary metrics table as figure
+This is in contrast to soft identification (Normal(0,1) prior on ξ, no anchors), where the posterior is symmetric and β can wander. In that setting, positive-constrained β is genuinely helpful. But it's solving a problem that doesn't exist when you have anchors.

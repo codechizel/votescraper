@@ -161,15 +161,16 @@ All outputs land in `results/<session>/irt/<date>/`:
 - **Forest plot points**: Posterior mean ideal point. Positive = conservative.
 - **Forest plot bars**: 95% HDI. Overlapping intervals = cannot distinguish.
 - **Wide intervals**: Uncertain — few votes or inconsistent voting pattern.
-- **Discrimination (beta)**: High (>1.5) = strongly partisan vote. Near 0 = non-informative.
+- **Discrimination (beta)**: |beta| > 1.5 = strongly partisan vote. Near 0 = non-informative.
+  Positive beta = conservatives favor Yea. Negative beta = liberals favor Yea.
 - **PCA correlation**: r > 0.95 expected for a well-behaved 1D model.
 - **Sensitivity**: r > 0.95 between default and 10% threshold = robust.
 
 ## Caveats
 
 - 1D model cannot capture multi-dimensional structure (e.g., Tyson's contrarianism).
-- LogNormal discrimination prior constrains beta > 0 — bills where the liberal
-  position is Yea get positive beta (the model handles this via the alpha parameter).
+- Discrimination (beta) can be positive or negative. The sign indicates which end
+  of the ideological spectrum favors Yea. Anchors provide sign identification.
 - In-sample holdout validation is not a true out-of-sample test. PPC provides the
   proper Bayesian validation.
 - MCMC runtime: ~5-20 min per chamber depending on hardware and sample count.
@@ -436,7 +437,10 @@ def build_and_sample(
 
         # --- Roll call parameters ---
         alpha = pm.Normal("alpha", mu=0, sigma=5, shape=n_votes, dims="vote")
-        beta = pm.LogNormal("beta", mu=0.5, sigma=0.5, shape=n_votes, dims="vote")
+        # Normal(0,1): unconstrained discrimination. Anchors provide sign identification,
+        # so positive constraint is unnecessary. Negative beta = liberal position is Yea.
+        # See analysis/design/beta_prior_investigation.md for full rationale.
+        beta = pm.Normal("beta", mu=0, sigma=1, shape=n_votes, dims="vote")
 
         # --- Likelihood ---
         eta = beta[vote_idx] * xi[leg_idx] - alpha[vote_idx]
@@ -682,13 +686,19 @@ def plot_discrimination(
     beta_vals = bill_params["beta_mean"].to_numpy()
 
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.hist(beta_vals, bins=40, edgecolor="black", alpha=0.7, color="#4C72B0")
-    ax.axvline(1.0, color="red", linestyle="--", alpha=0.6, label="beta = 1 (unit discrimination)")
+    # Color by sign: positive (R-Yea) red, negative (D-Yea) blue
+    pos_vals = beta_vals[beta_vals >= 0]
+    neg_vals = beta_vals[beta_vals < 0]
+    if len(pos_vals) > 0:
+        ax.hist(pos_vals, bins=30, alpha=0.6, color="#E81B23", label=f"β > 0 (n={len(pos_vals)})")
+    if len(neg_vals) > 0:
+        ax.hist(neg_vals, bins=30, alpha=0.6, color="#0015BC", label=f"β < 0 (n={len(neg_vals)})")
+    ax.axvline(0, color="black", linestyle="--", alpha=0.6, label="β = 0")
     median_beta = float(np.median(beta_vals))
     ax.axvline(
         median_beta, color="orange", linestyle="-", alpha=0.6, label=f"Median = {median_beta:.2f}"
     )
-    ax.set_xlabel("Discrimination Parameter (beta)")
+    ax.set_xlabel("Discrimination (β > 0: conservative Yea, β < 0: liberal Yea)")
     ax.set_ylabel("Number of Roll Calls")
     ax.set_title(f"{chamber} — Distribution of Roll Call Discrimination")
     ax.legend()

@@ -107,7 +107,7 @@ def _add_model_summary(
                 f"{100 * data['n_obs'] / (data['n_legislators'] * data['n_votes']):.1f}%",
                 "Normal(0, 1) + anchors",
                 "Normal(0, 5)",
-                "LogNormal(0.5, 0.5)",
+                "Normal(0, 1)",
                 result["cons_slug"],
                 result["lib_slug"],
                 str(n_samples),
@@ -287,7 +287,9 @@ def _add_discrimination_figure(
                 path,
                 caption=(
                     f"Distribution of roll call discrimination parameters ({chamber}). "
-                    "Higher beta = more ideologically discriminating vote."
+                    "Positive beta = conservatives favor Yea. "
+                    "Negative beta = liberals favor Yea. "
+                    "Higher |beta| = more ideologically discriminating."
                 ),
             )
         )
@@ -298,12 +300,18 @@ def _add_top_discriminating_votes(
     result: dict,
     chamber: str,
 ) -> None:
-    """Table: Top 15 highest + 15 lowest discriminating votes."""
-    bp = result["bill_params"]
+    """Table: Top 15 most discriminating (by |beta|) in each direction."""
+    bp = result["bill_params"].with_columns(pl.col("beta_mean").abs().alias("abs_beta"))
 
-    top_high = bp.sort("beta_mean", descending=True).head(TOP_DISCRIMINATING)
-    top_low = bp.sort("beta_mean").head(TOP_DISCRIMINATING)
-    combined = pl.concat([top_high, top_low])
+    # Top conservative-Yea bills (highest positive beta)
+    top_pos = bp.filter(pl.col("beta_mean") > 0).sort("abs_beta", descending=True).head(
+        TOP_DISCRIMINATING
+    )
+    # Top liberal-Yea bills (most negative beta, i.e. highest |beta| where beta < 0)
+    top_neg = bp.filter(pl.col("beta_mean") < 0).sort("abs_beta", descending=True).head(
+        TOP_DISCRIMINATING
+    )
+    combined = pl.concat([top_pos, top_neg]).drop("abs_beta")
 
     display_cols = ["beta_mean", "beta_sd", "alpha_mean", "vote_id", "bill_number"]
     for opt_col in ["short_title", "motion", "is_veto_override"]:
@@ -327,8 +335,11 @@ def _add_top_discriminating_votes(
 
     html = make_gt(
         combined,
-        title=f"{chamber} — Top Discriminating Roll Calls",
-        subtitle=f"Top {TOP_DISCRIMINATING} highest and {TOP_DISCRIMINATING} lowest beta",
+        title=f"{chamber} — Most Discriminating Roll Calls",
+        subtitle=(
+            f"Top {TOP_DISCRIMINATING} conservative-Yea (β > 0) and "
+            f"{TOP_DISCRIMINATING} liberal-Yea (β < 0)"
+        ),
         column_labels=labels,
         number_formats={"beta_mean": ".3f", "beta_sd": ".3f", "alpha_mean": ".3f"},
     )
@@ -661,7 +672,7 @@ def _add_analysis_parameters(
                 "2PL Bayesian IRT",
                 "Normal(0, 1) + two anchors fixed at +1/-1",
                 "Normal(0, 5)",
-                "LogNormal(0.5, 0.5)",
+                "Normal(0, 1)",
                 str(n_samples),
                 str(n_tune),
                 str(n_chains),
@@ -678,7 +689,7 @@ def _add_analysis_parameters(
                 "Two-parameter logistic IRT with Bayesian estimation via MCMC",
                 "Standard normal prior; two anchors fixed for identification",
                 "Diffuse prior on bill difficulty",
-                "Positive-constrained discrimination (no sign ambiguity)",
+                "Unconstrained; sign determined by anchors (+ = conservative Yea)",
                 "Posterior samples per chain (after tuning)",
                 "Adaptation samples (discarded)",
                 "Independent Markov chains for convergence assessment",
