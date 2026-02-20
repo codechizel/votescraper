@@ -215,9 +215,9 @@ def assign_clusters(
 
 ### Expected Kansas Structure
 
-With $k = 2$: Two clusters aligning with party (possibly with a few misassigned moderates).
-With $k = 3$: Likely Democrats, moderate Republicans, and conservative Republicans.
-With $k = 4+$: Additional sub-factions or geographic groupings may emerge.
+With $k = 2$: Two clusters aligning with party. **This is the optimal k** (2026-02-20 finding). Silhouette at k=2 = 0.75 (House) / 0.71 (Senate) for hierarchical clustering on Kappa distance.
+With $k = 3$: Previously hypothesized (Democrats, moderate Rs, conservative Rs) but **rejected** — silhouette drops substantially (0.62/0.51). The moderate/conservative R distinction is continuous, not discrete.
+With $k = 4+$: GMM/BIC selects k=4, but this captures distributional shape (e.g., the long right tail of Republican ideal points), not genuine factions.
 
 ### Cophenetic Correlation
 
@@ -236,8 +236,10 @@ Values above 0.7 indicate the dendrogram is a good representation of the origina
 - **Run per chamber.** House (130 members) and Senate (42 members) should be analyzed separately.
 - **Senate dendrogram is the more readable one.** With 42 members, every label is visible and the structure is clear.
 - **For the House**, consider showing a truncated dendrogram (only the top $k$ levels) since 130 leaf labels are hard to read.
-- **The three-cluster solution is likely the most informative**: it should separate conservative Republicans, moderate Republicans, and Democrats.
+- **k=2 is optimal** (2026-02-20 finding). The initial k=3 hypothesis was rejected. See `analysis/design/clustering.md` for full rationale.
+- **Within-party analysis**: After establishing k=2 at whole-chamber level, cluster each party caucus separately to look for finer structure. Intra-party variation is weakly structured and continuous.
 - **Filter to contested votes** before computing the agreement matrix. On near-unanimous votes, everyone clusters together.
+- **NaN handling**: Some legislator pairs lack sufficient shared votes for Kappa — fill with maximum finite distance (conservative: unknown pairs treated as maximally dissimilar).
 
 ## Feasibility Assessment
 

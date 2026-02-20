@@ -34,6 +34,7 @@ What are the trade-offs?
 | [0004](0004-html-report-system.md) | HTML report system | Accepted | 2026-02-19 |
 | [0005](0005-pca-implementation-choices.md) | PCA implementation choices | Accepted | 2026-02-19 |
 | [0006](0006-irt-implementation-choices.md) | IRT implementation choices | Accepted | 2026-02-19 |
+| [0007](0007-clustering-implementation-choices.md) | Clustering implementation choices | Accepted | 2026-02-20 |
 
 ## Creating a New ADR
 

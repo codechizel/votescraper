@@ -210,3 +210,19 @@ Zero sign-switching. Zero divergences. Better on every metric.
 **Lesson:** When using hard anchors in Bayesian IRT, an unconstrained Normal prior on discrimination is both simpler and better than a positive-constrained LogNormal. The anchors provide identification; the prior should provide regularization, not constraints. Don't blindly follow "standard" priors without checking whether their assumptions (soft identification) match your model (hard identification).
 
 **See also:** `analysis/design/beta_prior_investigation.md` for the full investigation, experiment protocol, and plots.
+
+---
+
+## Bug 7: Empty DataFrame Indexing in Party Loyalty Summary
+
+**Discovered during:** Clustering code review and test writing (2026-02-20)
+
+**Symptom:** `compute_party_loyalty()` in `analysis/clustering.py` crashes with `IndexError: index 0 is out of bounds for sequence of length 0` when there are no contested votes.
+
+**Root cause:** After computing party loyalty, the function prints the lowest and highest loyalty legislators by indexing into a sorted DataFrame: `sorted_loyalty['full_name'][0]`. When all votes are unanimous (no contested votes), the loyalty DataFrame is empty (0 rows), and indexing position 0 raises `IndexError`.
+
+**Why this matters:** The bug never triggered in production because real Kansas Legislature data always has contested votes. But it's a latent crash path that would surface with synthetic data, subset analyses, or future sessions with different voting patterns.
+
+**Fix:** Guard the summary print statements with `if loyalty.height > 0`.
+
+**Lesson:** Any function that indexes into a DataFrame or Series must either (a) guarantee the collection is non-empty via an upstream check, or (b) guard the indexing operation. Print/logging statements are particularly easy to forget — they feel "safe" because they don't affect the return value, but they can still crash the function.

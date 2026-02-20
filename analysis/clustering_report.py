@@ -1,6 +1,6 @@
 """Clustering-specific HTML report builder.
 
-Builds ~19 sections (tables + figures) for the clustering analysis report.
+Builds ~35 sections (tables, figures, and text) for the clustering analysis report.
 Each section is a small function that slices/aggregates polars DataFrames and calls
 make_gt() or FigureSection.from_file().
 
@@ -16,9 +16,18 @@ from pathlib import Path
 import polars as pl
 
 try:
-    from analysis.report import FigureSection, ReportBuilder, TableSection, make_gt
+    from analysis.report import FigureSection, ReportBuilder, TableSection, TextSection, make_gt
 except ModuleNotFoundError:
-    from report import FigureSection, ReportBuilder, TableSection, make_gt
+    from report import (  # type: ignore[no-redef]
+        FigureSection,
+        ReportBuilder,
+        TableSection,
+        TextSection,
+        make_gt,
+    )
+
+# Must match CONTESTED_PARTY_THRESHOLD in clustering.py (circular import prevents direct import)
+_CONTESTED_PARTY_THRESHOLD = 0.10
 
 
 def build_clustering_report(
@@ -29,8 +38,9 @@ def build_clustering_report(
     skip_gmm: bool = False,
     skip_sensitivity: bool = False,
 ) -> None:
-    """Build the full clustering HTML report by adding ~19 sections to the ReportBuilder."""
+    """Build the full clustering HTML report by adding sections to the ReportBuilder."""
     _add_data_summary(report, results)
+    _add_interpretation_intro(report)
 
     for chamber, result in results.items():
         _add_party_loyalty_table(report, result, chamber)
@@ -45,6 +55,8 @@ def build_clustering_report(
         for chamber in results:
             _add_gmm_model_selection_figure(report, plots_dir, chamber)
 
+    _add_model_selection_interpretation(report, results)
+
     for chamber, result in results.items():
         _add_cluster_assignments_table(report, result, chamber)
 
@@ -58,6 +70,7 @@ def build_clustering_report(
         _add_cluster_composition_table(report, result, chamber)
 
     _add_cross_method_agreement(report, results)
+    _add_cross_method_interpretation(report)
 
     _add_flagged_legislators(report, results)
 
@@ -68,6 +81,14 @@ def build_clustering_report(
 
     if not skip_sensitivity:
         _add_sensitivity_table(report, results)
+
+    # Within-party clustering
+    _add_within_party_intro(report)
+    for chamber in results:
+        for party_key in ["republican", "democrat"]:
+            _add_within_party_model_selection_figure(report, plots_dir, chamber, party_key)
+            _add_within_party_clusters_figure(report, plots_dir, chamber, party_key)
+    _add_within_party_summary_table(report, results)
 
     _add_analysis_parameters(report)
     print(f"  Report: {len(report._sections)} sections added")
@@ -85,13 +106,15 @@ def _add_data_summary(
     for chamber, result in results.items():
         ip = result["ideal_points"]
         vm = result["vote_matrix"]
-        rows.append({
-            "Chamber": chamber,
-            "N Legislators": ip.height,
-            "N Votes (filtered)": len(vm.columns) - 1,
-            "IRT Source": "irt/latest",
-            "Kappa Source": "eda/latest",
-        })
+        rows.append(
+            {
+                "Chamber": chamber,
+                "N Legislators": ip.height,
+                "N Votes (filtered)": len(vm.columns) - 1,
+                "IRT Source": "irt/latest",
+                "Kappa Source": "eda/latest",
+            }
+        )
 
     df = pl.DataFrame(rows)
     html = make_gt(
@@ -107,26 +130,20 @@ def _add_party_loyalty_table(
     result: dict,
     chamber: str,
 ) -> None:
-    """Table: Top and bottom 15 legislators by party loyalty rate."""
+    """Table: All legislators by party loyalty rate."""
     loyalty = result.get("loyalty")
     if loyalty is None or loyalty.height == 0:
         return
 
     sorted_loy = loyalty.sort("loyalty_rate")
 
-    # Bottom 15 (least loyal)
-    bottom = sorted_loy.head(15)
-    # Top 15 (most loyal)
-    top = sorted_loy.tail(15).sort("loyalty_rate", descending=True)
-    combined = pl.concat([bottom, top])
-
     display_cols = ["full_name", "party", "loyalty_rate", "n_contested_votes", "n_agree"]
-    available = [c for c in display_cols if c in combined.columns]
-    df = combined.select(available)
+    available = [c for c in display_cols if c in sorted_loy.columns]
+    df = sorted_loy.select(available)
 
     html = make_gt(
         df,
-        title=f"{chamber} — Party Loyalty (Top/Bottom 15)",
+        title=f"{chamber} — Party Loyalty ({df.height} legislators)",
         subtitle="Fraction of contested votes agreeing with party median",
         column_labels={
             "full_name": "Legislator",
@@ -136,7 +153,9 @@ def _add_party_loyalty_table(
             "n_agree": "Agreed",
         },
         number_formats={"loyalty_rate": ".3f"},
-        source_note=f"Contested: >= {10}% of party dissents on that vote.",
+        source_note=(
+            f"Contested: >= {_CONTESTED_PARTY_THRESHOLD * 100:.0f}% of party dissents on that vote."
+        ),
     )
     report.add(
         TableSection(
@@ -223,16 +242,20 @@ def _add_cluster_assignments_table(
     )
 
     if loyalty is not None and loyalty.height > 0:
-        df = df.with_columns(
-            pl.Series(
-                "legislator_slug",
-                ip["legislator_slug"].to_list(),
+        df = (
+            df.with_columns(
+                pl.Series(
+                    "legislator_slug",
+                    ip["legislator_slug"].to_list(),
+                )
             )
-        ).join(
-            loyalty.select("legislator_slug", "loyalty_rate"),
-            on="legislator_slug",
-            how="left",
-        ).drop("legislator_slug")
+            .join(
+                loyalty.select("legislator_slug", "loyalty_rate"),
+                on="legislator_slug",
+                how="left",
+            )
+            .drop("legislator_slug")
+        )
 
     df = df.sort("cluster", "xi_mean", descending=[False, True])
 
@@ -311,8 +334,15 @@ def _add_cluster_composition_table(
         return
 
     display_cols = [
-        "cluster", "label", "n_legislators", "n_republican", "n_democrat",
-        "pct_republican", "xi_mean", "xi_median", "avg_xi_sd",
+        "cluster",
+        "label",
+        "n_legislators",
+        "n_republican",
+        "n_democrat",
+        "pct_republican",
+        "xi_mean",
+        "xi_median",
+        "avg_xi_sd",
     ]
     if "avg_loyalty" in summary.columns:
         display_cols.append("avg_loyalty")
@@ -365,19 +395,23 @@ def _add_cross_method_agreement(
         ari_matrix = comparison.get("ari_matrix", {})
         for pair, ari_val in ari_matrix.items():
             methods = pair.split("_vs_")
-            rows.append({
-                "Chamber": chamber,
-                "Method A": methods[0] if len(methods) > 0 else pair,
-                "Method B": methods[1] if len(methods) > 1 else "",
-                "ARI": ari_val,
-            })
+            rows.append(
+                {
+                    "Chamber": chamber,
+                    "Method A": methods[0] if len(methods) > 0 else pair,
+                    "Method B": methods[1] if len(methods) > 1 else "",
+                    "ARI": ari_val,
+                }
+            )
         if comparison.get("mean_ari") is not None:
-            rows.append({
-                "Chamber": chamber,
-                "Method A": "all methods",
-                "Method B": "mean ARI",
-                "ARI": comparison["mean_ari"],
-            })
+            rows.append(
+                {
+                    "Chamber": chamber,
+                    "Method A": "all methods",
+                    "Method B": "mean ARI",
+                    "ARI": comparison["mean_ari"],
+                }
+            )
 
     if not rows:
         return
@@ -428,16 +462,18 @@ def _add_flagged_legislators(
                 note = "Widest HDI in Senate; lowest-confidence cluster"
 
             loy_val = entry.get("loyalty_rate")
-            rows.append({
-                "Chamber": chamber,
-                "Legislator": entry["full_name"],
-                "Party": entry["party"],
-                "Ideal Point": entry["xi_mean"],
-                "Std Dev": entry["xi_sd"],
-                "Cluster": entry["cluster"],
-                "Loyalty": loy_val,
-                "Note": note,
-            })
+            rows.append(
+                {
+                    "Chamber": chamber,
+                    "Legislator": entry["full_name"],
+                    "Party": entry["party"],
+                    "Ideal Point": entry["xi_mean"],
+                    "Std Dev": entry["xi_sd"],
+                    "Cluster": entry["cluster"],
+                    "Loyalty": loy_val,
+                    "Note": note,
+                }
+            )
 
     if not rows:
         return
@@ -497,14 +533,16 @@ def _add_veto_override_table(
     for chamber, result in results.items():
         veto = result.get("veto_overrides", {})
         if veto.get("skipped"):
-            rows.append({
-                "Chamber": chamber,
-                "N Override Votes": veto.get("n_override_votes", 0),
-                "Cluster": "N/A",
-                "Mean Override Yea": None,
-                "N Legislators": None,
-                "Note": "Insufficient override votes for analysis",
-            })
+            rows.append(
+                {
+                    "Chamber": chamber,
+                    "N Override Votes": veto.get("n_override_votes", 0),
+                    "Cluster": "N/A",
+                    "Mean Override Yea": None,
+                    "N Legislators": None,
+                    "Note": "Insufficient override votes for analysis",
+                }
+            )
             continue
 
         cluster_stats = veto.get("cluster_stats")
@@ -512,23 +550,27 @@ def _add_veto_override_table(
             continue
 
         for row in cluster_stats.iter_rows(named=True):
-            rows.append({
+            rows.append(
+                {
+                    "Chamber": chamber,
+                    "N Override Votes": veto["n_override_votes"],
+                    "Cluster": row["full_cluster"],
+                    "Mean Override Yea": row["mean_override_yea_rate"],
+                    "N Legislators": row["n_legislators"],
+                    "Note": "",
+                }
+            )
+
+        rows.append(
+            {
                 "Chamber": chamber,
                 "N Override Votes": veto["n_override_votes"],
-                "Cluster": row["full_cluster"],
-                "Mean Override Yea": row["mean_override_yea_rate"],
-                "N Legislators": row["n_legislators"],
-                "Note": "",
-            })
-
-        rows.append({
-            "Chamber": chamber,
-            "N Override Votes": veto["n_override_votes"],
-            "Cluster": "High Yea (>70%)",
-            "Mean Override Yea": None,
-            "N Legislators": veto.get("n_high_yea_r", 0) + veto.get("n_high_yea_d", 0),
-            "Note": f"{veto.get('n_high_yea_r', 0)}R, {veto.get('n_high_yea_d', 0)}D",
-        })
+                "Cluster": "High Yea (>70%)",
+                "Mean Override Yea": None,
+                "N Legislators": veto.get("n_high_yea_r", 0) + veto.get("n_high_yea_d", 0),
+                "Note": f"{veto.get('n_high_yea_r', 0)}R, {veto.get('n_high_yea_d', 0)}D",
+            }
+        )
 
     if not rows:
         return
@@ -569,11 +611,13 @@ def _add_sensitivity_table(
         for key, data in sensitivity.items():
             if not isinstance(data, dict):
                 continue
-            rows.append({
-                "Chamber": chamber,
-                "Comparison": key,
-                "ARI": data.get("ari", data.get("ari", None)),
-            })
+            rows.append(
+                {
+                    "Chamber": chamber,
+                    "Comparison": key,
+                    "ARI": data.get("ari"),
+                }
+            )
 
     if not rows:
         return
@@ -600,6 +644,248 @@ def _add_sensitivity_table(
     )
 
 
+def _add_interpretation_intro(report: ReportBuilder) -> None:
+    """Text block: How to read this report."""
+    report.add(
+        TextSection(
+            id="interpretation-intro",
+            title="How to Read This Report",
+            html=(
+                "<p>This report presents the results of clustering analysis on Kansas "
+                "Legislature voting data. Clustering identifies discrete voting blocs "
+                "(factions) among legislators using multiple methods for robustness.</p>"
+                "<p><strong>Key finding:</strong> k=2 clusters emerged as optimal for both "
+                "chambers, corresponding exactly to the party split (all Republicans in one "
+                "cluster, all Democrats in the other). The expected k=3 structure "
+                "(conservative Rs, moderate Rs, Democrats) was not supported — the "
+                "moderate/conservative Republican distinction is continuous, not discrete.</p>"
+                "<p>The report is organized as: (1) data summary, (2) party loyalty metric, "
+                "(3) dendrograms, (4) model selection, (5) cluster assignments and "
+                "characterization, (6) cross-method validation, (7) within-party clustering "
+                "to test for finer structure, and (8) veto override subgroup.</p>"
+                "<p>Each section includes figures and/or tables. Interpretation guidance "
+                "blocks appear between sections to help readers understand what the "
+                "results mean.</p>"
+            ),
+        )
+    )
+
+
+def _add_model_selection_interpretation(
+    report: ReportBuilder,
+    results: dict[str, dict],
+) -> None:
+    """Text block: Interpreting model selection plots."""
+    # Build chamber-specific details
+    chamber_details = []
+    for chamber, result in results.items():
+        km = result.get("kmeans", {})
+        km_results = km.get("results", {})
+        sil_k2 = km_results.get(2, {}).get("silhouette_1d")
+        sil_k3 = km_results.get(3, {}).get("silhouette_1d")
+        if sil_k2 is not None and sil_k3 is not None:
+            drop = sil_k2 - sil_k3
+            chamber_details.append(
+                f"<li><strong>{chamber}:</strong> silhouette drops from "
+                f"{sil_k2:.2f} (k=2) to {sil_k3:.2f} (k=3) — a decrease of "
+                f"{drop:.2f}. This is a substantial drop, not a marginal one.</li>"
+            )
+
+    details_html = "<ul>" + "".join(chamber_details) + "</ul>" if chamber_details else ""
+
+    report.add(
+        TextSection(
+            id="model-sel-interpretation",
+            title="Interpreting Model Selection",
+            html=(
+                "<p><strong>Silhouette score</strong> measures how well-separated clusters "
+                "are. The scale:</p>"
+                "<ul>"
+                "<li>&gt; 0.70: Strong structure — clusters are well-separated</li>"
+                "<li>&gt; 0.50: Good structure — meaningful clusters exist</li>"
+                "<li>0.25–0.50: Weak structure — clusters overlap substantially</li>"
+                "<li>&lt; 0.25: No structure — data is not naturally clustered</li>"
+                "</ul>"
+                "<p>The <strong>elbow plot</strong> (inertia) shows the rate of decrease in "
+                'within-cluster variance. A visible "elbow" suggests the right k, but '
+                "silhouette is the primary decision metric because it accounts for "
+                "between-cluster separation, not just within-cluster tightness.</p>"
+                f"{details_html}"
+                "<p>Forcing k=3 would split a continuous Republican distribution at an "
+                "arbitrary point, modeling noise rather than genuine factional boundaries. "
+                "The silhouette drop from k=2 to k=3 confirms this — it's not marginal.</p>"
+                "<p><strong>GMM BIC</strong> selects the number of Gaussian components that "
+                "best fits the data distribution. BIC's k=4 reflects the distributional "
+                "shape (long right tail, bimodal D/R peaks) rather than discrete factions. "
+                "Silhouette and BIC measure different things; silhouette measures cluster "
+                "separation, while BIC measures generative model fit.</p>"
+            ),
+        )
+    )
+
+
+def _add_cross_method_interpretation(report: ReportBuilder) -> None:
+    """Text block: What cross-method agreement means."""
+    report.add(
+        TextSection(
+            id="cross-method-interpretation",
+            title="What Cross-Method Agreement Means",
+            html=(
+                "<p>The Adjusted Rand Index (ARI) measures agreement between two sets of "
+                "cluster labels, corrected for chance. ARI = 1.0 means identical "
+                "assignments; ARI = 0 means no better than random.</p>"
+                "<p>High ARI across three fundamentally different methods — hierarchical "
+                "(agglomerative, based on pairwise agreement), k-means (centroid-based, on "
+                "IRT), and GMM (probabilistic, on IRT) — confirms that the 2-cluster "
+                "structure is a real property of the data, not an artifact of any "
+                "particular algorithm or input representation.</p>"
+            ),
+        )
+    )
+
+
+def _add_within_party_intro(report: ReportBuilder) -> None:
+    """Text block: Why within-party clustering."""
+    report.add(
+        TextSection(
+            id="within-party-intro",
+            title="Within-Party Clustering",
+            html=(
+                "<p>The whole-chamber clustering found k=2 (party split) as optimal because "
+                "the Democrat–Republican gap is so large that it overwhelms any finer "
+                "intra-party variation. To search for structure <em>within</em> each party "
+                "(e.g., conservative vs. moderate Republicans), we cluster each party "
+                "caucus separately, removing the cross-party gap from the analysis.</p>"
+                "<p>Within-party clustering uses k-means on two feature spaces: 1D (IRT "
+                "ideal point only) and 2D (IRT ideal point + party loyalty rate). If the "
+                "best within-party silhouette is below 0.50 for all k &gt; 1, we conclude "
+                "that the variation is continuous, not discrete — there are no clean "
+                '"subclusters" within the party.</p>'
+                "<p><strong>This is a valid and important finding.</strong> Continuous "
+                "variation means legislators are spread across a spectrum rather than "
+                "forming distinct factions. This affects downstream analyses: network "
+                "analysis may reveal gradients rather than communities, and prediction "
+                "models should use continuous features (IRT, loyalty) rather than "
+                "discrete cluster labels.</p>"
+            ),
+        )
+    )
+
+
+def _add_within_party_model_selection_figure(
+    report: ReportBuilder,
+    plots_dir: Path,
+    chamber: str,
+    party_key: str,
+) -> None:
+    """Figure: Within-party silhouette vs k."""
+    path = plots_dir / f"within_party_model_sel_{party_key}_{chamber.lower()}.png"
+    if path.exists():
+        party_label = party_key.title()
+        report.add(
+            FigureSection.from_file(
+                f"fig-wp-model-sel-{party_key}-{chamber.lower()}",
+                f"{chamber} Within-{party_label} Model Selection",
+                path,
+                caption=(
+                    f"Within-{party_label} silhouette scores ({chamber}): 1D (IRT only) "
+                    f"and 2D (IRT + loyalty) vs k. Dashed line = 0.50 good-structure "
+                    f"threshold."
+                ),
+            )
+        )
+
+
+def _add_within_party_clusters_figure(
+    report: ReportBuilder,
+    plots_dir: Path,
+    chamber: str,
+    party_key: str,
+) -> None:
+    """Figure: Within-party 2D scatter."""
+    path = plots_dir / f"within_party_clusters_{party_key}_{chamber.lower()}.png"
+    if path.exists():
+        party_label = party_key.title()
+        report.add(
+            FigureSection.from_file(
+                f"fig-wp-clusters-{party_key}-{chamber.lower()}",
+                f"{chamber} Within-{party_label} Clusters",
+                path,
+                caption=(
+                    f"Within-{party_label} clustering ({chamber}): IRT ideal point (x) "
+                    f"vs party loyalty (y), colored by within-party cluster. A red "
+                    f"banner indicates no discrete subclusters were found."
+                ),
+            )
+        )
+
+
+def _add_within_party_summary_table(
+    report: ReportBuilder,
+    results: dict[str, dict],
+) -> None:
+    """Table: Within-party clustering summary per chamber and party."""
+    rows = []
+    for chamber, result in results.items():
+        wp = result.get("within_party", {})
+        for party_key in ["republican", "democrat"]:
+            pd = wp.get(party_key, {})
+            if not isinstance(pd, dict):
+                continue
+            if pd.get("skipped"):
+                rows.append(
+                    {
+                        "Chamber": chamber,
+                        "Party": party_key.title(),
+                        "N Legislators": pd.get("n_legislators", 0),
+                        "Optimal k (1D)": "N/A",
+                        "Best Silhouette (1D)": None,
+                        "Optimal k (2D)": "N/A",
+                        "Best Silhouette (2D)": None,
+                        "Structure Found": "Skipped (too small)",
+                    }
+                )
+            else:
+                struct = "Yes" if pd.get("structure_found") else "No — continuous"
+                rows.append(
+                    {
+                        "Chamber": chamber,
+                        "Party": party_key.title(),
+                        "N Legislators": pd.get("n_legislators", 0),
+                        "Optimal k (1D)": pd.get("optimal_k_1d"),
+                        "Best Silhouette (1D)": pd.get("best_silhouette_1d"),
+                        "Optimal k (2D)": pd.get("optimal_k_2d"),
+                        "Best Silhouette (2D)": pd.get("best_silhouette_2d"),
+                        "Structure Found": struct,
+                    }
+                )
+
+    if not rows:
+        return
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title="Within-Party Clustering Summary",
+        subtitle="Per-party k-means results after removing the cross-party gap",
+        number_formats={
+            "Best Silhouette (1D)": ".3f",
+            "Best Silhouette (2D)": ".3f",
+        },
+        source_note=(
+            "Structure found if best silhouette >= 0.50. "
+            '"No — continuous" means intra-party variation is a spectrum, not factions.'
+        ),
+    )
+    report.add(
+        TableSection(
+            id="within-party-summary",
+            title="Within-Party Summary",
+            html=html,
+        )
+    )
+
+
 def _add_analysis_parameters(report: ReportBuilder) -> None:
     """Table: All constants and settings used in this run."""
     try:
@@ -617,6 +903,7 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
             RANDOM_SEED,
             SENSITIVITY_THRESHOLD,
             SILHOUETTE_GOOD,
+            WITHIN_PARTY_MIN_SIZE,
         )
     except ModuleNotFoundError:
         from clustering import (  # type: ignore[no-redef]
@@ -633,55 +920,61 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
             RANDOM_SEED,
             SENSITIVITY_THRESHOLD,
             SILHOUETTE_GOOD,
+            WITHIN_PARTY_MIN_SIZE,
         )
 
-    df = pl.DataFrame({
-        "Parameter": [
-            "Random Seed",
-            "K Range",
-            "Default K",
-            "Linkage Method",
-            "Cophenetic Threshold",
-            "Silhouette 'Good' Threshold",
-            "GMM Covariance Type",
-            "GMM N Initializations",
-            "Cluster Colormap",
-            "Minority Threshold (Default)",
-            "Minority Threshold (Sensitivity)",
-            "Min Substantive Votes",
-            "Contested Party Threshold",
-        ],
-        "Value": [
-            str(RANDOM_SEED),
-            str(list(K_RANGE)),
-            str(DEFAULT_K),
-            LINKAGE_METHOD,
-            str(COPHENETIC_THRESHOLD),
-            str(SILHOUETTE_GOOD),
-            GMM_COVARIANCE,
-            str(GMM_N_INIT),
-            CLUSTER_CMAP,
-            f"{MINORITY_THRESHOLD:.3f} ({MINORITY_THRESHOLD * 100:.1f}%)",
-            f"{SENSITIVITY_THRESHOLD:.2f} ({SENSITIVITY_THRESHOLD * 100:.0f}%)",
-            str(MIN_VOTES),
-            f"{CONTESTED_PARTY_THRESHOLD:.2f} ({CONTESTED_PARTY_THRESHOLD * 100:.0f}%)",
-        ],
-        "Description": [
-            "For reproducible k-means/GMM initialization",
-            "Range of k values evaluated for model selection",
-            "Expected optimal k (conservative R, moderate R, Democrat)",
-            "Ward minimizes within-cluster variance",
-            "Minimum cophenetic correlation for valid dendrogram",
-            "Silhouette > this indicates good cluster structure",
-            "Full covariance allows elliptical clusters",
-            "Multiple GMM restarts for stability",
-            "Matplotlib colormap for cluster visualization",
-            "Inherited from EDA; votes with minority < this are filtered",
-            "Alternative threshold for sensitivity analysis",
-            "Inherited from EDA; legislators with < this filtered",
-            "A vote is contested for a party if >= this fraction dissents",
-        ],
-    })
+    df = pl.DataFrame(
+        {
+            "Parameter": [
+                "Random Seed",
+                "K Range",
+                "Default K",
+                "Linkage Method",
+                "Cophenetic Threshold",
+                "Silhouette 'Good' Threshold",
+                "GMM Covariance Type",
+                "GMM N Initializations",
+                "Cluster Colormap",
+                "Minority Threshold (Default)",
+                "Minority Threshold (Sensitivity)",
+                "Min Substantive Votes",
+                "Contested Party Threshold",
+                "Within-Party Min Size",
+            ],
+            "Value": [
+                str(RANDOM_SEED),
+                str(list(K_RANGE)),
+                str(DEFAULT_K),
+                LINKAGE_METHOD,
+                str(COPHENETIC_THRESHOLD),
+                str(SILHOUETTE_GOOD),
+                GMM_COVARIANCE,
+                str(GMM_N_INIT),
+                CLUSTER_CMAP,
+                f"{MINORITY_THRESHOLD:.3f} ({MINORITY_THRESHOLD * 100:.1f}%)",
+                f"{SENSITIVITY_THRESHOLD:.2f} ({SENSITIVITY_THRESHOLD * 100:.0f}%)",
+                str(MIN_VOTES),
+                f"{CONTESTED_PARTY_THRESHOLD:.2f} ({CONTESTED_PARTY_THRESHOLD * 100:.0f}%)",
+                str(WITHIN_PARTY_MIN_SIZE),
+            ],
+            "Description": [
+                "For reproducible k-means/GMM initialization",
+                "Range of k values evaluated for model selection",
+                "Expected optimal k (conservative R, moderate R, Democrat)",
+                "Ward minimizes within-cluster variance",
+                "Minimum cophenetic correlation for valid dendrogram",
+                "Silhouette > this indicates good cluster structure",
+                "Full covariance allows elliptical clusters",
+                "Multiple GMM restarts for stability",
+                "Matplotlib colormap for cluster visualization",
+                "Inherited from EDA; votes with minority < this are filtered",
+                "Alternative threshold for sensitivity analysis",
+                "Inherited from EDA; legislators with < this filtered",
+                "A vote is contested for a party if >= this fraction dissents",
+                "Minimum caucus size for within-party clustering",
+            ],
+        }
+    )
     html = make_gt(
         df,
         title="Analysis Parameters",

@@ -119,6 +119,23 @@ This is a living document — add entries as each analysis phase surfaces new fi
 - **Explanation:** Unlike Congress where veto overrides often produce bipartisan coalitions, Kansas overrides in the 2025-26 session are strictly partisan. The R supermajority can override unilaterally without D votes.
 - **Downstream:** Veto override subgroup adds no novel clustering structure. Network analysis may find override votes are among the most party-line (highest discrimination).
 
+### Within-Party Clustering — Weakly Structured Continuous Variation
+
+- **Phase:** Clustering (within-party)
+- **Observation:** Within-party k-means on Republicans yields silhouette > 0.50 for all k in [2, 7], but the silhouette curve is essentially flat (House R: 0.597-0.605 across k=2-7; Senate R: 0.534-0.606). Optimal k is 6 (House R, 1D), 7 (House D, 1D), 3 (Senate R, 1D). Senate Democrats skipped (10 < 15 minimum).
+- **Explanation:** The intra-party variation is real (silhouette > 0.50) but not strongly structured into discrete factions. The flat silhouette profile means the "optimal" k is somewhat arbitrary — a k=3 and k=6 partition have nearly identical silhouette scores. This is consistent with legislators spread across a continuous ideological spectrum within each party, rather than forming distinct moderate/conservative wings.
+- **Downstream:**
+  - **Network:** Community detection on the within-party agreement subgraph may reveal gradients rather than discrete communities. Consider edge-weighting by Kappa agreement and using Louvain with resolution parameter tuning.
+  - **Prediction:** Use continuous features (IRT ideal points, party loyalty rates) rather than within-party cluster labels. Cluster labels add little information when the silhouette profile is flat.
+  - **Interpretation:** Do not over-interpret within-party cluster labels. The k=6 (House R) and k=3 (Senate R) partitions are convenient summaries, not evidence of 6 or 3 distinct factions.
+
+### Senate Republican k=3 — Tyson/Thompson Subcluster
+
+- **Phase:** Clustering (within-party)
+- **Observation:** Senate Republicans at k=3 (1D silhouette=0.606) show a modest peak relative to k=2 (0.534). The 2D (IRT + loyalty) analysis at k=4 reaches 0.612. Tyson (xi=+4.17, loyalty=0.417) and Thompson (xi=+3.44, loyalty=0.472) may form a distinct low-loyalty extreme.
+- **Explanation:** These two senators occupy a unique position in the 2D space: extreme ideology combined with low party loyalty. Adding the loyalty dimension modestly improves cluster quality (2D sil > 1D sil at k=3-4), suggesting the loyalty axis contributes to the structure.
+- **Downstream:** Network analysis should check whether Tyson-Thompson have lower within-Republican edge weights than typical R pairs, confirming their distinctiveness in pairwise agreement (not just in the IRT+loyalty feature space).
+
 ## Template
 
 ```

@@ -118,6 +118,32 @@ The initial hypothesis predicted k=3 (conservative Rs, moderate Rs, Democrats). 
 
 **Veto overrides show no cross-party coalition.** Override Yea rates are 98% (R cluster) vs 1% (D cluster). The 2/3 threshold did not produce detectable bipartisan voting blocs — overrides were strictly party-line.
 
+### Within-Party Clustering
+
+**Decision:** Cluster each party caucus separately using k-means on 1D (IRT ideal point) and 2D (IRT + party loyalty rate).
+
+**Why:** Whole-chamber k=2 is dominated by the D-R party boundary. Removing it allows finer structure (e.g., moderate vs. conservative Republicans) to emerge if it exists as discrete subclusters.
+
+**Minimum caucus size:** `WITHIN_PARTY_MIN_SIZE = 15`. The Senate Democratic caucus (10 members) is too small for meaningful k-means model selection.
+
+**Interpretation threshold:** If within-party silhouette < `SILHOUETTE_GOOD` (0.50) for all k > 1, the variation is continuous, not discrete. This is a valid and important finding — it means legislators are spread across a spectrum rather than forming distinct factions.
+
+**Findings (2026-02-20):**
+
+| Chamber | Party | N | Optimal k (1D) | Silhouette (1D) | Note |
+|---------|-------|---|-----------------|-----------------|------|
+| House | Republican | 92 | 6 | 0.605 | Flat profile (0.57-0.60 across k); 1D structure but not strongly peaked |
+| House | Democrat | 38 | 7 | 0.615 | Similar flat profile; 1D granularity but not strongly peaked |
+| Senate | Republican | 32 | 3 | 0.606 | 2D (k=4, sil=0.612) slightly better; modest structure |
+| Senate | Democrat | 10 | N/A | N/A | Skipped (below 15-member minimum) |
+
+**Interpretation:** Within-party silhouette scores exceed 0.50 but are not strongly peaked at any particular k — the silhouette curve is essentially flat from k=2 to k=7. This means:
+1. There *is* more structure than a single blob (silhouette > 0.50), but...
+2. The "optimal" k is somewhat arbitrary — the data doesn't clearly prefer k=3 over k=5 or k=6.
+3. The within-party variation is better characterized as **weakly structured continuous variation** than as discrete factions.
+
+For downstream analysis, continuous features (IRT ideal points, party loyalty rates) will be more informative than within-party cluster labels. Network analysis may reveal community structure through pairwise agreement patterns rather than centroid-based clustering.
+
 ## Downstream Implications
 
 ### For Network Analysis (Phase 6)

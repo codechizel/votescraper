@@ -202,6 +202,7 @@ MINORITY_THRESHOLD = 0.025
 SENSITIVITY_THRESHOLD = 0.10
 MIN_VOTES = 20
 CONTESTED_PARTY_THRESHOLD = 0.10
+WITHIN_PARTY_MIN_SIZE = 15
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -291,7 +292,6 @@ def load_metadata(data_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
 def compute_party_loyalty(
     vote_matrix: pl.DataFrame,
     ideal_points: pl.DataFrame,
-    rollcalls: pl.DataFrame,
     chamber: str,
 ) -> pl.DataFrame:
     """Compute party loyalty rate for each legislator.
@@ -325,22 +325,21 @@ def compute_party_loyalty(
         for vid in vote_cols:
             val = row[vid]
             if val is not None:
-                rows_data.append({
-                    "legislator_slug": slug,
-                    "vote_id": vid,
-                    "vote_val": int(val),
-                    "party": party,
-                })
+                rows_data.append(
+                    {
+                        "legislator_slug": slug,
+                        "vote_id": vid,
+                        "vote_val": int(val),
+                        "party": party,
+                    }
+                )
 
     long = pl.DataFrame(rows_data)
 
     # For each vote x party, compute Yea rate and determine if contested
-    party_vote_stats = (
-        long.group_by("vote_id", "party")
-        .agg(
-            pl.col("vote_val").mean().alias("yea_rate"),
-            pl.col("vote_val").len().alias("n_voters"),
-        )
+    party_vote_stats = long.group_by("vote_id", "party").agg(
+        pl.col("vote_val").mean().alias("yea_rate"),
+        pl.col("vote_val").len().alias("n_voters"),
     )
 
     # Determine party median position (Yea if yea_rate > 0.5, else Nay)
@@ -376,9 +375,7 @@ def compute_party_loyalty(
             pl.col("agrees").sum().alias("n_agree"),
             pl.col("agrees").len().alias("n_contested_votes"),
         )
-        .with_columns(
-            (pl.col("n_agree") / pl.col("n_contested_votes")).alias("loyalty_rate")
-        )
+        .with_columns((pl.col("n_agree") / pl.col("n_contested_votes")).alias("loyalty_rate"))
     )
 
     # Join full_name
@@ -389,16 +386,19 @@ def compute_party_loyalty(
     )
 
     print(f"  {chamber}: {loyalty.height} legislators with party loyalty scores")
-    print(f"  Contested votes (R): "
-          f"{contested.filter(pl.col('party') == 'Republican').height}")
-    print(f"  Contested votes (D): "
-          f"{contested.filter(pl.col('party') == 'Democrat').height}")
+    print(f"  Contested votes (R): {contested.filter(pl.col('party') == 'Republican').height}")
+    print(f"  Contested votes (D): {contested.filter(pl.col('party') == 'Democrat').height}")
 
-    sorted_loyalty = loyalty.sort("loyalty_rate")
-    print(f"  Lowest loyalty: {sorted_loyalty['full_name'][0]} "
-          f"({sorted_loyalty['loyalty_rate'][0]:.3f})")
-    print(f"  Highest loyalty: {sorted_loyalty['full_name'][-1]} "
-          f"({sorted_loyalty['loyalty_rate'][-1]:.3f})")
+    if loyalty.height > 0:
+        sorted_loyalty = loyalty.sort("loyalty_rate")
+        print(
+            f"  Lowest loyalty: {sorted_loyalty['full_name'][0]} "
+            f"({sorted_loyalty['loyalty_rate'][0]:.3f})"
+        )
+        print(
+            f"  Highest loyalty: {sorted_loyalty['full_name'][-1]} "
+            f"({sorted_loyalty['loyalty_rate'][-1]:.3f})"
+        )
 
     return loyalty.sort("loyalty_rate", descending=True)
 
@@ -446,8 +446,10 @@ def run_hierarchical(
     # Cophenetic correlation
     coph_corr, _ = cophenet(Z, condensed)
 
-    print(f"  {chamber}: Cophenetic correlation = {coph_corr:.4f} "
-          f"({'OK' if coph_corr >= COPHENETIC_THRESHOLD else 'WARNING'})")
+    print(
+        f"  {chamber}: Cophenetic correlation = {coph_corr:.4f} "
+        f"({'OK' if coph_corr >= COPHENETIC_THRESHOLD else 'WARNING'})"
+    )
 
     return Z, float(coph_corr), slugs
 
@@ -485,8 +487,10 @@ def find_optimal_k_hierarchical(
         print(f"    k={k}: silhouette = {sil:.4f}")
 
     optimal_k = max(scores, key=scores.get) if scores else DEFAULT_K
-    print(f"  {chamber} optimal k (hierarchical): {optimal_k} "
-          f"(silhouette = {scores.get(optimal_k, 0):.4f})")
+    print(
+        f"  {chamber} optimal k (hierarchical): {optimal_k} "
+        f"(silhouette = {scores.get(optimal_k, 0):.4f})"
+    )
     return scores, optimal_k
 
 
@@ -615,9 +619,7 @@ def run_kmeans_irt(
                 km = KMeans(n_clusters=k, random_state=RANDOM_SEED, n_init=10)
                 labels_2d = km.fit_predict(X_2d)
                 sil_2d = (
-                    float(silhouette_score(X_2d, labels_2d))
-                    if len(set(labels_2d)) > 1
-                    else -1.0
+                    float(silhouette_score(X_2d, labels_2d)) if len(set(labels_2d)) > 1 else -1.0
                 )
                 results[k]["labels_2d"] = labels_2d
                 results[k]["silhouette_2d"] = sil_2d
@@ -654,6 +656,29 @@ def plot_elbow_silhouette(
     ax2.set_ylabel("Silhouette Score", color=color2)
     ax2.plot(ks, silhouettes, "s--", color=color2, label="Silhouette")
     ax2.tick_params(axis="y", labelcolor=color2)
+
+    # Threshold line and optimal k annotation
+    ax2.axhline(SILHOUETTE_GOOD, color="#888888", linestyle=":", linewidth=1, alpha=0.7)
+    ax2.text(
+        ks[-1] + 0.15,
+        SILHOUETTE_GOOD,
+        "Good threshold (0.50)",
+        va="center",
+        fontsize=7,
+        color="#888888",
+    )
+    optimal_k = ks[int(np.argmax(silhouettes))]
+    best_sil = max(silhouettes)
+    ax2.plot(optimal_k, best_sil, marker="*", markersize=14, color=color2, zorder=5)
+    ax2.annotate(
+        f"k={optimal_k} optimal\n(silhouette={best_sil:.2f})",
+        (optimal_k, best_sil),
+        textcoords="offset points",
+        xytext=(12, -8),
+        fontsize=8,
+        color=color2,
+        fontweight="bold",
+    )
 
     ax1.set_title(f"{chamber} — K-Means Model Selection (1D IRT)")
     ax1.set_xticks(ks)
@@ -703,14 +728,13 @@ def plot_irt_clusters(
     ax.spines["left"].set_visible(False)
 
     # Custom legend
-    handles = [
-        Patch(facecolor=cmap(i / max(k - 1, 1)), label=f"Cluster {i}")
-        for i in range(k)
-    ]
-    handles.extend([
-        plt.Line2D([], [], marker="o", color="gray", linestyle="None", label="Republican"),
-        plt.Line2D([], [], marker="s", color="gray", linestyle="None", label="Democrat"),
-    ])
+    handles = [Patch(facecolor=cmap(i / max(k - 1, 1)), label=f"Cluster {i}") for i in range(k)]
+    handles.extend(
+        [
+            plt.Line2D([], [], marker="o", color="gray", linestyle="None", label="Republican"),
+            plt.Line2D([], [], marker="s", color="gray", linestyle="None", label="Democrat"),
+        ]
+    )
     ax.legend(handles=handles, loc="upper left", fontsize=8)
     fig.tight_layout()
     save_fig(fig, out_dir / f"irt_clusters_{chamber.lower()}.png")
@@ -746,7 +770,7 @@ def plot_irt_loyalty_clusters(
     if len(label_indices) == merged.height:
         plot_labels = labels[label_indices]
     else:
-        plot_labels = labels[:merged.height]
+        plot_labels = labels[: merged.height]
 
     for cluster_id in range(k):
         mask = plot_labels == cluster_id
@@ -783,14 +807,13 @@ def plot_irt_loyalty_clusters(
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    handles = [
-        Patch(facecolor=cmap(i / max(k - 1, 1)), label=f"Cluster {i}")
-        for i in range(k)
-    ]
-    handles.extend([
-        plt.Line2D([], [], marker="o", color="gray", linestyle="None", label="Republican"),
-        plt.Line2D([], [], marker="s", color="gray", linestyle="None", label="Democrat"),
-    ])
+    handles = [Patch(facecolor=cmap(i / max(k - 1, 1)), label=f"Cluster {i}") for i in range(k)]
+    handles.extend(
+        [
+            plt.Line2D([], [], marker="o", color="gray", linestyle="None", label="Republican"),
+            plt.Line2D([], [], marker="s", color="gray", linestyle="None", label="Democrat"),
+        ]
+    )
     ax.legend(handles=handles, loc="best", fontsize=8)
     fig.tight_layout()
     save_fig(fig, out_dir / f"irt_loyalty_{chamber.lower()}.png")
@@ -865,6 +888,21 @@ def plot_bic_aic(
     ax.set_ylabel("Information Criterion")
     ax.set_title(f"{chamber} — GMM Model Selection (BIC / AIC)")
     ax.set_xticks(ks)
+
+    # Annotate BIC-optimal k
+    bic_optimal_k = ks[int(np.argmin(bics))]
+    bic_optimal_val = min(bics)
+    ax.plot(bic_optimal_k, bic_optimal_val, marker="*", markersize=14, color="#4C72B0", zorder=5)
+    ax.annotate(
+        f"BIC min at k={bic_optimal_k}",
+        (bic_optimal_k, bic_optimal_val),
+        textcoords="offset points",
+        xytext=(12, 8),
+        fontsize=8,
+        color="#4C72B0",
+        fontweight="bold",
+    )
+
     ax.legend()
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -908,10 +946,7 @@ def plot_gmm_probabilities(
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
 
-    handles = [
-        Patch(facecolor=cmap(i / max(k - 1, 1)), label=f"Component {i}")
-        for i in range(k)
-    ]
+    handles = [Patch(facecolor=cmap(i / max(k - 1, 1)), label=f"Component {i}") for i in range(k)]
     ax.legend(handles=handles, loc="upper left", fontsize=8)
     fig.tight_layout()
     save_fig(fig, out_dir / f"gmm_probs_{chamber.lower()}.png")
@@ -932,7 +967,7 @@ def compare_methods(
     methods = list(assignments.keys())
     ari_matrix: dict[str, float] = {}
     for i, m1 in enumerate(methods):
-        for m2 in methods[i + 1:]:
+        for m2 in methods[i + 1 :]:
             l1 = assignments[m1]
             l2 = assignments[m2]
             # Align lengths (some methods may have fewer observations)
@@ -942,18 +977,10 @@ def compare_methods(
             ari_matrix[key] = ari
             print(f"    ARI({m1} vs {m2}): {ari:.4f}")
 
-    # Compute pairwise stability between methods with the same k
-    # (raw label comparison only meaningful for same-k methods)
-    same_k_methods = []
-    k_values = {m: len(set(assignments[m])) for m in methods}
-    for i, m1 in enumerate(methods):
-        for m2 in methods[i + 1:]:
-            if k_values[m1] == k_values[m2]:
-                same_k_methods.append((m1, m2))
-
     mean_ari = np.mean(list(ari_matrix.values())) if ari_matrix else 0.0
     print(f"  {chamber}: mean ARI across all pairs = {mean_ari:.4f}")
 
+    k_values = {m: len(set(assignments[m])) for m in methods}
     n_common = min(len(v) for v in assignments.values())
     return {
         "ari_matrix": ari_matrix,
@@ -1014,26 +1041,30 @@ def characterize_clusters(
         else:
             label = f"Mixed ({n_r}R/{n_d}D)"
 
-        rows.append({
-            "cluster": cluster_id,
-            "label": label,
-            "n_legislators": n,
-            "n_republican": n_r,
-            "n_democrat": n_d,
-            "pct_republican": n_r / n * 100 if n > 0 else 0,
-            "xi_mean": xi_mean,
-            "xi_median": xi_median,
-            "avg_xi_sd": xi_sd,
-            "avg_loyalty": loy_mean,
-        })
+        rows.append(
+            {
+                "cluster": cluster_id,
+                "label": label,
+                "n_legislators": n,
+                "n_republican": n_r,
+                "n_democrat": n_d,
+                "pct_republican": n_r / n * 100 if n > 0 else 0,
+                "xi_mean": xi_mean,
+                "xi_median": xi_median,
+                "avg_xi_sd": xi_sd,
+                "avg_loyalty": loy_mean,
+            }
+        )
 
     summary = pl.DataFrame(rows)
     print(f"\n  {chamber} Cluster Summary:")
     for row in summary.iter_rows(named=True):
         loy_str = f", loyalty={row['avg_loyalty']:.3f}" if row["avg_loyalty"] is not None else ""
-        print(f"    Cluster {row['cluster']} ({row['label']}): "
-              f"n={row['n_legislators']}, {row['n_republican']}R/{row['n_democrat']}D, "
-              f"xi_mean={row['xi_mean']:.3f}{loy_str}")
+        print(
+            f"    Cluster {row['cluster']} ({row['label']}): "
+            f"n={row['n_legislators']}, {row['n_republican']}R/{row['n_democrat']}D, "
+            f"xi_mean={row['xi_mean']:.3f}{loy_str}"
+        )
 
     return summary
 
@@ -1102,6 +1133,289 @@ def plot_cluster_box(
     save_fig(fig, out_dir / f"cluster_box_{chamber.lower()}.png")
 
 
+# ── Phase 7b: Within-Party Clustering ────────────────────────────────────────
+
+
+def run_within_party_clustering(
+    ideal_points: pl.DataFrame,
+    loyalty: pl.DataFrame,
+    k_range: range,
+    chamber: str,
+    out_dir: Path,
+) -> dict:
+    """Cluster each party caucus separately to find intra-party structure.
+
+    Returns dict keyed by party name (lowercase) with per-party results:
+    optimal_k, silhouette_scores, labels, slugs, structure_found.
+    """
+    results: dict = {}
+
+    for party in ["Republican", "Democrat"]:
+        party_ip = ideal_points.filter(pl.col("party") == party)
+        if party_ip.height < WITHIN_PARTY_MIN_SIZE:
+            print(
+                f"  {chamber} {party}: {party_ip.height} legislators "
+                f"< {WITHIN_PARTY_MIN_SIZE} minimum — skipping"
+            )
+            results[party.lower()] = {
+                "skipped": True,
+                "n_legislators": party_ip.height,
+                "reason": f"caucus size {party_ip.height} < {WITHIN_PARTY_MIN_SIZE}",
+            }
+            continue
+
+        party_slugs = party_ip["legislator_slug"].to_list()
+        xi = party_ip["xi_mean"].to_numpy().reshape(-1, 1)
+
+        # Merge loyalty
+        merged = party_ip.select("legislator_slug", "xi_mean").join(
+            loyalty.select("legislator_slug", "loyalty_rate"),
+            on="legislator_slug",
+            how="inner",
+        )
+        has_2d = merged.height >= max(k_range)
+
+        # Standardize for 2D
+        if has_2d:
+            xi_2d = merged["xi_mean"].to_numpy()
+            loy_2d = merged["loyalty_rate"].to_numpy()
+            xi_std = (xi_2d - xi_2d.mean()) / (xi_2d.std() + 1e-10)
+            loy_std = (loy_2d - loy_2d.mean()) / (loy_2d.std() + 1e-10)
+            X_2d = np.column_stack([xi_std, loy_std])
+
+        # Limit k_range to party size
+        max_k = min(max(k_range), party_ip.height - 1)
+        wp_k_range = range(2, max_k + 1)
+
+        silhouette_1d: dict[int, float] = {}
+        silhouette_2d: dict[int, float] = {}
+        best_labels_1d: dict[int, np.ndarray] = {}
+        best_labels_2d: dict[int, np.ndarray] = {}
+
+        for k in wp_k_range:
+            # 1D
+            km = KMeans(n_clusters=k, random_state=RANDOM_SEED, n_init=10)
+            labels_1d = km.fit_predict(xi)
+            sil_1d = float(silhouette_score(xi, labels_1d)) if len(set(labels_1d)) > 1 else -1.0
+            silhouette_1d[k] = sil_1d
+            best_labels_1d[k] = labels_1d
+            print(f"    {party} k={k}: silhouette(1D)={sil_1d:.4f}")
+
+            # 2D
+            if has_2d:
+                km2 = KMeans(n_clusters=k, random_state=RANDOM_SEED, n_init=10)
+                labels_2d = km2.fit_predict(X_2d)
+                sil_2d = (
+                    float(silhouette_score(X_2d, labels_2d)) if len(set(labels_2d)) > 1 else -1.0
+                )
+                silhouette_2d[k] = sil_2d
+                best_labels_2d[k] = labels_2d
+                print(f"    {party} k={k}: silhouette(2D)={sil_2d:.4f}")
+
+        # Best k by 1D silhouette
+        optimal_k_1d = max(wp_k_range, key=lambda k: silhouette_1d[k]) if silhouette_1d else 2
+        best_sil_1d = silhouette_1d.get(optimal_k_1d, -1.0)
+        structure_found = best_sil_1d >= SILHOUETTE_GOOD
+
+        # Best k by 2D silhouette
+        optimal_k_2d = None
+        best_sil_2d = None
+        if silhouette_2d:
+            optimal_k_2d = max(wp_k_range, key=lambda k: silhouette_2d.get(k, -1.0))
+            best_sil_2d = silhouette_2d.get(optimal_k_2d, -1.0)
+
+        status = (
+            "discrete subclusters found"
+            if structure_found
+            else ("no discrete subclusters — continuous variation")
+        )
+        print(
+            f"  {chamber} {party}: optimal k(1D)={optimal_k_1d} "
+            f"(silhouette={best_sil_1d:.4f}) — {status}"
+        )
+
+        party_key = party.lower()
+        results[party_key] = {
+            "skipped": False,
+            "n_legislators": party_ip.height,
+            "optimal_k_1d": optimal_k_1d,
+            "optimal_k_2d": optimal_k_2d,
+            "best_silhouette_1d": best_sil_1d,
+            "best_silhouette_2d": best_sil_2d,
+            "silhouette_1d": silhouette_1d,
+            "silhouette_2d": silhouette_2d,
+            "structure_found": structure_found,
+            "labels": best_labels_1d.get(optimal_k_1d, np.array([])),
+            "slugs": party_slugs,
+        }
+
+        # Plot within-party model selection
+        plot_within_party_model_selection(
+            silhouette_1d,
+            silhouette_2d,
+            party,
+            chamber,
+            out_dir,
+        )
+
+        # Plot within-party clusters (2D scatter)
+        if has_2d:
+            use_labels = best_labels_2d.get(
+                optimal_k_2d or optimal_k_1d,
+                best_labels_1d.get(optimal_k_1d, np.array([])),
+            )
+            use_k = optimal_k_2d or optimal_k_1d
+            use_sil = best_sil_2d if best_sil_2d is not None else best_sil_1d
+            plot_within_party_clusters(
+                merged,
+                use_labels,
+                use_k,
+                use_sil,
+                party,
+                chamber,
+                out_dir,
+            )
+
+    return results
+
+
+def plot_within_party_model_selection(
+    silhouette_1d: dict[int, float],
+    silhouette_2d: dict[int, float],
+    party: str,
+    chamber: str,
+    out_dir: Path,
+) -> None:
+    """Silhouette scores vs k for within-party k-means."""
+    if not silhouette_1d:
+        return
+
+    ks = sorted(silhouette_1d.keys())
+    sil_1d = [silhouette_1d[k] for k in ks]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(ks, sil_1d, "o-", color="#4C72B0", label="1D (IRT only)")
+
+    if silhouette_2d:
+        sil_2d = [silhouette_2d.get(k, float("nan")) for k in ks]
+        ax.plot(ks, sil_2d, "s--", color="#E81B23", label="2D (IRT + loyalty)")
+
+    # Threshold line
+    ax.axhline(SILHOUETTE_GOOD, color="#888888", linestyle=":", linewidth=1, alpha=0.7)
+    ax.text(
+        ks[-1] + 0.15,
+        SILHOUETTE_GOOD,
+        "Good threshold (0.50)",
+        va="center",
+        fontsize=7,
+        color="#888888",
+    )
+
+    # Annotate optimal k (1D)
+    optimal_k = ks[int(np.argmax(sil_1d))]
+    best_sil = max(sil_1d)
+    ax.plot(optimal_k, best_sil, marker="*", markersize=14, color="#4C72B0", zorder=5)
+    ax.annotate(
+        f"k={optimal_k} (sil={best_sil:.2f})",
+        (optimal_k, best_sil),
+        textcoords="offset points",
+        xytext=(12, -8),
+        fontsize=8,
+        color="#4C72B0",
+        fontweight="bold",
+    )
+
+    ax.set_xlabel("Number of Clusters (k)")
+    ax.set_ylabel("Silhouette Score")
+    ax.set_title(f"{chamber} — Within-{party} Model Selection")
+    ax.set_xticks(ks)
+    ax.legend()
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    fig.tight_layout()
+
+    party_key = party.lower()
+    save_fig(fig, out_dir / f"within_party_model_sel_{party_key}_{chamber.lower()}.png")
+
+
+def plot_within_party_clusters(
+    merged: pl.DataFrame,
+    labels: np.ndarray,
+    k: int,
+    best_silhouette: float,
+    party: str,
+    chamber: str,
+    out_dir: Path,
+) -> None:
+    """2D scatter: xi_mean (x) vs loyalty_rate (y), colored by within-party cluster."""
+    xi_vals = merged["xi_mean"].to_numpy()
+    loy_vals = merged["loyalty_rate"].to_numpy()
+
+    cmap = plt.get_cmap(CLUSTER_CMAP)
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    for cluster_id in range(k):
+        mask = labels == cluster_id
+        if mask.any():
+            ax.scatter(
+                xi_vals[mask],
+                loy_vals[mask],
+                c=[cmap(cluster_id / max(k - 1, 1))],
+                marker="o",
+                s=60,
+                alpha=0.7,
+                edgecolors="black",
+                linewidth=0.5,
+                label=f"Subcluster {cluster_id}",
+            )
+
+    # Annotate notable legislators (extreme IRT or low loyalty within party)
+    if "legislator_slug" in merged.columns:
+        slugs = merged["legislator_slug"].to_list()
+        for i in range(merged.height):
+            slug = slugs[i]
+            is_notable = loy_vals[i] < 0.6 or (
+                xi_vals[i] > np.percentile(xi_vals, 95) or xi_vals[i] < np.percentile(xi_vals, 5)
+            )
+            if is_notable:
+                # Use slug as label (short)
+                short = slug.split("_")[1] if "_" in slug else slug
+                ax.annotate(
+                    short.title(),
+                    (xi_vals[i], loy_vals[i]),
+                    fontsize=6,
+                    alpha=0.7,
+                    xytext=(5, 5),
+                    textcoords="offset points",
+                )
+
+    # If no structure, overlay annotation
+    if best_silhouette < SILHOUETTE_GOOD:
+        ax.text(
+            0.5,
+            0.97,
+            f"No discrete subclusters (silhouette={best_silhouette:.2f} < {SILHOUETTE_GOOD})",
+            transform=ax.transAxes,
+            ha="center",
+            va="top",
+            fontsize=10,
+            color="#AA0000",
+            fontweight="bold",
+            bbox={"boxstyle": "round,pad=0.3", "facecolor": "#FFF3F3", "edgecolor": "#AA0000"},
+        )
+
+    ax.set_xlabel("IRT Ideal Point (Liberal ← → Conservative)")
+    ax.set_ylabel("Party Loyalty Rate")
+    ax.set_title(f"{chamber} — Within-{party} Clustering (k={k})")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.legend(loc="best", fontsize=8)
+    fig.tight_layout()
+
+    party_key = party.lower()
+    save_fig(fig, out_dir / f"within_party_clusters_{party_key}_{chamber.lower()}.png")
+
+
 # ── Phase 8: Veto Override Subgroup ──────────────────────────────────────────
 
 
@@ -1148,14 +1462,16 @@ def analyze_veto_overrides(
         override_yea_rates.append(yea_rate)
 
     # Create summary
-    override_df = pl.DataFrame({
-        "legislator_slug": slugs,
-        "override_yea_rate": override_yea_rates,
-        "n_override_votes": [
-            sum(1 for c in override_cols if row[c] is not None)
-            for row in override_matrix.iter_rows(named=True)
-        ],
-    }).drop_nulls(subset=["override_yea_rate"])
+    override_df = pl.DataFrame(
+        {
+            "legislator_slug": slugs,
+            "override_yea_rate": override_yea_rates,
+            "n_override_votes": [
+                sum(1 for c in override_cols if row[c] is not None)
+                for row in override_matrix.iter_rows(named=True)
+            ],
+        }
+    ).drop_nulls(subset=["override_yea_rate"])
 
     # Join with cluster labels and party
     override_df = override_df.join(
@@ -1172,9 +1488,7 @@ def analyze_veto_overrides(
         )
     )
     override_df = override_df.with_columns(
-        pl.col("legislator_slug")
-        .replace_strict(slug_to_label, default=-1)
-        .alias("full_cluster")
+        pl.col("legislator_slug").replace_strict(slug_to_label, default=-1).alias("full_cluster")
     )
 
     # Per-cluster override statistics
@@ -1192,9 +1506,11 @@ def analyze_veto_overrides(
     for row in cluster_stats.iter_rows(named=True):
         std_val = row["std_override_yea_rate"]
         std_str = f" +/- {std_val:.3f}" if std_val is not None else ""
-        print(f"    Cluster {row['full_cluster']}: "
-              f"mean={row['mean_override_yea_rate']:.3f}{std_str} "
-              f"(n={row['n_legislators']})")
+        print(
+            f"    Cluster {row['full_cluster']}: "
+            f"mean={row['mean_override_yea_rate']:.3f}{std_str} "
+            f"(n={row['n_legislators']})"
+        )
 
     # Cross-party coalition: legislators who voted Yea on overrides
     # from both parties (unusual alignments)
@@ -1369,7 +1685,7 @@ def main() -> None:
 
             # ── Phase 2: Party Loyalty ──
             print_header(f"PHASE 2: PARTY LOYALTY — {chamber}")
-            loyalty = compute_party_loyalty(vm, irt_ip, rollcalls, chamber)
+            loyalty = compute_party_loyalty(vm, irt_ip, chamber)
             loyalty.write_parquet(ctx.data_dir / f"party_loyalty_{chamber.lower()}.parquet")
             print(f"  Saved: party_loyalty_{chamber.lower()}.parquet")
             chamber_results["loyalty"] = loyalty
@@ -1389,11 +1705,13 @@ def main() -> None:
             hier_labels_default = cut_tree(Z, n_clusters=DEFAULT_K).flatten()
 
             # Save hierarchical assignments
-            hier_df = pl.DataFrame({
-                "legislator_slug": slugs,
-                f"cluster_k{use_k}": hier_labels_optimal.tolist(),
-                f"cluster_k{DEFAULT_K}": hier_labels_default.tolist(),
-            })
+            hier_df = pl.DataFrame(
+                {
+                    "legislator_slug": slugs,
+                    f"cluster_k{use_k}": hier_labels_optimal.tolist(),
+                    f"cluster_k{DEFAULT_K}": hier_labels_default.tolist(),
+                }
+            )
             hier_df.write_parquet(
                 ctx.data_dir / f"hierarchical_assignments_{chamber.lower()}.parquet"
             )
@@ -1419,23 +1737,21 @@ def main() -> None:
             km_labels = km_results[km_k]["labels_1d"]
 
             # Save k-means assignments
-            km_df = pl.DataFrame({
-                "legislator_slug": irt_ip["legislator_slug"].to_list(),
-                f"cluster_k{km_k}": km_labels.tolist(),
-                "distance_to_centroid": [
-                    float(abs(xi - km_results[km_k]["centroids_1d"][lab]))
-                    for xi, lab in zip(
-                        irt_ip["xi_mean"].to_list(), km_labels.tolist()
-                    )
-                ],
-            })
+            km_df = pl.DataFrame(
+                {
+                    "legislator_slug": irt_ip["legislator_slug"].to_list(),
+                    f"cluster_k{km_k}": km_labels.tolist(),
+                    "distance_to_centroid": [
+                        float(abs(xi - km_results[km_k]["centroids_1d"][lab]))
+                        for xi, lab in zip(irt_ip["xi_mean"].to_list(), km_labels.tolist())
+                    ],
+                }
+            )
             if "labels_2d" in km_results.get(km_k, {}):
                 km_df = km_df.with_columns(
                     pl.Series(f"cluster_2d_k{km_k}", km_results[km_k]["labels_2d"].tolist())
                 )
-            km_df.write_parquet(
-                ctx.data_dir / f"kmeans_assignments_{chamber.lower()}.parquet"
-            )
+            km_df.write_parquet(ctx.data_dir / f"kmeans_assignments_{chamber.lower()}.parquet")
             print(f"  Saved: kmeans_assignments_{chamber.lower()}.parquet")
 
             plot_elbow_silhouette(km_results, chamber, ctx.plots_dir)
@@ -1482,9 +1798,7 @@ def main() -> None:
                 for comp_i in range(gmm_k):
                     gmm_data[f"prob_{comp_i}"] = gmm_probs[:, comp_i].tolist()
                 gmm_df = pl.DataFrame(gmm_data)
-                gmm_df.write_parquet(
-                    ctx.data_dir / f"gmm_assignments_{chamber.lower()}.parquet"
-                )
+                gmm_df.write_parquet(ctx.data_dir / f"gmm_assignments_{chamber.lower()}.parquet")
                 print(f"  Saved: gmm_assignments_{chamber.lower()}.parquet")
 
                 plot_bic_aic(gmm_results, chamber, ctx.plots_dir)
@@ -1505,18 +1819,15 @@ def main() -> None:
                 print_header(f"PHASE 5: GMM (SKIPPED) — {chamber}")
 
             model_sel_df = pl.DataFrame(model_sel_rows)
-            model_sel_df.write_parquet(
-                ctx.data_dir / f"model_selection_{chamber.lower()}.parquet"
-            )
+            model_sel_df.write_parquet(ctx.data_dir / f"model_selection_{chamber.lower()}.parquet")
 
             # ── Phase 6: Cross-Method Comparison ──
             print_header(f"PHASE 6: CROSS-METHOD COMPARISON — {chamber}")
             # Align hierarchical labels to IRT slug order
             slug_to_hier = dict(zip(slugs, hier_labels_optimal.tolist()))
-            hier_aligned = np.array([
-                slug_to_hier.get(s, -1)
-                for s in irt_ip["legislator_slug"].to_list()
-            ])
+            hier_aligned = np.array(
+                [slug_to_hier.get(s, -1) for s in irt_ip["legislator_slug"].to_list()]
+            )
 
             method_assignments = {
                 "hierarchical": hier_aligned,
@@ -1554,19 +1865,47 @@ def main() -> None:
                     idx = ip_slugs.index(fs)
                     loy_row = loyalty.filter(pl.col("legislator_slug") == fs)
                     loy_val = float(loy_row["loyalty_rate"][0]) if loy_row.height > 0 else None
-                    flagged.append({
-                        "legislator_slug": fs,
-                        "full_name": irt_ip["full_name"][idx],
-                        "party": irt_ip["party"][idx],
-                        "xi_mean": float(irt_ip["xi_mean"][idx]),
-                        "xi_sd": float(irt_ip["xi_sd"][idx]),
-                        "cluster": int(primary_labels[idx]),
-                        "loyalty_rate": loy_val,
-                    })
+                    flagged.append(
+                        {
+                            "legislator_slug": fs,
+                            "full_name": irt_ip["full_name"][idx],
+                            "party": irt_ip["party"][idx],
+                            "xi_mean": float(irt_ip["xi_mean"][idx]),
+                            "xi_sd": float(irt_ip["xi_sd"][idx]),
+                            "cluster": int(primary_labels[idx]),
+                            "loyalty_rate": loy_val,
+                        }
+                    )
                     loy_str = f", loyalty={loy_val:.3f}" if loy_val is not None else ""
-                    print(f"  {irt_ip['full_name'][idx]}: cluster={primary_labels[idx]}, "
-                          f"xi={float(irt_ip['xi_mean'][idx]):+.3f}{loy_str}")
+                    print(
+                        f"  {irt_ip['full_name'][idx]}: cluster={primary_labels[idx]}, "
+                        f"xi={float(irt_ip['xi_mean'][idx]):+.3f}{loy_str}"
+                    )
             chamber_results["flagged_legislators"] = flagged
+
+            # ── Phase 7b: Within-Party Clustering ──
+            print_header(f"PHASE 7b: WITHIN-PARTY CLUSTERING — {chamber}")
+            within_party = run_within_party_clustering(
+                irt_ip, loyalty, K_RANGE, chamber, ctx.plots_dir
+            )
+            chamber_results["within_party"] = within_party
+
+            # Save within-party assignments
+            for party_key, party_data in within_party.items():
+                if isinstance(party_data, dict) and not party_data.get("skipped", True):
+                    wp_labels = party_data.get("labels")
+                    wp_slugs = party_data.get("slugs")
+                    if wp_labels is not None and wp_slugs is not None and len(wp_labels) > 0:
+                        wp_df = pl.DataFrame(
+                            {
+                                "legislator_slug": wp_slugs,
+                                "within_cluster": wp_labels.tolist(),
+                            }
+                        )
+                        wp_df.write_parquet(
+                            ctx.data_dir / f"within_party_{party_key}_{chamber.lower()}.parquet"
+                        )
+                        print(f"  Saved: within_party_{party_key}_{chamber.lower()}.parquet")
 
             # ── Phase 8: Veto Override Subgroup ──
             print_header(f"PHASE 8: VETO OVERRIDE SUBGROUP — {chamber}")
@@ -1624,6 +1963,14 @@ def main() -> None:
                 manifest[f"{ch}_mean_ari"] = result["comparison"]["mean_ari"]
             if result.get("sensitivity"):
                 manifest[f"{ch}_sensitivity"] = result["sensitivity"]
+            if result.get("within_party"):
+                wp_summary = {}
+                for pk, pd in result["within_party"].items():
+                    if isinstance(pd, dict):
+                        wp_summary[pk] = {
+                            k: v for k, v in pd.items() if k not in ("labels", "slugs")
+                        }
+                manifest[f"{ch}_within_party"] = wp_summary
 
         save_filtering_manifest(manifest, ctx.run_dir)
 

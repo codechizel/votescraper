@@ -27,6 +27,9 @@
   - Classification accuracy against observed votes
 - Report both accuracy AND AUC-ROC (accuracy alone is misleading with 82% Yea base rate).
 
+## Report Completeness
+- **Never truncate tables in analysis reports.** Show all rows (all legislators, all votes, etc.). The full data is needed for initial analysis. Truncation happens later when preparing results for articles or presentations, not during the analysis phase.
+
 ## Separation of Concerns
 - **ETL (scraping) is separate from analysis.** Never modify scraper code to accommodate analysis needs. Instead, transform data in analysis scripts.
 - Analysis scripts read from `data/ks_{session}/` CSVs. Intermediate analysis artifacts go in a separate output directory.

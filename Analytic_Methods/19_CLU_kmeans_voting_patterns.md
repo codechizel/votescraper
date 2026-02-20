@@ -151,10 +151,12 @@ def analyze_cluster_composition(cluster_result: pd.DataFrame) -> pd.DataFrame:
 
 ## Kansas-Specific Considerations
 
-- **Start with $k = 3$** as the default hypothesis: conservative Republicans, moderate Republicans, Democrats.
-- **Run on PCA-reduced data** (first 2-5 components) rather than the full vote matrix. K-Means in high dimensions (500+ roll calls) is less effective due to the curse of dimensionality.
+- **Whole-chamber k=2 is optimal** (2026-02-20 finding). The initial k=3 hypothesis (conservative Rs, moderate Rs, Democrats) was rejected — silhouette at k=2 = 0.82 (House) / 0.79 (Senate) vs k=3 at 0.64/0.57. The party boundary is the dominant structure.
+- **Within-party k-means** is needed to detect finer intra-party structure. Cluster each party caucus separately on IRT ideal points (1D) and IRT + party loyalty (2D). Within-party silhouette is > 0.50 but flat across k=2-7 — the variation is continuous, not discrete. See `analysis/design/clustering.md`.
+- **Run on IRT ideal points** (not PCA scores or raw vote matrix). IRT handles missing data natively and weights discriminating bills. Supplement with party loyalty as a second dimension.
 - **Cluster centroids** (the "average voter" in each cluster) can be compared to identify which issues split the majority party.
 - **Analyze per-chamber**: The House and Senate may have different cluster structures.
+- **Minimum caucus size of 15** for within-party clustering — the Senate Democratic caucus (10 members) is too small for reliable model selection.
 
 ## Feasibility Assessment
 
