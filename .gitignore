@@ -11,6 +11,9 @@ dist/
 data/
 !data/.gitkeep
 
+# Analysis results
+results/
+
 # Claude Code
 CLAUDE.local.md
 .claude/settings.local.json

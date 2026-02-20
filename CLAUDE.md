@@ -89,6 +89,32 @@ Three CSVs in `data/ks_{session}/`:
 
 Cache lives in `data/ks_{session}/.cache/`. Use `--clear-cache` to force fresh fetches.
 
+## Results Directory
+
+Analysis outputs go in `results/` (gitignored), organized by session, analysis type, and run date:
+
+```
+results/
+  2025-2026/
+    eda/
+      2026-02-19/
+        plots/                  ← PNGs
+        data/                   ← Parquet intermediates
+        filtering_manifest.json ← What was filtered and why
+        run_info.json           ← Git hash, timestamp, parameters
+        run_log.txt             ← Captured console output
+      latest → 2026-02-19/     ← Symlink to most recent run
+    pca/                        ← Future: same structure
+```
+
+All analysis scripts use `RunContext` from `analysis/run_context.py` as a context manager to get structured output. Downstream scripts read from `results/<session>/<analysis>/latest/`.
+
+Session uses full years in results paths: `2025-2026` (not `2025-26` or `2025_26`).
+
+## Architecture Decision Records
+
+Significant technical decisions are documented in `docs/adr/`. See `docs/adr/README.md` for the full index and template.
+
 ## Analytics
 
 The `Analytic_Methods/` directory contains 28 documents covering every analytical method applicable to our data. See `Analytic_Methods/00_overview.md` for the full index and recommended pipeline.
@@ -108,9 +134,13 @@ The **vote matrix** (legislators x roll calls, binary) is the foundation. Build 
 - Filter legislators with < 20 votes — unreliable estimates
 - Analyze chambers separately (House and Senate vote on different bills)
 
+### Technology Preferences
+- **Polars over pandas** for all data manipulation
+- **Python over R** — no rpy2 or Rscript; use Python-native methods (PCA, Bayesian IRT) instead of R-only ones (W-NOMINATE, OC)
+
 ### Analysis Libraries
 ```bash
-uv add pandas numpy scipy matplotlib seaborn scikit-learn  # Phase 1-2
+uv add polars numpy scipy matplotlib seaborn scikit-learn  # Phase 1-2
 uv add networkx python-louvain prince umap-learn           # Phase 3-5
 uv add pymc arviz                                          # Phase 4 (Bayesian)
 uv add xgboost shap ruptures                               # Phase 6

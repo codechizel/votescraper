@@ -1,5 +1,9 @@
 # Analytic Workflow Rules
 
+## Technology Preferences
+- **Polars over pandas.** Use polars for all data manipulation. Never use pandas unless a downstream library strictly requires a pandas DataFrame (e.g., seaborn, pymc).
+- **Python over R.** All analysis in pure Python. No R, no rpy2, no Rscript calls. When an R-only method exists (W-NOMINATE, OC), use the Python alternative (PCA, Bayesian IRT).
+
 ## Method Documentation
 - One method per file in `Analytic_Methods/`
 - Naming convention: `NN_CAT_method_name.md`

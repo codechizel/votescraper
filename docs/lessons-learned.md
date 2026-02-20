@@ -98,3 +98,22 @@ This constant must be manually updated when the KS Legislature starts a new bien
 ## Gotcha: Special Session URL Patterns
 
 Special sessions use a completely different URL scheme (`/li_2024s/` instead of `/li_2024/b2023_24/`). They also don't have a biennium code. New special sessions must be manually added to `SPECIAL_SESSION_YEARS` in session.py.
+
+---
+
+## Insight 1: Legislator Count ≠ Seat Count (Mid-Session Replacements)
+
+**Discovered during**: EDA Phase 1 (2026-02)
+
+**Symptom**: The 2025-26 session data contains 130 House legislators and 42 Senate legislators, but the Kansas House has exactly 125 seats and the Senate has exactly 40 seats.
+
+**Root cause**: Mid-session resignations and replacements. Legislators who resign or are appointed to another office are replaced by new members. Both the outgoing and incoming members appear in the data with non-overlapping vote records. In the 2025-26 session:
+
+- **5 House replacements** (Districts 5, 33, 70, 85, 86): Original members served 2025-01-30 → 2025-04-11 (~333 votes), replacements started 2026-01-15 (~151 votes)
+- **2 Senate replacements** (Districts 24, 25): Original members served through 2025-04-11, replacements started 2026-01-27
+
+Two legislators (Scott Hill and Silas Miller) appear in both chambers — they left the House and were elected/appointed to the Senate.
+
+**Validation**: Service windows were confirmed non-overlapping. No duplicate votes (same legislator + same rollcall) were found. The data is correct.
+
+**Lesson**: Always validate legislator counts against known chamber sizes. The Kansas House has **125** seats and the Senate has **40** seats — these are constitutional constants. Any count above those numbers signals mid-session turnover and requires verifying that service windows don't overlap (which would indicate a scraping bug). Downstream analysis must account for partial-session legislators: their participation rates will be low by design, and ideal point estimates will be less stable.
