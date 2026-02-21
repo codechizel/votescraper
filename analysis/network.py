@@ -58,6 +58,22 @@ TOP_LABEL_N = 10
 RANDOM_SEED = 42
 PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC"}
 
+# Plain-English labels for centrality measures and IRT columns (nontechnical audience)
+PLAIN_LABELS: dict[str, str] = {
+    "betweenness": "Connections to Other Blocs (Betweenness)",
+    "eigenvector": "Connections to Influential Legislators (Eigenvector)",
+    "xi_mean": "Ideology (Liberal \u2190 \u2192 Conservative)",
+    "degree": "Share of Possible Connections (Degree)",
+    "weighted_degree": "Total Connection Strength",
+    "closeness": "Closeness to All Legislators",
+    "pagerank": "Random-Walk Importance (PageRank)",
+}
+
+PLAIN_TITLES: dict[tuple[str, str], str] = {
+    ("betweenness", "eigenvector"): "Who Holds the Most Influence?",
+    ("xi_mean", "betweenness"): "Ideology vs Network Influence",
+}
+
 NETWORK_PRIMER = """\
 # Network Analysis
 
@@ -1160,22 +1176,29 @@ def plot_centrality_scatter(
             linewidths=0.5,
         )
 
-    # Label top-5 by betweenness
+    # Label top-5 by betweenness with callout boxes
     top = centralities.sort("betweenness", descending=True).head(5)
     for row in top.iter_rows(named=True):
         last_name = row["full_name"].split()[-1]
         ax.annotate(
             last_name,
             (row[x_col], row[y_col]),
-            fontsize=7,
+            fontsize=8,
             fontweight="bold",
             ha="left",
             va="bottom",
+            xytext=(8, 6),
+            textcoords="offset points",
+            bbox={"boxstyle": "round,pad=0.3", "fc": "wheat", "alpha": 0.7},
+            arrowprops={"arrowstyle": "->", "color": "#555555", "lw": 0.8},
         )
 
-    ax.set_xlabel(x_col.replace("_", " ").title(), fontsize=11)
-    ax.set_ylabel(y_col.replace("_", " ").title(), fontsize=11)
-    ax.set_title(f"{chamber} — {x_col} vs {y_col}", fontsize=13, fontweight="bold")
+    x_label = PLAIN_LABELS.get(x_col, x_col.replace("_", " ").title())
+    y_label = PLAIN_LABELS.get(y_col, y_col.replace("_", " ").title())
+    title = PLAIN_TITLES.get((x_col, y_col), f"{x_label} vs {y_label}")
+    ax.set_xlabel(x_label, fontsize=11)
+    ax.set_ylabel(y_label, fontsize=11)
+    ax.set_title(f"{chamber} \u2014 {title}", fontsize=13, fontweight="bold")
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
 
@@ -1189,6 +1212,18 @@ def plot_centrality_distributions(
 ) -> None:
     """4-panel histogram of key centrality measures."""
     metrics = ["degree", "betweenness", "eigenvector", "pagerank"]
+    panel_titles = {
+        "degree": "How Connected Is Each Legislator?",
+        "betweenness": "Who Bridges Different Groups?",
+        "eigenvector": "Who Is Connected to the Most Influential?",
+        "pagerank": "Overall Importance (PageRank)",
+    }
+    panel_subtitles = {
+        "degree": "Higher = more co-voting connections",
+        "betweenness": "Higher = links otherwise-separate blocs",
+        "eigenvector": "Higher = connected to other well-connected legislators",
+        "pagerank": "Higher = more central in the voting network",
+    }
     fig, axes = plt.subplots(2, 2, figsize=(12, 9))
     axes = axes.flatten()
 
@@ -1197,12 +1232,31 @@ def plot_centrality_distributions(
             vals = centralities.filter(pl.col("party") == party)[metric].to_list()
             if vals:
                 ax.hist(vals, bins=15, alpha=0.6, color=color, label=party, edgecolor="white")
-        ax.set_xlabel(metric.replace("_", " ").title(), fontsize=10)
+        ax.set_xlabel(PLAIN_LABELS.get(metric, metric.replace("_", " ").title()), fontsize=9)
         ax.set_ylabel("Count", fontsize=10)
-        ax.set_title(metric.replace("_", " ").title(), fontsize=11, fontweight="bold")
+        ax.set_title(
+            f"{panel_titles[metric]}\n",
+            fontsize=11,
+            fontweight="bold",
+        )
+        ax.text(
+            0.5,
+            1.0,
+            panel_subtitles[metric],
+            transform=ax.transAxes,
+            ha="center",
+            va="top",
+            fontsize=8,
+            fontstyle="italic",
+            color="#555555",
+        )
         ax.legend(fontsize=8)
 
-    fig.suptitle(f"{chamber} — Centrality Distributions", fontsize=14, fontweight="bold")
+    fig.suptitle(
+        f"{chamber} \u2014 How Important Is Each Legislator in the Voting Network?",
+        fontsize=14,
+        fontweight="bold",
+    )
     fig.tight_layout()
 
     save_fig(fig, out_dir / f"centrality_distributions_{chamber.lower()}.png")
@@ -1225,7 +1279,7 @@ def plot_community_network(
     out_path: Path,
     pos: dict | None = None,
 ) -> None:
-    """Side-by-side: party colors vs community colors."""
+    """Side-by-side: party colors vs community colors, with bridge highlights."""
     if G.number_of_nodes() == 0:
         return
 
@@ -1235,48 +1289,139 @@ def plot_community_network(
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(22, 10))
     nodes = list(G.nodes())
 
+    # Compute betweenness for bridge highlighting
+    betweenness = nx.betweenness_centrality(G, weight="distance", normalized=True)
+    top_bridge_slugs = sorted(betweenness, key=betweenness.get, reverse=True)[:3]  # type: ignore[arg-type]
+
     # Left: party colors
-    party_colors = [PARTY_COLORS.get(G.nodes[n].get("party", ""), "#999999") for n in nodes]
     nx.draw_networkx_edges(G, pos, ax=ax1, alpha=0.1, edge_color="#888888")
+
+    # Draw non-bridge nodes first
+    non_bridge = [n for n in nodes if n not in top_bridge_slugs]
+    bridge_nodes = [n for n in nodes if n in top_bridge_slugs]
+
     nx.draw_networkx_nodes(
         G,
         pos,
+        nodelist=non_bridge,
         ax=ax1,
-        node_color=party_colors,
+        node_color=[PARTY_COLORS.get(G.nodes[n].get("party", ""), "#999999") for n in non_bridge],
         node_size=80,
         alpha=0.85,
         edgecolors="white",
         linewidths=0.5,
     )
-    ax1.set_title(f"{chamber} — Party", fontsize=13, fontweight="bold")
+    # Draw bridge nodes with red halo
+    if bridge_nodes:
+        nx.draw_networkx_nodes(
+            G,
+            pos,
+            nodelist=bridge_nodes,
+            ax=ax1,
+            node_color=[
+                PARTY_COLORS.get(G.nodes[n].get("party", ""), "#999999") for n in bridge_nodes
+            ],
+            node_size=140,
+            alpha=0.9,
+            edgecolors="red",
+            linewidths=2.5,
+        )
+        # Label bridge legislators
+        for slug in bridge_nodes:
+            name = G.nodes[slug].get("full_name", slug).split()[-1]
+            ax1.annotate(
+                name,
+                pos[slug],
+                fontsize=8,
+                fontweight="bold",
+                ha="center",
+                va="bottom",
+                xytext=(0, 10),
+                textcoords="offset points",
+                bbox={"boxstyle": "round,pad=0.2", "fc": "lightyellow", "alpha": 0.8},
+            )
+
+    ax1.set_title(f"{chamber} \u2014 By Party", fontsize=13, fontweight="bold")
     ax1.axis("off")
 
     # Right: community colors
     n_communities = len(set(partition.values()))
     cmap = plt.cm.Set2  # type: ignore[attr-defined]
-    comm_colors = [cmap(partition.get(n, 0) / max(n_communities - 1, 1)) for n in nodes]
     nx.draw_networkx_edges(G, pos, ax=ax2, alpha=0.1, edge_color="#888888")
+
+    # Non-bridge nodes
     nx.draw_networkx_nodes(
         G,
         pos,
+        nodelist=non_bridge,
         ax=ax2,
-        node_color=comm_colors,
+        node_color=[cmap(partition.get(n, 0) / max(n_communities - 1, 1)) for n in non_bridge],
         node_size=80,
         alpha=0.85,
         edgecolors="white",
         linewidths=0.5,
     )
+    # Bridge nodes with red halo
+    if bridge_nodes:
+        nx.draw_networkx_nodes(
+            G,
+            pos,
+            nodelist=bridge_nodes,
+            ax=ax2,
+            node_color=[
+                cmap(partition.get(n, 0) / max(n_communities - 1, 1)) for n in bridge_nodes
+            ],
+            node_size=140,
+            alpha=0.9,
+            edgecolors="red",
+            linewidths=2.5,
+        )
+        for slug in bridge_nodes:
+            name = G.nodes[slug].get("full_name", slug).split()[-1]
+            ax2.annotate(
+                name,
+                pos[slug],
+                fontsize=8,
+                fontweight="bold",
+                ha="center",
+                va="bottom",
+                xytext=(0, 10),
+                textcoords="offset points",
+                bbox={"boxstyle": "round,pad=0.2", "fc": "lightyellow", "alpha": 0.8},
+            )
 
     legend_elements = [
         Patch(facecolor=cmap(i / max(n_communities - 1, 1)), label=f"Community {i}")
         for i in range(n_communities)
     ]
+    # Add red halo legend entry
+    legend_elements.append(
+        Patch(facecolor="white", edgecolor="red", linewidth=2, label="Bridge legislator"),
+    )
     ax2.legend(handles=legend_elements, loc="upper left", fontsize=8)
-    ax2.set_title(f"{chamber} — Communities (res={resolution:.2f})", fontsize=13, fontweight="bold")
+    ax2.set_title(
+        f"{chamber} \u2014 Detected Communities (res={resolution:.2f})",
+        fontsize=13,
+        fontweight="bold",
+    )
     ax2.axis("off")
 
-    fig.suptitle(f"{chamber} — Party vs Community Detection", fontsize=15, fontweight="bold")
-    fig.tight_layout()
+    fig.suptitle(
+        f"{chamber} \u2014 Party Alignment and Bridge Legislators",
+        fontsize=15,
+        fontweight="bold",
+    )
+    fig.text(
+        0.5,
+        0.01,
+        "Red-ringed nodes are legislators who connect otherwise-separate voting blocs"
+        " (highest betweenness centrality)",
+        ha="center",
+        fontsize=10,
+        fontstyle="italic",
+        color="#555555",
+    )
+    fig.tight_layout(rect=(0, 0.03, 1, 0.97))
 
     save_fig(fig, out_path)
 
@@ -1320,23 +1465,59 @@ def plot_threshold_sweep(
     fig, axes = plt.subplots(2, 2, figsize=(12, 9))
 
     thresholds = sweep_df["threshold"].to_list()
+    components = sweep_df["n_components"].to_list()
+
+    # Find the threshold where network splits into 2 components (party split)
+    split_threshold = None
+    for i in range(len(components) - 1):
+        if components[i] == 1 and components[i + 1] >= 2:
+            # Linear interpolation between the two thresholds
+            split_threshold = (thresholds[i] + thresholds[i + 1]) / 2
+            break
+    # If already 2+ at first threshold, mark the first threshold
+    if split_threshold is None and len(components) > 0 and components[0] >= 2:
+        split_threshold = thresholds[0]
 
     metrics = [
-        ("n_edges", "N Edges"),
-        ("density", "Density"),
-        ("n_components", "N Components"),
-        ("modularity", "Modularity"),
+        ("n_edges", "Number of Connections"),
+        ("density", "Network Density"),
+        ("n_components", "Number of Separate Groups"),
+        ("modularity", "How Clustered (Modularity)"),
     ]
 
     for ax, (col, label) in zip(axes.flatten(), metrics):
         vals = sweep_df[col].to_list()
         ax.plot(thresholds, vals, "o-", color="#333333", linewidth=2, markersize=6)
-        ax.set_xlabel("Kappa Threshold", fontsize=10)
+        ax.set_xlabel("Agreement Threshold (\u03ba)", fontsize=10)
         ax.set_ylabel(label, fontsize=10)
         ax.set_title(label, fontsize=11, fontweight="bold")
         ax.grid(True, alpha=0.3)
 
-    fig.suptitle(f"{chamber} — Threshold Sensitivity", fontsize=14, fontweight="bold")
+        # Add vertical line at party split threshold
+        if split_threshold is not None:
+            ax.axvline(
+                split_threshold,
+                color="#E81B23",
+                linestyle="--",
+                alpha=0.6,
+                linewidth=1.5,
+            )
+            if col == "n_components":
+                ax.annotate(
+                    "Network splits\ninto two parties",
+                    (split_threshold, max(vals) * 0.7),
+                    fontsize=8,
+                    fontweight="bold",
+                    color="#E81B23",
+                    ha="center",
+                    bbox={"boxstyle": "round,pad=0.3", "fc": "white", "alpha": 0.8},
+                )
+
+    fig.suptitle(
+        f"{chamber} \u2014 How Does the Network Change as We Raise the Bar for Agreement?",
+        fontsize=13,
+        fontweight="bold",
+    )
     fig.tight_layout()
 
     save_fig(fig, out_path)
