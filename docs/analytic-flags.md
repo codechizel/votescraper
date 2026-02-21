@@ -263,6 +263,71 @@ This is a living document — add entries as each analysis phase surfaces new fi
 - **Explanation:** The scraper strips suffixes like "House Minority Caucus Chair" but may not have "Vice President of the Senate" in its pattern list.
 - **Downstream:** Minor cosmetic issue. Does not affect analysis (joining is on `legislator_slug`, not name). Should be fixed in the scraper for clean reporting.
 
+### IRT Anchor Legislators — 100% Prediction Accuracy (Trivially)
+
+- **Phase:** Prediction
+- **Observation:** Avery Anderson (R, House anchor, xi=+1.0, xi_sd=0.0) and Brooklynne Mosley (D, House anchor, xi=-1.0, xi_sd=0.0) both achieve 100% prediction accuracy on 297 votes. In the Senate, Miller (D, 30 votes) and Hill (R, 30 votes) also hit 100% but via small N, not anchoring.
+- **Explanation:** Anderson and Mosley are the IRT anchors — their ideal points are fixed by convention, not estimated. With xi_sd=0, the model has zero uncertainty about their positions, giving it an inherent edge. Their 100% accuracy is real (they do vote predictably) but slightly inflated relative to legislators whose xi carries estimation noise. Caiharr (R, 88 votes, 100%) is a non-anchor with perfect accuracy — genuinely predictable.
+- **Downstream:** When reporting "perfect accuracy" legislators, note that anchors benefit from an informational advantage. This does not invalidate the metric — it reflects both true predictability and the anchoring design. For cross-session comparisons, anchor legislators should not be used to benchmark model quality.
+
+### Bill Passage CV Variance — Senate Small-N Artifact
+
+- **Phase:** Prediction
+- **Observation:** Senate bill passage 5-fold CV shows extreme fold variance: LogReg AUC = [0.88, 0.77, 1.00, 1.00, 1.00] (std=0.10). Three folds achieve perfect AUC, two are below 0.90. XGBoost is worse: [0.72, 0.76, 1.00, 1.00, 1.00] (std=0.14).
+- **Explanation:** With 194 bills (23 failures), each fold has ~39 bills (~4-5 failures). A fold with only 4 failures is trivially separable by chance. The 1.000 folds happened to get "easy" splits; the low folds got the harder cases. This is a fundamental small-N problem — CV variance scales inversely with test-set size.
+- **Downstream:** Senate bill passage CV numbers are unreliable as point estimates. The temporal split (AUC=0.84-0.86) is more honest because it tests on a contiguous block of 59 bills. Report the temporal split as the primary metric; CV for directional comparison only. Cross-session validation (train on 2023-24, test on 2025-26) would provide the most honest estimate but requires scraping an additional session.
+
+## Prediction Phase — Quality Assessment
+
+**Date:** 2026-02-21. Covers the complete prediction phase after bug fixes (temporal sort, surprising bills filter, dead feature removal, target leakage removal).
+
+### Vote Prediction: Strong and Credible
+
+Results are internally consistent and match upstream phase expectations:
+
+| Metric | House | Senate |
+|--------|-------|--------|
+| XGBoost holdout AUC | 0.984 | 0.979 |
+| XGBoost holdout accuracy | 94.5% | 94.5% |
+| Majority-class baseline | 72.7% | 75.9% |
+| Party-only baseline | 75.5% | 75.4% |
+| CV std (AUC) | 0.001 | 0.002 |
+
+- All 3 models within 0.3% accuracy of each other — the signal is linear and well-captured by IRT features alone.
+- CV is tight (std 0.001-0.002), no fold instability.
+- 8 House legislators achieve 100% accuracy (all strong-ideology Rs); lowest is Helgerson at 86.0%.
+- Senate range: 89.6% (Shallenburger) to 100% (6 legislators).
+
+**Verdict:** No anomalies. AUC of 0.98 is realistic for IRT-feature-based legislative vote prediction — the IRT model *is* a vote prediction model, so high AUC validates IRT rather than indicating leakage.
+
+### Per-Legislator Accuracy: Consistent with Prior Flags
+
+- Hardest legislators are centrists and occasional crossovers — expected.
+- Schreiber (previously flagged as "hardest House R") is NOT in the bottom 10 — his centrism is consistent, not erratic.
+- Tyson (previously flagged as unpredictable) is also NOT in the bottom 10 — her routine-bill dissent targets low-discrimination bills where the model assigns lower confidence anyway.
+- Shallenburger's procedural role plausibly explains his bottom ranking.
+
+**Verdict:** The model's failures are concentrated where they should be: centrists and procedural outliers.
+
+### Bill Passage: Honest but Fragile
+
+| Metric | House | Senate |
+|--------|-------|--------|
+| Best CV AUC | 0.955 (XGBoost) | 0.931 (LogReg) |
+| Temporal split AUC | 0.900-0.959 | 0.835-0.863 |
+| N (total / failures) | 297 / 41 | 194 / 23 |
+
+- Senate CV is unreliable (3 folds at AUC 1.000, 2 at 0.77-0.82). See flag above.
+- Temporal split is the honest metric: House AUC ~0.90, Senate AUC ~0.84.
+- Only 1 surprising bill in House (SB 125 veto override at 70.7% confidence), 3 in Senate — the model gets almost everything right, and misses are edge cases.
+- With only beta, vote_type, bill_prefix, day_of_session, and is_veto_override as features, moderate AUC is expected. The hard-to-predict bills are those where procedural context or bill content matters.
+
+**Verdict:** Honest results after leakage removal. Not strong enough for production use, but demonstrates that structural features carry some passage signal. NLP on bill text is the obvious next feature to add.
+
+### Key Takeaway
+
+XGBoost adds almost nothing over logistic regression on xi x beta. The IRT ideal points are doing virtually all the work. This means the prediction phase validates the IRT model rather than discovering new predictive structure. The analytically interesting output is not the model performance (which is expected to be high) but the *residuals*: which legislators and which votes the model fails on. Those residuals point to the limits of 1D ideology as an explanatory framework.
+
 ## Template
 
 ```
