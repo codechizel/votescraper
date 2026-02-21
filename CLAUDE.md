@@ -18,6 +18,7 @@ just lint                                    # lint + format
 just lint-check                              # check only
 just sessions                                # list available sessions
 just check                                   # full check
+just synthesis                               # run synthesis report
 uv run ks-vote-scraper 2023                  # historical session
 uv run ks-vote-scraper 2024 --special        # special session
 ```
@@ -119,7 +120,13 @@ results/
         run_info.json           ← Git hash, timestamp, parameters
         run_log.txt             ← Captured console output
       latest → 2026-02-19/     ← Symlink to most recent run
-    pca/                        ← Future: same structure
+    pca/                        ← Same structure
+    irt/
+    clustering/
+    network/
+    prediction/
+    indices/
+    synthesis/                  ← Joins all phases into one narrative report
 ```
 
 All analysis scripts use `RunContext` from `analysis/run_context.py` as a context manager to get structured output. Downstream scripts read from `results/<session>/<analysis>/latest/`.
@@ -176,6 +183,7 @@ Each analysis phase produces a self-contained HTML report (`{analysis}_report.ht
 
 - `analysis/report.py` — Generic: section types (`TableSection`, `FigureSection`, `TextSection`), `ReportBuilder`, `make_gt()` helper, Jinja2 template + CSS.
 - `analysis/eda_report.py` — EDA-specific: `build_eda_report()` adds ~19 sections.
+- `analysis/synthesis.py` + `analysis/synthesis_report.py` — Synthesis: loads upstream parquets from all 7 phases, joins into unified legislator DataFrames, produces 22-section narrative HTML report for nontechnical audiences.
 - `RunContext` auto-writes the HTML in `finalize()` if sections were added.
 
 Tables use great_tables with polars DataFrames (no pandas conversion). Plots are base64-embedded PNGs. See ADR-0004 for rationale.

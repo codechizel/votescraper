@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the KS Vote Scraper analytics pipeline.
 
-**Last updated:** 2026-02-21 (after Phase 7: Classical Indices)
+**Last updated:** 2026-02-21 (after Synthesis Report)
 
 ---
 
@@ -17,29 +17,15 @@ What's been done, what's next, and what's on the horizon for the KS Vote Scraper
 | 5 | Network | 2026-02-20 | Zero cross-party edges at kappa=0.40; Schreiber sole bipartisan bridge |
 | 6 | Prediction | 2026-02-20 | Vote AUC=0.98; IRT features do all the work; XGBoost adds nothing over logistic |
 | 7 | Classical Indices | 2026-02-21 | Rice, CQ unity, ENP, weighted maverick; Schreiber/Dietrich top mavericks |
+| — | Synthesis Report | 2026-02-21 | 22-section narrative HTML; joins all 7 phases into one deliverable |
 
 ---
 
 ## Next Up
 
-### 1. Synthesis Report — "State of the Kansas Legislature"
+### 1. Visualization Improvement Pass
 
-**Priority:** Highest — this is the deliverable.
-
-A single, narrative-driven HTML report that pulls the most compelling findings from all 7 phases into a story a journalist or citizen can read. Not a summary of methods — a summary of *what we learned about Kansas politics*.
-
-Sections to include:
-- **The party line is everything.** k=2, zero cross-party edges, AUC=0.98 from party-line features alone.
-- **Who are the mavericks?** Schreiber (House) and Dietrich (Senate) profiles — CQ unity, weighted maverick, network position, IRT ideal point, all in one place.
-- **The Tyson paradox.** Most conservative IRT rank but lowest party loyalty. Why these aren't contradictions.
-- **Veto overrides tell you nothing new.** Strictly party-line — no bipartisan override coalitions like Congress.
-- **What the model can't predict.** The residuals that point to issue-specific, non-ideological voting.
-
-Reuse existing plots where possible, add 2-3 new synthesis visualizations (e.g., a combined legislator dashboard scatter plot).
-
-### 2. Visualization Improvement Pass
-
-**Priority:** High — the nontechnical audience rule was added during Phase 7 (Indices). Phases 1-6 predate it and need retrofitting. Should be done before or alongside the Synthesis Report.
+**Priority:** Highest — the nontechnical audience rule was added during Phase 7 (Indices). Phases 1-6 predate it and need retrofitting. The Synthesis Report reuses upstream plots directly, so improving them improves the deliverable.
 
 The Indices phase is the gold standard: plain-English titles ("Who Are the Most Independent Legislators?"), annotated key actors, and report text that defines every metric before showing plots. The earlier phases have good HTML report prose but their plots are still analyst-facing. 112 total plots across 7 phases; roughly half need improvement.
 
@@ -101,7 +87,7 @@ Specific improvements:
 - **Add name labels to heatmap axes** (currently just colored by party, no individual names visible)
 - **Annotate interesting patterns**: mark Schreiber's row/column as the highest cross-party agreement
 
-### 3. UMAP/t-SNE Ideological Landscape
+### 2. UMAP/t-SNE Ideological Landscape
 
 **Priority:** High — quick win, high visual impact for nontechnical audience.
 
@@ -114,7 +100,7 @@ Method documented in `Analytic_Methods/11_DIM_umap_tsne_visualization.md`. Non-l
 
 Estimated effort: small. `umap-learn` already in `pyproject.toml`.
 
-### 4. Beta-Binomial Party Loyalty (Bayesian)
+### 3. Beta-Binomial Party Loyalty (Bayesian)
 
 **Priority:** High — experimental code already exists.
 
@@ -126,7 +112,7 @@ Method documented in `Analytic_Methods/14_BAY_beta_binomial_party_loyalty.md`. E
 - Compare Bayesian loyalty posteriors to CQ unity point estimates
 - Especially useful for Miller (30 votes) and other sparse legislators
 
-### 5. Hierarchical Bayesian Legislator Model
+### 4. Hierarchical Bayesian Legislator Model
 
 **Priority:** High — the "Crown Jewel" from the methods overview.
 
@@ -138,7 +124,7 @@ Method documented in `Analytic_Methods/16_BAY_hierarchical_legislator_model.md`.
 - Partial pooling shrinks extreme estimates (Tyson, Miller) toward party mean — the statistically principled version of what CQ unity does informally
 - Uses PyMC (already installed for IRT)
 
-### 6. Cross-Session Scrape (2023-24)
+### 5. Cross-Session Scrape (2023-24)
 
 **Priority:** High — unlocks temporal analysis and honest out-of-sample validation.
 
@@ -146,7 +132,7 @@ Method documented in `Analytic_Methods/16_BAY_hierarchical_legislator_model.md`.
 - Produces a second set of 3 CSVs in `data/ks_2023/`
 - Enables: cross-session prediction validation, ideological drift tracking, multi-session index stacking
 
-### 7. Cross-Session Validation
+### 6. Cross-Session Validation
 
 **Priority:** High — the single biggest gap in current results.
 
@@ -155,7 +141,7 @@ Method documented in `Analytic_Methods/16_BAY_hierarchical_legislator_model.md`.
 - Stack indices across sessions: all parquets already include a `session` column
 - Compare IRT ideal points for returning legislators: did anyone shift?
 
-### 8. MCA (Multiple Correspondence Analysis)
+### 7. MCA (Multiple Correspondence Analysis)
 
 **Priority:** Medium — alternative view on the vote matrix.
 
@@ -166,7 +152,7 @@ Method documented in `Analytic_Methods/10_DIM_correspondence_analysis.md`. MCA t
 - `prince` library already in `pyproject.toml`
 - Compare MCA dimensions to PCA PC1/PC2 — if they agree, PCA's linear assumption is validated
 
-### 9. Time Series Analysis
+### 8. Time Series Analysis
 
 **Priority:** Medium — adds temporal depth to static snapshots.
 
@@ -177,7 +163,7 @@ Two methods documented but not yet implemented:
 
 Requires the `ruptures` library (already in `pyproject.toml`). Becomes much more powerful once 2023-24 data is available for cross-session comparison.
 
-### 10. NLP on Bill Text for Passage Prediction
+### 9. NLP on Bill Text for Passage Prediction
 
 **Priority:** Medium — the obvious missing feature for prediction.
 
@@ -188,7 +174,7 @@ Current bill passage prediction uses only structural features (beta, vote_type, 
 - Topic modeling to classify bills into policy areas
 - Would explain the "surprising" bills that structural features miss
 
-### 11. 2D Bayesian IRT Model
+### 10. 2D Bayesian IRT Model
 
 **Priority:** Medium — solves the Tyson paradox properly.
 
@@ -268,13 +254,13 @@ No formal tests exist. The pipeline is verified manually via spot-checks and dat
 | 07 | ENP | IDX | Completed (Indices) |
 | 08 | Maverick Scores | IDX | Completed (Indices) |
 | 09 | PCA | DIM | Completed (PCA) |
-| 10 | MCA / Correspondence Analysis | DIM | **Planned** — item #8 above |
-| 11 | UMAP / t-SNE | DIM | **Planned** — item #3 above |
+| 10 | MCA / Correspondence Analysis | DIM | **Planned** — item #7 above |
+| 11 | UMAP / t-SNE | DIM | **Planned** — item #2 above |
 | 12 | W-NOMINATE | DIM | Rejected (R-only) |
 | 13 | Optimal Classification | DIM | Rejected (R-only) |
-| 14 | Beta-Binomial Party Loyalty | BAY | **Experimental** — item #4 above |
+| 14 | Beta-Binomial Party Loyalty | BAY | **Experimental** — item #3 above |
 | 15 | Bayesian IRT (1D) | BAY | Completed (IRT) |
-| 16 | Hierarchical Bayesian Model | BAY | **Planned** — item #5 above |
+| 16 | Hierarchical Bayesian Model | BAY | **Planned** — item #4 above |
 | 17 | Posterior Predictive Checks | BAY | Partial (embedded in IRT) |
 | 18 | Hierarchical Clustering | CLU | Completed (Clustering) |
 | 19 | K-Means / GMM Clustering | CLU | Completed (Clustering) |
@@ -284,8 +270,8 @@ No formal tests exist. The pipeline is verified manually via spot-checks and dat
 | 23 | Community Detection | NET | Completed (Network) |
 | 24 | Vote Prediction | PRD | Completed (Prediction) |
 | 25 | SHAP Analysis | PRD | Completed (Prediction) |
-| 26 | Ideological Drift | TSA | **Planned** — item #9 above |
-| 27 | Changepoint Detection | TSA | **Planned** — item #9 above |
+| 26 | Ideological Drift | TSA | **Planned** — item #8 above |
+| 27 | Changepoint Detection | TSA | **Planned** — item #8 above |
 | 28 | Latent Class Mixture Models | CLU | Deferred (no discrete factions found) |
 
 **Score: 17 completed, 2 rejected, 6 planned, 1 experimental, 2 deferred, 1 partial = 29 total**

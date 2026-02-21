@@ -54,6 +54,10 @@ network *args:
 prediction *args:
     uv run python analysis/prediction.py {{args}}
 
+# Run synthesis report
+synthesis *args:
+    uv run python analysis/synthesis.py {{args}}
+
 # Full check (lint)
 check:
     just lint-check

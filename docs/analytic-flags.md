@@ -369,7 +369,7 @@ XGBoost adds almost nothing over logistic regression on xi x beta. The IRT ideal
 ```
 ### [Legislator Name or Pattern]
 
-- **Phase:** [EDA | PCA | IRT | Clustering | Network | Prediction | Indices]
+- **Phase:** [EDA | PCA | IRT | Clustering | Network | Prediction | Indices | Synthesis]
 - **Observation:** What was seen in the data.
 - **Explanation:** Why it happened (if known).
 - **Downstream:** What to do about it in future phases.
