@@ -213,6 +213,25 @@ Zero sign-switching. Zero divergences. Better on every metric.
 
 ---
 
+## Design Decision: Failure Manifest for Vote Page Fetches
+
+**Added during**: Scraper failure handling improvement (2026-02-20)
+
+**Problem**: When scraping the 2023-24 session, 5 vote pages returned persistent 404s. The scraper silently skipped them — no bill context logged, no failure summary, no way to know which bills were affected without manually checking URLs.
+
+**Solution**: `_get()` now returns a `FetchResult` dataclass instead of `str | None`, carrying error classification (permanent/transient/timeout/connection), status code, and error message. Failed vote page fetches are recorded as `FetchFailure` objects with full bill context (bill number, motion text, bill path).
+
+Key design choices:
+- **No `--retry-failed` flag**: Failed fetches are never cached, so re-running the scraper automatically retries them.
+- **No logging framework**: Stays with `print()` per project convention.
+- **FetchResult/FetchFailure live in scraper.py**, not models.py — they're internal to the scraper, not data export models.
+- **Differentiated retries**: 404s get one retry (for transient routing guards), 5xx gets exponential backoff, other 4xx don't retry at all.
+- **Failure manifest**: JSON file alongside CSVs, matching the `filtering_manifest.json` pattern from analysis scripts.
+
+**2023-24 results**: 4 permanent 404s (SB 17, SB 379, HB 2273, HB 2390) and 1 transient 502 (HB 2313). The 404s are likely dead links on the legislature's website — the vote pages existed when the links were created but were later removed or relocated.
+
+---
+
 ## Bug 7: Empty DataFrame Indexing in Party Loyalty Summary
 
 **Discovered during:** Clustering code review and test writing (2026-02-20)

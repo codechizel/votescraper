@@ -37,6 +37,7 @@ src/ks_vote_scraper/
   session.py   - KSSession: biennium URL resolution (current vs historical vs special)
   models.py    - IndividualVote + RollCall dataclasses
   scraper.py   - KSVoteScraper: 4-step pipeline (bill URLs → API filter → vote parse → legislator enrich)
+               - FetchResult/FetchFailure dataclasses: typed HTTP results with error classification
   output.py    - CSV export (3 files: votes, rollcalls, legislators)
   cli.py       - argparse CLI entry point
 ```
@@ -46,6 +47,18 @@ Pipeline: `get_bill_urls()` → `_filter_bills_with_votes()` → `get_vote_links
 ## Concurrency Pattern
 
 All HTTP fetching uses a two-phase pattern: concurrent fetch via ThreadPoolExecutor (MAX_WORKERS=5), then sequential parse. Rate limiting is thread-safe via `threading.Lock()`. Never mutate shared state during the fetch phase.
+
+### Retry Strategy
+
+`_get()` returns a `FetchResult` (not raw HTML) and classifies errors for differentiated retry behavior:
+
+- **404** → `"permanent"`, max 2 attempts (one retry for transient routing guards)
+- **5xx** → `"transient"`, exponential backoff (`RETRY_DELAY * 2^attempt`)
+- **Timeout** → `"timeout"`, exponential backoff
+- **Connection error** → `"connection"`, fixed delay
+- **Other 4xx** → `"permanent"`, no retry
+
+Failed vote page fetches are recorded as `FetchFailure` with bill context (bill number, motion text, bill path) and written to a JSON failure manifest at the end of the run.
 
 ## HTML Parsing Pitfalls (Hard-Won Lessons)
 
@@ -88,6 +101,8 @@ Three CSVs in `data/ks_{session}/`:
 - `ks_{session}_legislators.csv` — ~172 rows, one per legislator
 
 Cache lives in `data/ks_{session}/.cache/`. Use `--clear-cache` to force fresh fetches.
+
+When vote page fetches fail, a `failure_manifest.json` is written alongside the CSVs with per-failure context (bill number, motion, URL, status code, error type). Failed pages are never cached, so re-running the scraper automatically retries them.
 
 ## Results Directory
 
