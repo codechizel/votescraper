@@ -35,6 +35,7 @@ What are the trade-offs?
 | [0005](0005-pca-implementation-choices.md) | PCA implementation choices | Accepted | 2026-02-19 |
 | [0006](0006-irt-implementation-choices.md) | IRT implementation choices | Accepted | 2026-02-19 |
 | [0007](0007-clustering-implementation-choices.md) | Clustering implementation choices | Accepted | 2026-02-20 |
+| [0008](0008-data-driven-synthesis-detection.md) | Data-driven synthesis detection | Accepted | 2026-02-21 |
 
 ## Creating a New ADR
 

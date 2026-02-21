@@ -364,6 +364,22 @@ XGBoost adds almost nothing over logistic regression on xi x beta. The IRT ideal
 - **Observation:** Override Rice: House R=0.959, D=0.986; Senate R=0.966, D=0.974. Both parties show near-unanimous cohesion on override votes.
 - **Downstream:** Confirms the clustering finding that overrides are strictly party-line. The tiny deviations from 1.0 are from 1-2 absences or rare defections.
 
+## Flagged Patterns — Synthesis
+
+### Data-Driven Detection Replaces Hardcoded Legislators
+
+- **Phase:** Synthesis
+- **Observation:** Automated detection in the 2025-2026 session identifies 6 notable legislators across 3 roles: Schreiber (house maverick), Dietrich (senate maverick), Borjon (house bridge), Hill (senate bridge), Anderson (house paradox), Tyson (senate paradox). The original hardcoded list had only 3 profiles (Schreiber, Dietrich, Tyson) and 5 annotation slugs.
+- **Explanation:** The detection algorithms use explicit thresholds: unity < 0.95 for mavericks, rank gap > 0.5 for paradoxes, betweenness within 1 SD of midpoint for bridges. The paradox detector found Anderson (toward the center — high loyalty but low IRT extremity) and Tyson (rightward — high IRT extremity but low loyalty). Borjon and Hill emerge as bridge-builders via betweenness centrality.
+- **Downstream:** Detection thresholds (0.95 unity, 0.5 rank gap) were calibrated on the 2025-2026 session. Future sessions with different partisan dynamics (e.g., closer party balance) may need threshold adjustments. Monitor whether the detectors produce sensible results when applied to historical sessions.
+
+### Anderson Paradox — Reverse Direction
+
+- **Phase:** Synthesis
+- **Observation:** Rep. Avery Anderson (R) is detected as a house paradox with direction "toward the center" — the reverse of the Tyson paradox. Anderson has high clustering loyalty but a moderate IRT position, meaning the rank gap comes from being loyal but not ideologically extreme.
+- **Explanation:** This is a valid paradox case but less narratively interesting than the Tyson-style paradox (extreme ideology but low loyalty). The "toward the center" direction indicates the gap comes from being a reliable caucus member who isn't an ideologue — the opposite of Tyson's "reliable conservative who bucks the party."
+- **Downstream:** The paradox narrative template handles both directions, but the "toward the center" case reads less dramatically. Consider whether the paradox detector should prefer "extreme ideology + low loyalty" over "high loyalty + moderate ideology" when both exceed the threshold.
+
 ## Template
 
 ```

@@ -38,6 +38,11 @@ except ModuleNotFoundError:
     from run_context import RunContext
 
 try:
+    from analysis.synthesis_detect import ParadoxCase, detect_all
+except ModuleNotFoundError:
+    from synthesis_detect import ParadoxCase, detect_all  # type: ignore[no-redef]
+
+try:
     from analysis.synthesis_report import build_synthesis_report
 except ModuleNotFoundError:
     from synthesis_report import build_synthesis_report  # type: ignore[no-redef]
@@ -49,15 +54,15 @@ SYNTHESIS_PRIMER = """\
 
 ## Purpose
 
-Narrative summary of Kansas Legislature 2025-2026 voting patterns, combining
-findings from seven analysis phases into a single deliverable for nontechnical
-audiences.
+Narrative summary of Kansas Legislature voting patterns, combining findings
+from seven analysis phases into a single deliverable for nontechnical audiences.
 
 ## Method
 
 No new computation. Joins upstream parquet outputs on `legislator_slug`, adds
 percentile ranks, and produces narrative-driven visualizations that tell the
-story of Kansas politics.
+story of Kansas politics. Notable legislators (mavericks, bridge-builders,
+metric paradoxes) are detected from data, not hardcoded.
 
 ## Inputs
 
@@ -66,8 +71,9 @@ Filtering manifests from each phase for headline statistics.
 
 ## Outputs
 
-- `synthesis_report.html` — Self-contained 30-section narrative report
-- `plots/` — 8 new PNGs: 2 dashboard scatters, 3 profile cards, 1 paradox, 1 pipeline
+- `synthesis_report.html` — Self-contained narrative report (27-30 sections)
+- `plots/` — New PNGs: 2 dashboard scatters, 2-3 profile cards (data-driven),
+  0-1 paradox visualizations, 1 pipeline summary
 - `data/` — Unified legislator DataFrames per chamber (parquet)
 
 ## Interpretation Guide
@@ -84,56 +90,14 @@ statistical training.
 - Profile narratives are editorial interpretations of quantitative patterns.
 - "Maverick" is a descriptive label based on party-vote defections, not a
   normative judgment.
+- Notable legislators are detected dynamically; different sessions will
+  highlight different legislators.
 """
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
 PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC"}
 PARTY_COLORS_LIGHT = {"Republican": "#F5A0A5", "Democrat": "#8090E0"}
-
-# Legislators to profile with narrative metadata
-PROFILE_LEGISLATORS = {
-    "rep_schreiber_mark_1": {
-        "title": "Mark Schreiber (R-60)",
-        "role": "The House Maverick",
-        "subtitle": (
-            "The Republican most likely to break ranks on contested votes — "
-            "and the hardest House member for the model to predict."
-        ),
-        "chamber": "house",
-    },
-    "sen_dietrich_brenda_1": {
-        "title": "Brenda Dietrich (R-20)",
-        "role": "The Senate Bridge-Builder",
-        "subtitle": (
-            "A moderate Republican whose IRT score places her closer to "
-            "Democrats than to her own party's median."
-        ),
-        "chamber": "senate",
-    },
-    "sen_tyson_caryn_1": {
-        "title": "Caryn Tyson (R-12)",
-        "role": "The Tyson Paradox",
-        "subtitle": (
-            "The most conservative senator by IRT — yet the least loyal "
-            "by clustering, because she defects rightward on close votes."
-        ),
-        "chamber": "senate",
-    },
-}
-
-# Legislators to annotate on dashboard scatters
-ANNOTATE_SLUGS = {
-    "house": [
-        "rep_schreiber_mark_1",
-        "rep_helgerson_henry_1",
-    ],
-    "senate": [
-        "sen_tyson_caryn_1",
-        "sen_dietrich_brenda_1",
-        "sen_thompson_mike_1",
-    ],
-}
 
 UPSTREAM_PHASES = ["eda", "pca", "irt", "clustering", "network", "prediction", "indices"]
 
@@ -310,6 +274,8 @@ def plot_dashboard_scatter(
     leg_df: pl.DataFrame,
     chamber: str,
     plots_dir: Path,
+    *,
+    annotate_slugs: list[str] | None = None,
 ) -> Path:
     """Legislature dashboard scatter: IRT x Unity, colored by party, sized by maverick rate."""
     fig, ax = plt.subplots(figsize=(14, 9))
@@ -343,7 +309,7 @@ def plot_dashboard_scatter(
         )
 
     # Annotate key legislators
-    slugs = list(ANNOTATE_SLUGS.get(chamber, []))
+    slugs = list(annotate_slugs or [])
     # Also add most extreme per party
     for party in ["Republican", "Democrat"]:
         party_df = leg_df.filter(pl.col("party") == party)
@@ -530,44 +496,50 @@ def plot_profile_card(
     return out
 
 
-def plot_tyson_paradox(
-    senate_df: pl.DataFrame,
+def plot_metric_paradox(
+    chamber_df: pl.DataFrame,
+    paradox: ParadoxCase,
     plots_dir: Path,
 ) -> Path | None:
-    """Three horizontal bars showing Tyson's contradictory metrics."""
-    slug = "sen_tyson_caryn_1"
-    row = senate_df.filter(pl.col("legislator_slug") == slug)
+    """Three horizontal bars showing a legislator's contradictory metrics."""
+    slug = paradox.slug
+    row = chamber_df.filter(pl.col("legislator_slug") == slug)
     if row.height == 0:
-        print("  WARNING: Tyson not found in senate_df")
+        print(f"  WARNING: {slug} not found in {paradox.chamber}_df")
         return None
 
-    r = row.to_dicts()[0]
-
-    # Compute IRT rank among Senate Republicans
-    repubs = senate_df.filter(pl.col("party") == "Republican").sort("xi_mean", descending=True)
-    n_repubs = repubs.height
+    rv = paradox.raw_values
 
     # Three contrasting metrics
     bars = [
         {
-            "label": f"Most Conservative (IRT Rank #1 of {n_repubs} Rs)",
+            "label": (
+                f"Most {paradox.direction.title()} "
+                f"(IRT Rank #{paradox.rank_high} of {paradox.n_in_party} "
+                f"{paradox.party[0]}s)"
+            ),
             "value": 1.0,
             "color": "#B71C1C",
-            "text": f"IRT = {r['xi_mean']:.1f}",
+            "text": f"IRT = {rv['xi_mean']:.1f}",
         },
         {
-            "label": f"Lowest Clustering Loyalty ({r['loyalty_rate']:.0%})",
-            "value": r.get("loyalty_rate", 0),
+            "label": f"Lowest Clustering Loyalty ({rv['loyalty_rate']:.0%})",
+            "value": rv.get("loyalty_rate", 0),
             "color": "#FF8F00",
-            "text": f"{r.get('loyalty_rate', 0):.0%}",
-        },
-        {
-            "label": f"High Party Unity ({r.get('unity_score', 0):.0%})",
-            "value": r.get("unity_score", 0),
-            "color": "#2E7D32",
-            "text": f"{r.get('unity_score', 0):.0%}",
+            "text": f"{rv.get('loyalty_rate', 0):.0%}",
         },
     ]
+
+    unity = rv.get("unity_score")
+    if unity is not None:
+        bars.append(
+            {
+                "label": f"High Party Unity ({unity:.0%})",
+                "value": unity,
+                "color": "#2E7D32",
+                "text": f"{unity:.0%}",
+            }
+        )
 
     fig, ax = plt.subplots(figsize=(12, 5))
     y_pos = np.arange(len(bars))
@@ -606,7 +578,8 @@ def plot_tyson_paradox(
     ax.invert_yaxis()
 
     ax.set_title(
-        "Caryn Tyson (R-12): Three Measures, Three Answers",
+        f"{paradox.full_name} ({paradox.party[0]}-{paradox.district}): "
+        "Three Measures, Three Answers",
         fontsize=14,
         fontweight="bold",
         pad=12,
@@ -615,9 +588,9 @@ def plot_tyson_paradox(
     # Annotation explaining the paradox
     explanation = (
         "Why do these disagree? IRT measures overall ideology across all votes.\n"
-        "Clustering loyalty measures agreement with fellow Republicans on contested votes.\n"
+        f"Clustering loyalty measures agreement with fellow {paradox.party}s on contested votes.\n"
         "Party Unity (CQ) counts only votes where parties formally oppose each other.\n"
-        "Tyson is extremely conservative — so conservative she breaks right even from her party."
+        f"{paradox.full_name} defects {paradox.direction} — away from their party's mainstream."
     )
     fig.text(
         0.5,
@@ -635,7 +608,7 @@ def plot_tyson_paradox(
     ax.grid(True, axis="x", alpha=0.3, linestyle="--")
     ax.set_axisbelow(True)
 
-    out = plots_dir / "tyson_paradox.png"
+    out = plots_dir / f"metric_paradox_{paradox.chamber}.png"
     fig.savefig(out, dpi=150, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     print(f"  Saved {out.name}")
@@ -786,23 +759,49 @@ def main() -> None:
             print(f"  {chamber}: {df.height} legislators, {df.width} columns")
             df.write_parquet(ctx.data_dir / f"legislator_df_{chamber}.parquet")
 
+        # ── Detect Notable Legislators ────────────────────────────────
+        print("\nDetecting notable legislators...")
+        notables = detect_all(leg_dfs)
+
+        for chamber, mav in notables["mavericks"].items():
+            print(f"  {chamber} maverick: {mav.full_name} ({mav.party})")
+        for chamber, bridge in notables["bridges"].items():
+            print(f"  {chamber} bridge: {bridge.full_name} ({bridge.party})")
+        for slug, paradox in notables["paradoxes"].items():
+            print(f"  paradox: {paradox.full_name} ({paradox.direction})")
+
         # ── New Plots ────────────────────────────────────────────────────
         print("\nGenerating new plots...")
 
         # Pipeline summary
         plot_pipeline_summary(manifests, ctx.plots_dir)
 
-        # Dashboard scatters
+        # Dashboard scatters — pass dynamic annotation slugs
         for chamber in ("house", "senate"):
-            plot_dashboard_scatter(leg_dfs[chamber], chamber, ctx.plots_dir)
+            plot_dashboard_scatter(
+                leg_dfs[chamber],
+                chamber,
+                ctx.plots_dir,
+                annotate_slugs=notables["annotations"].get(chamber, []),
+            )
 
-        # Profile cards
-        for slug, meta in PROFILE_LEGISLATORS.items():
-            chamber = meta["chamber"]
-            plot_profile_card(leg_dfs[chamber], slug, meta, ctx.plots_dir)
+        # Profile cards — dynamic selection
+        for slug, notable in notables["profiles"].items():
+            plot_profile_card(
+                leg_dfs[notable.chamber],
+                slug,
+                {
+                    "title": notable.title,
+                    "role": notable.role,
+                    "subtitle": notable.subtitle,
+                    "chamber": notable.chamber,
+                },
+                ctx.plots_dir,
+            )
 
-        # Tyson paradox
-        plot_tyson_paradox(leg_dfs["senate"], ctx.plots_dir)
+        # Metric paradox — dynamic (may be 0 or more)
+        for slug, paradox in notables["paradoxes"].items():
+            plot_metric_paradox(leg_dfs[paradox.chamber], paradox, ctx.plots_dir)
 
         # ── Resolve upstream plot paths ──────────────────────────────────
         upstream_plots: dict[str, Path] = {}
@@ -842,6 +841,8 @@ def main() -> None:
             upstream=upstream,
             plots_dir=ctx.plots_dir,
             upstream_plots=upstream_plots,
+            notables=notables,
+            session=ctx.session,
         )
 
         # ── Manifest ─────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 """
-Synthesis report builder — 30 narrative-driven sections.
+Synthesis report builder — narrative-driven sections.
 
 Assembles findings from all 7 analysis phases into a single HTML report
 written for nontechnical audiences. Called by synthesis.py.
@@ -25,86 +25,140 @@ def build_synthesis_report(
     upstream: dict,
     plots_dir: Path,
     upstream_plots: dict[str, Path],
+    notables: dict,
+    session: str,
 ) -> None:
-    """Build the full 30-section synthesis report."""
+    """Build the full synthesis report (27-30 sections depending on detections)."""
     # 1. intro
-    _add_intro(report, manifests)
+    _add_intro(report, manifests, notables)
     # 2. pipeline
     _add_pipeline_figure(report, plots_dir)
-    # 3. party-line (de-jargoned)
+    # 3. party-line
     _add_party_line_narrative(report, manifests)
-    # 4. clusters (NEW)
+    # 4. clusters
     _add_clusters_figure(report, upstream_plots)
-    # 5-6. network house/senate (updated captions)
+    # 5-6. network house/senate
     _add_network_figure(report, upstream_plots, "house")
     _add_network_figure(report, upstream_plots, "senate")
     # 7-8. dashboard house/senate
     _add_dashboard_figure(report, plots_dir, "house")
     _add_dashboard_figure(report, plots_dir, "senate")
     # 9. mavericks
-    _add_mavericks_narrative(report, leg_dfs)
-    # 10. agreement-house (NEW)
+    _add_mavericks_narrative(report, leg_dfs, notables)
+    # 10. agreement-house
     _add_agreement_figure(report, upstream_plots, "house")
-    # 11. profile-schreiber
-    _add_profile_figure(report, plots_dir, "schreiber", "Legislator Profile: Mark Schreiber (R-60)")
-    # 12. forest-house (updated caption)
-    _add_forest_figure(report, upstream_plots, "house")
+    # 11. profile (house maverick)
+    _add_dynamic_profile(report, plots_dir, notables, "house", "maverick")
+    # 12. forest-house
+    _add_forest_figure(report, upstream_plots, "house", notables)
     # 13. maverick-landscape-house
     _add_maverick_landscape(report, upstream_plots, "house")
-    # 14. maverick-landscape-senate (NEW)
+    # 14. maverick-landscape-senate
     _add_maverick_landscape(report, upstream_plots, "senate")
-    # 15. profile-dietrich
-    _add_profile_figure(report, plots_dir, "dietrich", "Legislator Profile: Brenda Dietrich (R-20)")
-    # 16. forest-senate (updated caption)
-    _add_forest_figure(report, upstream_plots, "senate")
-    # 17. tyson-paradox
-    _add_tyson_narrative(report, leg_dfs)
-    # 18. tyson-visual
-    _add_tyson_figure(report, plots_dir)
-    # 19. profile-tyson
-    _add_profile_figure(report, plots_dir, "tyson", "Legislator Profile: Caryn Tyson (R-12)")
+    # 15. profile (senate bridge or maverick)
+    _add_dynamic_profile(report, plots_dir, notables, "senate", "bridge")
+    # 16. forest-senate
+    _add_forest_figure(report, upstream_plots, "senate", notables)
+    # 17. paradox narrative
+    _add_paradox_narrative(report, leg_dfs, notables)
+    # 18. paradox visual
+    _add_paradox_figure(report, plots_dir, notables)
+    # 19. profile (paradox legislator)
+    _add_paradox_profile(report, plots_dir, notables)
     # 20. veto-overrides
     _add_veto_narrative(report, manifests)
     # 21. unpredictable
-    _add_unpredictable_narrative(report, upstream)
-    # 22. shap-house (NEW)
+    _add_unpredictable_narrative(report, upstream, notables)
+    # 22. shap-house
     _add_shap_figure(report, upstream_plots, "house")
-    # 23. accuracy-house (updated caption)
+    # 23. accuracy-house
     _add_accuracy_figure(report, upstream_plots, "house")
-    # 24. accuracy-senate (NEW)
+    # 24. accuracy-senate
     _add_accuracy_figure(report, upstream_plots, "senate")
-    # 25. calibration (NEW)
+    # 25. calibration
     _add_calibration_figure(report, upstream_plots, "house")
     # 26. surprising-votes
     _add_surprising_votes_table(report, upstream)
-    # 27. methodology (updated)
-    _add_methodology_note(report)
-    # 28. convergence (NEW)
+    # 27. methodology
+    _add_methodology_note(report, session)
+    # 28. convergence
     _add_convergence_figure(report, upstream_plots, "house")
-    # 29. discrimination (NEW)
+    # 29. discrimination
     _add_discrimination_figure(report, upstream_plots, "house")
     # 30. full-scorecard
-    _add_full_scorecard(report, leg_dfs)
+    _add_full_scorecard(report, leg_dfs, session)
 
     print(f"  Report: {len(report._sections)} sections added")
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+
+def _notable_names_for(notables: dict, key: str) -> list[str]:
+    """Get a list of full_name strings from a notables sub-dict."""
+    items = notables.get(key, {})
+    if isinstance(items, dict):
+        return [v.full_name for v in items.values() if hasattr(v, "full_name")]
+    return []
+
+
+def _maverick_name_list(notables: dict) -> str:
+    """Comma-separated list of maverick full names for prose."""
+    names = _notable_names_for(notables, "mavericks")
+    paradox_names = _notable_names_for(notables, "paradoxes")
+    all_names = list(dict.fromkeys(names + paradox_names))
+    if not all_names:
+        return "maverick legislators"
+    if len(all_names) == 1:
+        return all_names[0]
+    return ", ".join(all_names[:-1]) + f", and {all_names[-1]}"
 
 
 # ── Section Builders ─────────────────────────────────────────────────────────
 
 
-def _add_intro(report: object, manifests: dict) -> None:
+def _add_intro(report: object, manifests: dict, notables: dict) -> None:
     """Section 1: What This Report Tells You."""
     eda = manifests.get("eda", {})
     total_votes = eda.get("All", {}).get("votes_before", 882)
     contested = eda.get("All", {}).get("votes_after", 491)
     n_legislators = eda.get("All", {}).get("legislators_before", 172)
 
+    # Build dynamic maverick finding
+    mav_names = []
+    for chamber, mav in notables.get("mavericks", {}).items():
+        mav_names.append(f"{mav.full_name} ({chamber.title()})")
+    if mav_names:
+        maverick_finding = (
+            "<li><strong>A handful of mavericks stand out.</strong> "
+            + " and ".join(mav_names)
+            + " consistently break from their party on contested votes.</li>"
+        )
+    else:
+        maverick_finding = (
+            "<li><strong>Party discipline is exceptionally uniform.</strong> "
+            "No legislators consistently break ranks on contested votes.</li>"
+        )
+
+    # Build dynamic paradox finding
+    paradoxes = notables.get("paradoxes", {})
+    if paradoxes:
+        p = next(iter(paradoxes.values()))
+        paradox_finding = (
+            f"<li><strong>The {p.full_name.split()[-1]} Paradox:</strong> "
+            f"{p.full_name} is the most extreme by one measure and the least loyal "
+            f"by another — because they defect <em>{p.direction}</em> from their "
+            "party.</li>"
+        )
+    else:
+        paradox_finding = ""
+
     report.add(
         TextSection(
             id="intro",
             title="What This Report Tells You",
             html=(
-                "<p>During the 2025-2026 session, the Kansas Legislature cast "
+                "<p>The Kansas Legislature cast "
                 f"<strong>{total_votes:,} roll call votes</strong> across "
                 f"<strong>{n_legislators} legislators</strong> in the House and Senate. "
                 "This report distills those votes into a clear picture of how Kansas "
@@ -115,7 +169,7 @@ def _add_intro(report: object, manifests: dict) -> None:
                 "point estimation (IRT), clustering, network analysis, predictive "
                 "modeling, and classical political science indices. Each method asks a "
                 "different question, but they all converge on the same answers.</p>"
-                "<p><strong>Five headline findings:</strong></p>"
+                "<p><strong>Headline findings:</strong></p>"
                 "<ol>"
                 "<li><strong>Party is everything.</strong> Every method — clustering, "
                 "networks, prediction — finds that party affiliation explains nearly all "
@@ -124,15 +178,11 @@ def _add_intro(report: object, manifests: dict) -> None:
                 f"Of {total_votes:,} roll calls, "
                 f"only {contested:,} had meaningful dissent (more than 2.5% minority). "
                 "The rest were near-unanimous.</li>"
-                "<li><strong>A handful of mavericks stand out.</strong> Mark Schreiber (House) "
-                "and Brenda Dietrich (Senate) consistently break from their party on "
-                "contested votes.</li>"
-                "<li><strong>The Tyson Paradox:</strong> Senator Caryn Tyson is the most "
-                "conservative senator by one measure and the least loyal by another — "
-                "because she defects <em>rightward</em> from her party.</li>"
-                "<li><strong>Votes are 98% predictable.</strong> A machine learning model "
-                "can predict individual votes with AUC = 0.98 using only a legislator's "
-                "ideology score and the bill's characteristics.</li>"
+                + maverick_finding
+                + paradox_finding
+                + "<li><strong>Votes are highly predictable.</strong> A machine learning model "
+                "can predict individual votes with near-perfect accuracy using only a "
+                "legislator's ideology score and the bill's characteristics.</li>"
                 "</ol>"
             ),
         )
@@ -146,13 +196,13 @@ def _add_pipeline_figure(report: object, plots_dir: Path) -> None:
         report.add(
             FigureSection.from_file(
                 "pipeline",
-                "From 882 Votes to One Number: 0.98",
+                "From Raw Votes to Prediction",
                 path,
                 caption=(
                     "Each box represents a stage of analysis. We start with every recorded "
                     "roll call, filter to contested votes, identify party-line votes, confirm "
                     "that party is the dominant grouping, and show that a model using these "
-                    "patterns predicts 98% of individual votes correctly."
+                    "patterns predicts individual votes with near-perfect accuracy."
                 ),
             )
         )
@@ -184,7 +234,7 @@ def _add_party_line_narrative(report: object, manifests: dict) -> None:
                 "which knows nothing about party labels — independently discovers the two "
                 "parties in both the House and the Senate.</li>"
                 "<li><strong>Prediction:</strong> A model using party, ideology, and bill features "
-                "achieves AUC = 0.98 — near-perfect prediction.</li>"
+                "achieves near-perfect prediction.</li>"
                 "</ul>"
                 "<p>This does <em>not</em> mean all legislators vote identically. Within each "
                 "party, there is meaningful variation — some members are reliably loyal, others "
@@ -240,24 +290,8 @@ def _add_dashboard_figure(report: object, plots_dir: Path, chamber: str) -> None
         )
 
 
-def _add_mavericks_narrative(report: object, leg_dfs: dict) -> None:
+def _add_mavericks_narrative(report: object, leg_dfs: dict, notables: dict) -> None:
     """Section 9: Who Are the Mavericks?"""
-    # Pull Schreiber stats
-    house = leg_dfs.get("house")
-    schreiber = None
-    if house is not None:
-        s = house.filter(pl.col("legislator_slug") == "rep_schreiber_mark_1")
-        if s.height > 0:
-            schreiber = s.to_dicts()[0]
-
-    # Pull Dietrich stats
-    senate = leg_dfs.get("senate")
-    dietrich = None
-    if senate is not None:
-        d = senate.filter(pl.col("legislator_slug") == "sen_dietrich_brenda_1")
-        if d.height > 0:
-            dietrich = d.to_dicts()[0]
-
     parts = [
         "<p>In a legislature where party discipline is the norm, a few members "
         "consistently break ranks. These <strong>mavericks</strong> — legislators "
@@ -265,30 +299,56 @@ def _add_mavericks_narrative(report: object, leg_dfs: dict) -> None:
         "interesting because they reveal where the party line has cracks.</p>"
     ]
 
-    if schreiber:
-        unity = schreiber.get("unity_score", 0)
-        mav = schreiber.get("maverick_rate", 0)
-        acc = schreiber.get("accuracy", 0)
-        parts.append(
-            f"<p><strong>Mark Schreiber (R-60)</strong> is the House's most prominent "
-            f"maverick. His party unity score is {unity:.0%} — well below the Republican "
-            f"average — and he defects on {mav:.0%} of party votes. He is also the "
-            f"hardest House member for the prediction model to get right ({acc:.0%} "
-            "accuracy vs ~95% for most members). His IRT ideal point places him near "
-            "the center of the ideological spectrum, closer to Democrats than to most "
-            "Republicans.</p>"
-        )
+    mavericks = notables.get("mavericks", {})
+    bridges = notables.get("bridges", {})
 
-    if dietrich:
-        unity = dietrich.get("unity_score", 0)
-        xi = dietrich.get("xi_mean", 0)
+    if not mavericks and not bridges:
         parts.append(
-            f"<p><strong>Brenda Dietrich (R-20)</strong> is the Senate's counterpart. "
-            f"With a party unity of {unity:.0%} and an IRT ideal point of {xi:.2f} — "
-            "the lowest among Senate Republicans — she votes more like a moderate than "
-            "a party stalwart. Her network centrality scores suggest she bridges the "
-            "gap between the two parties more than any other senator.</p>"
+            "<p>In this session, party discipline is exceptionally uniform — "
+            "no legislator stands out as a consistent maverick.</p>"
         )
+    else:
+        for chamber, mav in mavericks.items():
+            row = _get_legislator_row(leg_dfs, mav.slug, mav.chamber)
+            if row is None:
+                continue
+            unity = row.get("unity_score", 0)
+            mav_rate = row.get("maverick_rate", 0)
+            acc = row.get("accuracy")
+            xi = row.get("xi_mean", 0)
+
+            acc_text = ""
+            if acc is not None:
+                acc_text = (
+                    f" They are also among the hardest {chamber.title()} members "
+                    f"for the prediction model to get right ({acc:.0%} accuracy "
+                    "vs ~95% for most members)."
+                )
+
+            parts.append(
+                f"<p><strong>{mav.title}</strong> is the {chamber.title()}'s most "
+                f"prominent maverick. Their party unity score is {unity:.0%} — well "
+                f"below the party average — and they defect on {mav_rate:.0%} of "
+                f"party votes.{acc_text} Their IRT ideal point ({xi:.2f}) places "
+                "them away from their party's mainstream.</p>"
+            )
+
+        for chamber, bridge in bridges.items():
+            if bridge.slug in {m.slug for m in mavericks.values()}:
+                continue  # already covered above
+            row = _get_legislator_row(leg_dfs, bridge.slug, bridge.chamber)
+            if row is None:
+                continue
+            unity = row.get("unity_score", 0)
+            xi = row.get("xi_mean", 0)
+
+            parts.append(
+                f"<p><strong>{bridge.title}</strong> is the {chamber.title()}'s "
+                f"bridge-builder. With a party unity of {unity:.0%} and an IRT "
+                f"ideal point of {xi:.2f}, they vote more like a moderate than "
+                "a party stalwart. Their network centrality scores suggest they "
+                "bridge the gap between the two parties.</p>"
+            )
 
     report.add(
         TextSection(
@@ -299,13 +359,56 @@ def _add_mavericks_narrative(report: object, leg_dfs: dict) -> None:
     )
 
 
+def _get_legislator_row(leg_dfs: dict, slug: str, chamber: str) -> dict | None:
+    """Get a single legislator's row as a dict."""
+    df = leg_dfs.get(chamber)
+    if df is None:
+        return None
+    row = df.filter(pl.col("legislator_slug") == slug)
+    if row.height == 0:
+        return None
+    return row.to_dicts()[0]
+
+
+def _add_dynamic_profile(
+    report: object,
+    plots_dir: Path,
+    notables: dict,
+    chamber: str,
+    role: str,
+) -> None:
+    """Add a profile card section for a dynamically detected legislator.
+
+    role: "maverick" looks in mavericks dict, "bridge" looks in bridges then
+    falls back to mavericks.
+    """
+    notable = None
+    if role == "bridge":
+        notable = notables.get("bridges", {}).get(chamber)
+        if notable is None:
+            notable = notables.get("mavericks", {}).get(chamber)
+    elif role == "maverick":
+        notable = notables.get("mavericks", {}).get(chamber)
+
+    if notable is None:
+        return
+
+    slug_short = notable.slug.split("_")[1]
+    _add_profile_figure(
+        report,
+        plots_dir,
+        slug_short,
+        f"Legislator Profile: {notable.title}",
+    )
+
+
 def _add_profile_figure(
     report: object,
     plots_dir: Path,
     slug_short: str,
     title: str,
 ) -> None:
-    """Sections 11, 15, 19: Profile cards (new)."""
+    """Profile card figure section."""
     path = plots_dir / f"profile_{slug_short}.png"
     if path.exists():
         report.add(
@@ -322,12 +425,33 @@ def _add_profile_figure(
         )
 
 
-def _add_forest_figure(report: object, upstream_plots: dict, chamber: str) -> None:
+def _add_forest_figure(report: object, upstream_plots: dict, chamber: str, notables: dict) -> None:
     """Sections 12, 16: IRT forest plots (reused)."""
     key = f"forest_{chamber}"
     path = upstream_plots.get(key)
     if path is not None and path.exists():
         chamber_title = chamber.title()
+
+        # Build dynamic callout names for the caption
+        callout_parts = []
+        mav = notables.get("mavericks", {}).get(chamber)
+        if mav is not None:
+            callout_parts.append(
+                f"{mav.full_name.split()[-1]} (most bipartisan {chamber_title} member)"
+            )
+        paradoxes = notables.get("paradoxes", {})
+        for slug, p in paradoxes.items():
+            if p.chamber == chamber:
+                callout_parts.append(f"{p.full_name.split()[-1]} (most extreme but lowest loyalty)")
+
+        if callout_parts:
+            callout_text = (
+                " Diamond markers and italic callouts highlight legislators with "
+                "notable patterns — such as " + " and ".join(callout_parts) + "."
+            )
+        else:
+            callout_text = ""
+
         report.add(
             FigureSection.from_file(
                 f"forest-{chamber}",
@@ -337,10 +461,8 @@ def _add_forest_figure(report: object, upstream_plots: dict, chamber: str) -> No
                     f"Bayesian IRT ideal point estimates for every {chamber_title} member. "
                     "Each dot is a legislator's estimated position, and horizontal lines "
                     "show the 95% credible interval (uncertainty). Negative values = more "
-                    "liberal, positive = more conservative. Red = Republican, Blue = Democrat. "
-                    "Diamond markers and italic callouts highlight legislators with notable "
-                    "patterns — such as Tyson (most conservative but lowest loyalty) and "
-                    "Schreiber (most bipartisan House member)."
+                    "liberal, positive = more conservative. Red = Republican, Blue = Democrat."
+                    + callout_text
                 ),
             )
         )
@@ -368,42 +490,56 @@ def _add_maverick_landscape(report: object, upstream_plots: dict, chamber: str) 
         )
 
 
-def _add_tyson_narrative(report: object, leg_dfs: dict) -> None:
-    """Section 17: The Tyson Paradox."""
-    senate = leg_dfs.get("senate")
-    tyson = None
-    if senate is not None:
-        t = senate.filter(pl.col("legislator_slug") == "sen_tyson_caryn_1")
-        if t.height > 0:
-            tyson = t.to_dicts()[0]
+def _add_paradox_narrative(report: object, leg_dfs: dict, notables: dict) -> None:
+    """Section 17: The Metric Paradox."""
+    paradoxes = notables.get("paradoxes", {})
 
-    if tyson is None:
+    if not paradoxes:
+        report.add(
+            TextSection(
+                id="metric-paradox",
+                title="No Significant Metric Paradox",
+                html=(
+                    "<p>In this session, no legislator shows a dramatic split between "
+                    "ideology rank and loyalty rank. The metrics broadly agree on who "
+                    "is extreme and who is loyal — an unusual degree of consistency.</p>"
+                ),
+            )
+        )
         return
 
-    xi = tyson.get("xi_mean", 0)
-    loyalty = tyson.get("loyalty_rate", 0)
-    unity = tyson.get("unity_score", 0)
+    p = next(iter(paradoxes.values()))
+    rv = p.raw_values
+    xi = rv.get("xi_mean", 0)
+    loyalty = rv.get("loyalty_rate", 0)
+    unity = rv.get("unity_score")
+
+    unity_text = ""
+    if unity is not None:
+        unity_text = (
+            f" By <strong>CQ party unity</strong>, they score {unity:.0%} — solidly "
+            "in the upper ranks of their party."
+        )
 
     report.add(
         TextSection(
-            id="tyson-paradox",
-            title="The Tyson Paradox",
+            id="metric-paradox",
+            title=f"The {p.full_name.split()[-1]} Paradox",
             html=(
-                "<p>Senator Caryn Tyson (R-12) presents a puzzle that illuminates how "
-                "different metrics can give contradictory answers about the same "
-                "legislator.</p>"
-                f"<p>By <strong>IRT ideology</strong>, Tyson is the most conservative "
-                f"senator in the chamber (score: {xi:.1f}), ranking #1 among 32 Republicans. "
-                "By <strong>clustering loyalty</strong>, she is the <em>least</em> loyal "
-                f"Republican ({loyalty:.0%} agreement with party on contested votes). "
-                f"By <strong>CQ party unity</strong>, she scores {unity:.0%} — solidly "
-                "in the upper ranks of her party.</p>"
-                "<p>How can one person be the most conservative <em>and</em> the least "
-                "loyal? The answer is in the direction of defection. Tyson doesn't defect "
-                "<em>toward</em> Democrats — she defects <em>away</em> from her own party's "
-                "mainstream position in the conservative direction. On votes where most "
-                "Republicans say Yea, Tyson sometimes says Nay because the bill isn't "
-                "conservative <em>enough</em>.</p>"
+                f"<p>{p.full_name} ({p.party[0]}-{p.district}) presents a puzzle that "
+                "illuminates how different metrics can give contradictory answers about "
+                "the same legislator.</p>"
+                f"<p>By <strong>{p.metric_high_name}</strong>, they rank "
+                f"#{p.rank_high} among {p.n_in_party} {p.party}s (score: {xi:.1f}). "
+                f"By <strong>{p.metric_low_name}</strong>, they are among the "
+                f"<em>least</em> loyal ({loyalty:.0%} agreement with party on contested "
+                f"votes).{unity_text}</p>"
+                f"<p>How can one person be the most extreme <em>and</em> the least "
+                "loyal? The answer is in the direction of defection. They don't defect "
+                f"<em>toward</em> the other party — they defect <em>{p.direction}</em> "
+                "from their own party's mainstream position. On votes where most of "
+                "their party says Yea, they sometimes say Nay because the bill isn't "
+                "aligned enough with their position.</p>"
                 "<p>This is why multiple metrics matter. No single number can capture "
                 "the full story of a legislator's voting behavior.</p>"
             ),
@@ -411,24 +547,53 @@ def _add_tyson_narrative(report: object, leg_dfs: dict) -> None:
     )
 
 
-def _add_tyson_figure(report: object, plots_dir: Path) -> None:
+def _add_paradox_figure(report: object, plots_dir: Path, notables: dict) -> None:
     """Section 18: Three Measures, Three Answers."""
-    path = plots_dir / "tyson_paradox.png"
+    paradoxes = notables.get("paradoxes", {})
+    if not paradoxes:
+        return
+
+    p = next(iter(paradoxes.values()))
+    path = plots_dir / f"metric_paradox_{p.chamber}.png"
     if path.exists():
         report.add(
             FigureSection.from_file(
-                "tyson-visual",
+                "paradox-visual",
                 "Three Measures, Three Answers",
                 path,
                 caption=(
-                    "The same senator measured three different ways. IRT ideology (all votes) "
-                    "says she's #1 conservative. Clustering loyalty (contested votes within "
-                    "party) says she's the least loyal Republican. CQ party unity (party-vs-party "
-                    "votes only) puts her in the upper ranks. The metrics disagree because they "
-                    "measure different subsets of votes."
+                    f"The same legislator measured three different ways. "
+                    f"{p.metric_high_name.upper()} (all votes) ranks them as most extreme. "
+                    f"{p.metric_low_name.title()} (contested votes within party) shows them "
+                    "as least loyal. CQ party unity (party-vs-party votes only) puts them "
+                    "in the upper ranks. The metrics disagree because they measure different "
+                    "subsets of votes."
                 ),
             )
         )
+
+
+def _add_paradox_profile(report: object, plots_dir: Path, notables: dict) -> None:
+    """Section 19: Profile card for paradox legislator."""
+    paradoxes = notables.get("paradoxes", {})
+    if not paradoxes:
+        return
+
+    p = next(iter(paradoxes.values()))
+    # Check if this slug is already profiled as a maverick/bridge (avoid duplicate)
+    mavericks = notables.get("mavericks", {})
+    bridges = notables.get("bridges", {})
+    already_profiled = {m.slug for m in mavericks.values()} | {b.slug for b in bridges.values()}
+    if p.slug in already_profiled:
+        return
+
+    slug_short = p.slug.split("_")[1]
+    _add_profile_figure(
+        report,
+        plots_dir,
+        slug_short,
+        f"Legislator Profile: {p.full_name} ({p.party[0]}-{p.district})",
+    )
 
 
 def _add_veto_narrative(report: object, manifests: dict) -> None:
@@ -450,7 +615,7 @@ def _add_veto_narrative(report: object, manifests: dict) -> None:
             id="veto-overrides",
             title="Veto Overrides Tell You Nothing New",
             html=(
-                f"<p>The 2025-2026 session included <strong>{total} veto override votes</strong> "
+                f"<p>This session included <strong>{total} veto override votes</strong> "
                 f"({n_h} House, {n_s} Senate). These are analytically interesting in theory — "
                 "overrides require a two-thirds supermajority, which often forces bipartisan "
                 "coalitions.</p>"
@@ -471,7 +636,7 @@ def _add_veto_narrative(report: object, manifests: dict) -> None:
     )
 
 
-def _add_unpredictable_narrative(report: object, upstream: dict) -> None:
+def _add_unpredictable_narrative(report: object, upstream: dict, notables: dict) -> None:
     """Section 21: What the Model Cannot Predict."""
     # Get holdout AUC from upstream
     house_hr = upstream.get("house", {}).get("holdout_results")
@@ -488,6 +653,8 @@ def _add_unpredictable_narrative(report: object, upstream: dict) -> None:
         if xgb.height > 0:
             senate_auc = f"{xgb['auc'].item():.3f}"
 
+    mav_names = _maverick_name_list(notables)
+
     report.add(
         TextSection(
             id="unpredictable",
@@ -499,7 +666,7 @@ def _add_unpredictable_narrative(report: object, upstream: dict) -> None:
                 "<p>The model's errors are not random. They cluster around specific "
                 "legislators and specific bills:</p>"
                 "<ul>"
-                "<li><strong>Maverick legislators</strong> — Schreiber, Dietrich, Tyson — "
+                f"<li><strong>Maverick legislators</strong> — {mav_names} — "
                 "account for a disproportionate share of prediction errors. Their votes "
                 "are harder to predict because they don't follow the party-ideology pattern "
                 "that works for everyone else.</li>"
@@ -594,7 +761,7 @@ def _add_surprising_votes_table(report: object, upstream: dict) -> None:
     )
 
 
-def _add_methodology_note(report: object) -> None:
+def _add_methodology_note(report: object, session: str) -> None:
     """Section 27: How We Did This."""
     report.add(
         TextSection(
@@ -602,7 +769,7 @@ def _add_methodology_note(report: object) -> None:
             title="How We Did This",
             html=(
                 "<p>This report synthesizes seven independent analyses of roll call votes "
-                "from the Kansas Legislature's 2025-2026 session. The raw data — every "
+                f"from the Kansas Legislature's {session} session. The raw data — every "
                 "recorded Yea, Nay, and absence — was scraped from "
                 "<a href='https://kslegislature.gov'>kslegislature.gov</a> and stored as "
                 "structured CSV files.</p>"
@@ -763,7 +930,7 @@ def _add_discrimination_figure(report: object, upstream_plots: dict, chamber: st
         )
 
 
-def _add_full_scorecard(report: object, leg_dfs: dict) -> None:
+def _add_full_scorecard(report: object, leg_dfs: dict, session: str) -> None:
     """Section 30: Full Legislature Scorecard — ALL legislators, both chambers."""
     frames = []
     for chamber in ("house", "senate"):
@@ -793,7 +960,7 @@ def _add_full_scorecard(report: object, leg_dfs: dict) -> None:
 
     html = make_gt(
         display,
-        title="Full Legislature Scorecard — 2025-2026 Session",
+        title=f"Full Legislature Scorecard — {session}",
         subtitle="Every legislator, sorted by ideology within chamber",
         column_labels={
             "full_name": "Legislator",

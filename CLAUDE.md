@@ -151,6 +151,7 @@ Each analysis phase has a design document in `analysis/design/` recording the st
 - `analysis/design/pca.md` — Imputation, standardization, sign convention, holdout design
 - `analysis/design/irt.md` — Priors (Normal(0,1) discrimination, anchors), MCMC settings, missing data handling
 - `analysis/design/clustering.md` — Three methods for robustness, party loyalty metric, k=2 finding
+- `analysis/design/synthesis.md` — Data-driven detection thresholds, graceful degradation, template narratives
 
 ## Analytics
 
@@ -189,7 +190,8 @@ Each analysis phase produces a self-contained HTML report (`{analysis}_report.ht
 
 - `analysis/report.py` — Generic: section types (`TableSection`, `FigureSection`, `TextSection`), `ReportBuilder`, `make_gt()` helper, Jinja2 template + CSS.
 - `analysis/eda_report.py` — EDA-specific: `build_eda_report()` adds ~19 sections.
-- `analysis/synthesis.py` + `analysis/synthesis_report.py` — Synthesis: loads upstream parquets from all 7 phases, joins into unified legislator DataFrames, produces 22-section narrative HTML report for nontechnical audiences.
+- `analysis/synthesis_detect.py` — Detection: pure data logic that identifies notable legislators (mavericks, bridge-builders, metric paradoxes) from upstream DataFrames. Returns frozen dataclasses with pre-formatted titles and subtitles.
+- `analysis/synthesis.py` + `analysis/synthesis_report.py` — Synthesis: loads upstream parquets from all 7 phases, joins into unified legislator DataFrames, runs data-driven detection, produces 27-30 section narrative HTML report for nontechnical audiences. No hardcoded legislator names.
 - `RunContext` auto-writes the HTML in `finalize()` if sections were added.
 
 Tables use great_tables with polars DataFrames (no pandas conversion). Plots are base64-embedded PNGs. See ADR-0004 for rationale.

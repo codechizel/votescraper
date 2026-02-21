@@ -17,6 +17,7 @@ Read these sequentially. Each phase inherits data from the previous one, so assu
 | 5. Network | [network.md](network.md) | Kappa threshold, Louvain multi-resolution, centrality measures, NaN = no edge |
 | 6. Prediction | [prediction.md](prediction.md) | XGBoost primary, skip cluster/community labels, IRT features dominate, 82% base rate |
 | 7. Indices | [indices.md](indices.md) | CQ-standard party votes, Rice on all votes, weighted maverick by chamber margin |
+| 8. Synthesis | [synthesis.md](synthesis.md) | Data-driven detection thresholds, graceful degradation, template narratives |
 
 ## Investigations
 
