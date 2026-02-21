@@ -27,6 +27,20 @@ from ks_vote_scraper.models import IndividualVote, RollCall
 from ks_vote_scraper.output import save_csvs
 from ks_vote_scraper.session import KSSession
 
+# Compiled regex for extracting bill type and number from URLs
+_BILL_URL_RE = re.compile(r"/(sb|hb|scr|hcr|sr|hr)(\d+)/", re.I)
+
+# The 5 vote categories used by the KS Legislature (in display order)
+VOTE_CATEGORIES = ("Yea", "Nay", "Present and Passing", "Absent and Not Voting", "Not Voting")
+
+
+def _normalize_bill_code(text: str) -> str:
+    """Normalize a bill identifier to a compact lowercase code.
+
+    "SB 1" -> "sb1", "HB 2124" -> "hb2124"
+    """
+    return re.sub(r"\s+", "", text).lower()
+
 
 def _clean_text(element: BeautifulSoup) -> str:
     """Extract text from a BeautifulSoup element, preserving spaces around inline tags.
@@ -69,6 +83,16 @@ class FetchFailure:
     error_type: str
     error_message: str
     timestamp: str
+
+
+@dataclass(frozen=True)
+class VoteLink:
+    """A link to a roll call vote page, discovered on a bill page."""
+
+    bill_number: str
+    bill_path: str
+    vote_url: str
+    vote_text: str
 
 
 class KSVoteScraper:
@@ -273,7 +297,7 @@ class KSVoteScraper:
     @staticmethod
     def _bill_sort_key(url: str):
         """Sort bills: SB before HB, then numerically."""
-        match = re.search(r"/(sb|hb|scr|hcr|sr|hr)(\d+)/", url, re.I)
+        match = _BILL_URL_RE.search(url)
         if match:
             prefix = match.group(1).lower()
             number = int(match.group(2))
@@ -316,8 +340,7 @@ class KSVoteScraper:
             history = bill.get("HISTORY", [])
             has_vote = any("Yea:" in entry.get("status", "") for entry in history)
             if has_vote:
-                # Normalize: "SB 1" -> "sb1", "HB 2124" -> "hb2124"
-                code = re.sub(r"\s+", "", bill_no).lower()
+                code = _normalize_bill_code(bill_no)
                 bills_with_votes.add(code)
                 sponsors = bill.get("ORIGINAL_SPONSOR", [])
                 bill_metadata[code] = {
@@ -332,7 +355,7 @@ class KSVoteScraper:
         # Filter bill_urls to only those matching a bill code with votes
         filtered = []
         for url in bill_urls:
-            match = re.search(r"/(sb|hb|scr|hcr|sr|hr)(\d+)/", url, re.I)
+            match = _BILL_URL_RE.search(url)
             if match:
                 code = f"{match.group(1).lower()}{match.group(2)}"
                 if code in bills_with_votes:
@@ -343,7 +366,7 @@ class KSVoteScraper:
 
     # -- Step 2: Find vote links on each bill page ----------------------------
 
-    def get_vote_links(self, bill_urls: list[str]) -> list[dict]:
+    def get_vote_links(self, bill_urls: list[str]) -> list[VoteLink]:
         """Visit each bill page and extract vote_view links."""
         print("\n" + "=" * 60)
         print("Step 2: Scanning bill pages for roll call vote links...")
@@ -354,7 +377,7 @@ class KSVoteScraper:
         fetched = self._fetch_many(full_urls, desc="Scanning bills")
 
         # Parse phase (sequential)
-        vote_links = []
+        vote_links: list[VoteLink] = []
         bills_with_votes = 0
         sponsors_backfilled = 0
 
@@ -370,14 +393,13 @@ class KSVoteScraper:
             found_votes = False
             for link in soup.find_all("a", href=re.compile(r"vote_view")):
                 href = link["href"]
-                text = link.get_text(strip=True)
                 vote_links.append(
-                    {
-                        "bill_number": bill_number,
-                        "bill_path": bill_path,
-                        "vote_url": href if href.startswith("http") else BASE_URL + href,
-                        "vote_text": text,
-                    }
+                    VoteLink(
+                        bill_number=bill_number,
+                        bill_path=bill_path,
+                        vote_url=href if href.startswith("http") else BASE_URL + href,
+                        vote_text=link.get_text(strip=True),
+                    )
                 )
                 found_votes = True
 
@@ -385,9 +407,9 @@ class KSVoteScraper:
                 bills_with_votes += 1
 
             # Backfill sponsor from HTML when the API returned it empty
-            bill_code = re.sub(r"\s+", "", bill_number).lower()
-            meta = self.bill_metadata.get(bill_code)
-            if meta is not None and not meta.get("sponsor"):
+            bill_code = _normalize_bill_code(bill_number)
+            meta = self.bill_metadata.get(bill_code, {})
+            if meta and not meta.get("sponsor"):
                 sponsor = self._extract_sponsor(soup)
                 if sponsor:
                     meta["sponsor"] = sponsor
@@ -408,7 +430,7 @@ class KSVoteScraper:
             if match:
                 return match.group(1).upper()
 
-        match = re.search(r"/(sb|hb|scr|hcr|sr|hr)(\d+)/", bill_path, re.I)
+        match = _BILL_URL_RE.search(bill_path)
         if match:
             return f"{match.group(1).upper()} {match.group(2)}"
         return bill_path
@@ -449,27 +471,27 @@ class KSVoteScraper:
 
     # -- Step 3: Parse each vote page -----------------------------------------
 
-    def parse_vote_pages(self, vote_links: list[dict]):
+    def parse_vote_pages(self, vote_links: list[VoteLink]):
         """Visit each vote_view page and extract individual legislator votes."""
         print("\n" + "=" * 60)
         print("Step 3: Parsing individual roll call vote pages...")
         print("=" * 60)
 
         # Fetch phase (concurrent)
-        vote_urls = [vl["vote_url"] for vl in vote_links]
+        vote_urls = [vl.vote_url for vl in vote_links]
         fetched = self._fetch_many(vote_urls, desc="Fetching votes")
 
         # Parse phase (sequential — mutates self.rollcalls, self.individual_votes, etc.)
         for vl in tqdm(vote_links, desc="Parsing votes", unit="vote"):
-            result = fetched.get(vl["vote_url"])
+            result = fetched.get(vl.vote_url)
             if not result or not result.ok:
                 if result and result.error_type:
                     self.failures.append(
                         FetchFailure(
-                            bill_number=vl["bill_number"],
-                            vote_text=vl.get("vote_text", ""),
-                            vote_url=vl["vote_url"],
-                            bill_path=vl.get("bill_path", ""),
+                            bill_number=vl.bill_number,
+                            vote_text=vl.vote_text,
+                            vote_url=vl.vote_url,
+                            bill_path=vl.bill_path,
                             status_code=result.status_code,
                             error_type=result.error_type,
                             error_message=result.error_message or "",
@@ -477,7 +499,7 @@ class KSVoteScraper:
                         )
                     )
                     print(
-                        f"  FAILED: {vl['bill_number']} - {vl.get('vote_text', '')}"
+                        f"  FAILED: {vl.bill_number} - {vl.vote_text}"
                         f" ({result.error_type}: {result.error_message})"
                     )
                 continue
@@ -488,10 +510,10 @@ class KSVoteScraper:
         print(f"  Collected {len(self.individual_votes)} individual votes")
         print(f"  Found {len(self.legislators)} unique legislators")
 
-    def _parse_vote_page(self, soup: BeautifulSoup, vote_link: dict):
+    def _parse_vote_page(self, soup: BeautifulSoup, vote_link: VoteLink):
         """Parse a single vote_view page."""
-        bill_number = vote_link["bill_number"]
-        vote_url = vote_link["vote_url"]
+        bill_number = vote_link.bill_number
+        vote_url = vote_link.vote_url
 
         # Extract vote ID from URL
         vote_id_match = re.search(r"vote_view/([^/]+)/", vote_url)
@@ -565,19 +587,13 @@ class KSVoteScraper:
         passed = self._derive_passed(result)
 
         # Look up short_title and sponsor from KLISS API metadata
-        bill_code = re.sub(r"\s+", "", bill_number).lower()
+        bill_code = _normalize_bill_code(bill_number)
         meta = self.bill_metadata.get(bill_code, {})
         short_title = meta.get("short_title", "")
         sponsor = meta.get("sponsor", "")
 
         # Parse vote categories
-        vote_categories = {
-            "Yea": [],
-            "Nay": [],
-            "Present and Passing": [],
-            "Absent and Not Voting": [],
-            "Not Voting": [],
-        }
+        vote_categories: dict[str, list[dict]] = {cat: [] for cat in VOTE_CATEGORIES}
 
         current_category = None
         for element in soup.find_all(["h2", "h3", "a"]):

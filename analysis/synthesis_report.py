@@ -160,11 +160,7 @@ def _add_pipeline_figure(report: object, plots_dir: Path) -> None:
 
 def _add_party_line_narrative(report: object, manifests: dict) -> None:
     """Section 3: The Party Line Is Everything."""
-    net = manifests.get("network", {})
     clust = manifests.get("clustering", {})
-    assortativity = net.get("house_assortativity_party", 1.0)
-    ari_h = net.get("house_community_vs_party_ari", 1.0)
-    ari_s = net.get("senate_community_vs_party_ari", 1.0)
     mean_ari = clust.get("house_mean_ari", 0.96)
 
     report.add(
@@ -200,7 +196,7 @@ def _add_party_line_narrative(report: object, manifests: dict) -> None:
 
 
 def _add_network_figure(report: object, upstream_plots: dict, chamber: str) -> None:
-    """Sections 4-5: Community network diagrams (reused)."""
+    """Sections 5-6: Community network diagrams (reused)."""
     key = f"community_network_{chamber}"
     path = upstream_plots.get(key)
     if path is not None and path.exists():
@@ -224,7 +220,7 @@ def _add_network_figure(report: object, upstream_plots: dict, chamber: str) -> N
 
 
 def _add_dashboard_figure(report: object, plots_dir: Path, chamber: str) -> None:
-    """Sections 6-7: Dashboard scatter (new)."""
+    """Sections 7-8: Dashboard scatter (new)."""
     path = plots_dir / f"dashboard_scatter_{chamber}.png"
     if path.exists():
         chamber_title = chamber.title()
@@ -245,7 +241,7 @@ def _add_dashboard_figure(report: object, plots_dir: Path, chamber: str) -> None
 
 
 def _add_mavericks_narrative(report: object, leg_dfs: dict) -> None:
-    """Section 8: Who Are the Mavericks?"""
+    """Section 9: Who Are the Mavericks?"""
     # Pull Schreiber stats
     house = leg_dfs.get("house")
     schreiber = None
@@ -309,7 +305,7 @@ def _add_profile_figure(
     slug_short: str,
     title: str,
 ) -> None:
-    """Sections 9, 12, 16: Profile cards (new)."""
+    """Sections 11, 15, 19: Profile cards (new)."""
     path = plots_dir / f"profile_{slug_short}.png"
     if path.exists():
         report.add(
@@ -327,7 +323,7 @@ def _add_profile_figure(
 
 
 def _add_forest_figure(report: object, upstream_plots: dict, chamber: str) -> None:
-    """Sections 10, 13: IRT forest plots (reused)."""
+    """Sections 12, 16: IRT forest plots (reused)."""
     key = f"forest_{chamber}"
     path = upstream_plots.get(key)
     if path is not None and path.exists():
@@ -341,34 +337,39 @@ def _add_forest_figure(report: object, upstream_plots: dict, chamber: str) -> No
                     f"Bayesian IRT ideal point estimates for every {chamber_title} member. "
                     "Each dot is a legislator's estimated position, and horizontal lines "
                     "show the 95% credible interval (uncertainty). Negative values = more "
-                    "liberal, positive = more conservative. Red = Republican, Blue = Democrat."
+                    "liberal, positive = more conservative. Red = Republican, Blue = Democrat. "
+                    "Diamond markers and italic callouts highlight legislators with notable "
+                    "patterns — such as Tyson (most conservative but lowest loyalty) and "
+                    "Schreiber (most bipartisan House member)."
                 ),
             )
         )
 
 
-def _add_maverick_landscape(report: object, upstream_plots: dict) -> None:
-    """Section 11: Maverick landscape (reused)."""
-    path = upstream_plots.get("maverick_landscape_house")
+def _add_maverick_landscape(report: object, upstream_plots: dict, chamber: str) -> None:
+    """Sections 13-14: Maverick landscape (reused, per chamber)."""
+    key = f"maverick_landscape_{chamber}"
+    path = upstream_plots.get(key)
     if path is not None and path.exists():
+        chamber_title = chamber.title()
         report.add(
             FigureSection.from_file(
-                "maverick-landscape",
-                "Strategic vs Performative Independence (House)",
+                f"maverick-landscape-{chamber}",
+                f"Strategic vs Performative Independence ({chamber_title})",
                 path,
                 caption=(
-                    "Each dot is a House member, positioned by ideology (horizontal) and "
-                    "party unity (vertical). Legislators in the lower portion of their "
-                    "party's cluster defect more often. Those near the center may be "
-                    "genuinely moderate; those at the extremes may defect in the opposite "
-                    "direction from what you'd expect."
+                    f"Each dot is a {chamber_title} member, positioned by ideology "
+                    "(horizontal) and party unity (vertical). Legislators in the lower "
+                    "portion of their party's cluster defect more often. Those near the "
+                    "center may be genuinely moderate; those at the extremes may defect in "
+                    "the opposite direction from what you'd expect."
                 ),
             )
         )
 
 
 def _add_tyson_narrative(report: object, leg_dfs: dict) -> None:
-    """Section 14: The Tyson Paradox."""
+    """Section 17: The Tyson Paradox."""
     senate = leg_dfs.get("senate")
     tyson = None
     if senate is not None:
@@ -411,7 +412,7 @@ def _add_tyson_narrative(report: object, leg_dfs: dict) -> None:
 
 
 def _add_tyson_figure(report: object, plots_dir: Path) -> None:
-    """Section 15: Three Measures, Three Answers."""
+    """Section 18: Three Measures, Three Answers."""
     path = plots_dir / "tyson_paradox.png"
     if path.exists():
         report.add(
@@ -431,7 +432,7 @@ def _add_tyson_figure(report: object, plots_dir: Path) -> None:
 
 
 def _add_veto_narrative(report: object, manifests: dict) -> None:
-    """Section 17: Veto Overrides Tell You Nothing New."""
+    """Section 20: Veto Overrides Tell You Nothing New."""
     indices = manifests.get("indices", {})
     h_veto = indices.get("house_veto_overrides", {})
     s_veto = indices.get("senate_veto_overrides", {})
@@ -471,7 +472,7 @@ def _add_veto_narrative(report: object, manifests: dict) -> None:
 
 
 def _add_unpredictable_narrative(report: object, upstream: dict) -> None:
-    """Section 18: What the Model Cannot Predict."""
+    """Section 21: What the Model Cannot Predict."""
     # Get holdout AUC from upstream
     house_hr = upstream.get("house", {}).get("holdout_results")
     senate_hr = upstream.get("senate", {}).get("holdout_results")
@@ -512,27 +513,30 @@ def _add_unpredictable_narrative(report: object, upstream: dict) -> None:
     )
 
 
-def _add_accuracy_figure(report: object, upstream_plots: dict) -> None:
-    """Section 19: Per-legislator accuracy (reused)."""
-    path = upstream_plots.get("per_legislator_accuracy_house")
+def _add_accuracy_figure(report: object, upstream_plots: dict, chamber: str) -> None:
+    """Sections 23-24: Per-legislator accuracy (reused, per chamber)."""
+    key = f"per_legislator_accuracy_{chamber}"
+    path = upstream_plots.get(key)
     if path is not None and path.exists():
+        chamber_title = chamber.title()
         report.add(
             FigureSection.from_file(
-                "accuracy-house",
-                "Some Legislators Are Harder to Predict",
+                f"accuracy-{chamber}",
+                f"Some {chamber_title} Members Are Harder to Predict",
                 path,
                 caption=(
-                    "Prediction accuracy per House member on the holdout test set. Most "
-                    "legislators are predicted correctly 93-97% of the time. The few below "
-                    "90% are the mavericks and moderates — the ones whose votes carry the "
-                    "most information about what's actually happening in the legislature."
+                    f"Prediction accuracy per {chamber_title} member on the holdout test "
+                    "set. Most legislators are predicted correctly 93-97% of the time. "
+                    "Callout boxes highlight the bottom five — the mavericks and moderates "
+                    "whose votes carry the most information about what's actually happening "
+                    "in the legislature."
                 ),
             )
         )
 
 
 def _add_surprising_votes_table(report: object, upstream: dict) -> None:
-    """Section 20: The 20 Most Surprising Votes."""
+    """Section 26: The 20 Most Surprising Votes."""
     # Combine house and senate surprising votes
     frames = []
     for chamber in ("house", "senate"):
@@ -591,7 +595,7 @@ def _add_surprising_votes_table(report: object, upstream: dict) -> None:
 
 
 def _add_methodology_note(report: object) -> None:
-    """Section 21: How We Did This."""
+    """Section 27: How We Did This."""
     report.add(
         TextSection(
             id="methodology",
@@ -624,13 +628,143 @@ def _add_methodology_note(report: object) -> None:
                 "20 recorded votes are excluded for reliability. Chambers are analyzed "
                 "separately because they vote on different bills. All analyses use the same "
                 "upstream data and filters for consistency.</p>"
+                "<p>The next two figures provide visual evidence that the Bayesian model "
+                "is trustworthy.</p>"
             ),
         )
     )
 
 
+def _add_clusters_figure(report: object, upstream_plots: dict) -> None:
+    """Section 4: k=2 clustering visual proof."""
+    path = upstream_plots.get("irt_clusters_house")
+    if path is not None and path.exists():
+        report.add(
+            FigureSection.from_file(
+                "clusters",
+                "Two Groups — And They're Exactly the Two Parties",
+                path,
+                caption=(
+                    "Three different clustering algorithms were asked to find natural voting "
+                    "blocs — without being told anything about party labels. All three found "
+                    "exactly two groups, and those groups match the two parties almost perfectly. "
+                    "This is visual proof that party is the dominant structure in Kansas "
+                    "legislative voting."
+                ),
+            )
+        )
+
+
+def _add_agreement_figure(report: object, upstream_plots: dict, chamber: str) -> None:
+    """Section 10: Agreement heatmap."""
+    key = f"agreement_heatmap_{chamber}"
+    path = upstream_plots.get(key)
+    if path is not None and path.exists():
+        chamber_title = chamber.title()
+        report.add(
+            FigureSection.from_file(
+                f"agreement-{chamber}",
+                f"How Often Do {chamber_title} Members Vote Together?",
+                path,
+                caption=(
+                    f"A heatmap of pairwise voting agreement among {chamber_title} members. "
+                    "Bright cells indicate legislators who almost always vote the same way; "
+                    "dark cells indicate frequent disagreement. The two bright blocks along "
+                    "the diagonal are the two parties — internally cohesive, externally opposed."
+                ),
+            )
+        )
+
+
+def _add_shap_figure(report: object, upstream_plots: dict, chamber: str) -> None:
+    """Section 22: SHAP feature importance."""
+    key = f"shap_bar_{chamber}"
+    path = upstream_plots.get(key)
+    if path is not None and path.exists():
+        chamber_title = chamber.title()
+        report.add(
+            FigureSection.from_file(
+                f"shap-{chamber}",
+                f"What Predicts a Yea Vote? ({chamber_title})",
+                path,
+                caption=(
+                    "SHAP values show how much each feature pushes the model toward "
+                    "predicting Yea or Nay. The most important features are a legislator's "
+                    "ideology score and how sharply the bill divides the legislature. "
+                    "Party label matters less than you might expect — because ideology "
+                    "already captures most of what party tells you."
+                ),
+            )
+        )
+
+
+def _add_calibration_figure(report: object, upstream_plots: dict, chamber: str) -> None:
+    """Section 25: Calibration plot."""
+    key = f"calibration_{chamber}"
+    path = upstream_plots.get(key)
+    if path is not None and path.exists():
+        chamber_title = chamber.title()
+        report.add(
+            FigureSection.from_file(
+                f"calibration-{chamber}",
+                f"When the Model Says 80%, It Means 80% ({chamber_title})",
+                path,
+                caption=(
+                    "A well-calibrated model is one where confidence matches reality. "
+                    "This plot shows that when the model predicts an 80% chance of Yea, "
+                    "roughly 80% of those votes actually are Yea. The closer the curve "
+                    "follows the diagonal, the more trustworthy the model's confidence "
+                    "scores are."
+                ),
+            )
+        )
+
+
+def _add_convergence_figure(report: object, upstream_plots: dict, chamber: str) -> None:
+    """Section 28: MCMC convergence summary."""
+    key = f"convergence_summary_{chamber}"
+    path = upstream_plots.get(key)
+    if path is not None and path.exists():
+        chamber_title = chamber.title()
+        report.add(
+            FigureSection.from_file(
+                f"convergence-{chamber}",
+                f"The Model Ran Independent Chains and They All Agree ({chamber_title})",
+                path,
+                caption=(
+                    "Bayesian models run multiple independent estimation chains. If they "
+                    "all arrive at similar answers, we can trust the results. This figure "
+                    "shows that the chains converged — the ideology estimates are stable "
+                    "and reproducible, not artifacts of randomness."
+                ),
+            )
+        )
+
+
+def _add_discrimination_figure(report: object, upstream_plots: dict, chamber: str) -> None:
+    """Section 29: Bill discrimination parameters."""
+    key = f"discrimination_{chamber}"
+    path = upstream_plots.get(key)
+    if path is not None and path.exists():
+        chamber_title = chamber.title()
+        report.add(
+            FigureSection.from_file(
+                f"discrimination-{chamber}",
+                f"How Sharply Do Bills Divide the Legislature? ({chamber_title})",
+                path,
+                caption=(
+                    "Each bar represents a bill's 'discrimination' — how sharply it "
+                    "separates liberal from conservative legislators. High-discrimination "
+                    "bills are the ones where ideology matters most: knowing where a "
+                    "legislator sits on the spectrum tells you almost exactly how they voted. "
+                    "Low-discrimination bills cut across ideological lines."
+                ),
+            )
+        )
+
+
 def _add_full_scorecard(report: object, leg_dfs: dict) -> None:
-    """Section 22: Full Legislature Scorecard — ALL legislators, both chambers."""
+    """Section 30: Full Legislature Scorecard — ALL legislators, both chambers."""
     frames = []
     for chamber in ("house", "senate"):
         df = leg_dfs.get(chamber)

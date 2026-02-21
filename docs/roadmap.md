@@ -129,7 +129,7 @@ Method documented in `Analytic_Methods/16_BAY_hierarchical_legislator_model.md`.
 **Priority:** High — unlocks temporal analysis and honest out-of-sample validation.
 
 - Run `uv run ks-vote-scraper 2023` to scrape the prior biennium
-- Produces a second set of 3 CSVs in `data/ks_2023/`
+- Produces a second set of 3 CSVs in `data/90th_2023-2024/`
 - Enables: cross-session prediction validation, ideological drift tracking, multi-session index stacking
 
 ### 6. Cross-Session Validation

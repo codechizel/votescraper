@@ -47,6 +47,13 @@ Two frozen dataclasses:
 - Vote type/result classification
 - Legislator enrichment
 
+Module-level constants and helpers:
+- `_BILL_URL_RE` — compiled regex for extracting bill type/number from URLs
+- `VOTE_CATEGORIES` — the 5 vote categories as a tuple
+- `_normalize_bill_code()` — normalize "SB 1" → "sb1" for lookups
+
+Dataclasses: `FetchResult`, `FetchFailure`, `VoteLink` (all frozen).
+
 ### output.py
 CSV export. Uses `dataclasses.asdict()` for RollCall/IndividualVote. Legislators use explicit field list since they're stored as plain dicts.
 
@@ -72,7 +79,7 @@ Every multi-URL operation follows this two-phase pattern. The fetch phase only r
 
 ## Caching
 
-HTML responses are cached to disk at `data/ks_{session}/.cache/`. Cache key is the URL with `/`, `:`, `?` replaced by `_`, truncated to 200 chars. Cache hits skip rate limiting entirely. Use `--clear-cache` to force fresh fetches.
+HTML responses are cached to disk at `data/{output_name}/.cache/`. Cache key is the URL with `/`, `:`, `?` replaced by `_`, truncated to 200 chars. Cache hits skip rate limiting entirely. Use `--clear-cache` to force fresh fetches.
 
 ## Data Flow: Vote Page → Data Objects
 

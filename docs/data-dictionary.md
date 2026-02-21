@@ -2,17 +2,17 @@
 
 ## Output Files
 
-The scraper produces three CSV files per session in `data/ks_{session}/`.
+The scraper produces three CSV files per session in `data/{output_name}/` (e.g., `data/91st_2025-2026/`).
 
 ---
 
-## votes CSV (`ks_{session}_votes.csv`)
+## votes CSV (`{output_name}_votes.csv`)
 
 One row per legislator per roll call. The largest file (~68K rows for a full session).
 
 | Field | Type | Description |
 |---|---|---|
-| `session` | str | Session label, e.g., "2025-26" or "2024 Special" |
+| `session` | str | Session label, e.g., "91st (2025-2026)" or "2024 Special" |
 | `bill_number` | str | Bill identifier, e.g., "SB 1", "HB 2124", "SCR 1601" |
 | `bill_title` | str | Full bill title from vote page `<h4>`, truncated to 500 chars |
 | `vote_id` | str | Unique vote identifier from URL, e.g., "je_20250320203513_2584" |
@@ -28,7 +28,7 @@ One row per legislator per roll call. The largest file (~68K rows for a full ses
 
 ---
 
-## rollcalls CSV (`ks_{session}_rollcalls.csv`)
+## rollcalls CSV (`{output_name}_rollcalls.csv`)
 
 One row per roll call vote. Summary-level data (~500 rows for a full session).
 
@@ -59,7 +59,7 @@ One row per roll call vote. Summary-level data (~500 rows for a full session).
 
 ---
 
-## legislators CSV (`ks_{session}_legislators.csv`)
+## legislators CSV (`{output_name}_legislators.csv`)
 
 One row per legislator (~172 rows for a full session).
 

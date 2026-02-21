@@ -38,7 +38,8 @@ src/ks_vote_scraper/
   session.py   - KSSession: biennium URL resolution (current vs historical vs special)
   models.py    - IndividualVote + RollCall dataclasses
   scraper.py   - KSVoteScraper: 4-step pipeline (bill URLs → API filter → vote parse → legislator enrich)
-               - FetchResult/FetchFailure dataclasses: typed HTTP results with error classification
+               - FetchResult/FetchFailure/VoteLink dataclasses: typed HTTP results + vote page links
+               - Module constants: _BILL_URL_RE, VOTE_CATEGORIES, _normalize_bill_code()
   output.py    - CSV export (3 files: votes, rollcalls, legislators)
   cli.py       - argparse CLI entry point
 ```
@@ -91,7 +92,7 @@ The KS Legislature uses different URL prefixes per session — this is the singl
 - `vote_id` encodes a timestamp: `je_20250320203513` → `2025-03-20T20:35:13`
 - `bill_metadata` (short_title, sponsor) comes from the KLISS API — already fetched during pre-filtering, no extra requests needed
 - `passed` is derived from result text: passed/adopted/prevailed/concurred → True; failed/rejected/sustained → False
-- Vote categories: Yea, Nay, Present and Passing, Absent and Not Voting, Not Voting (exactly these 5)
+- Vote categories: defined in `VOTE_CATEGORIES` constant — Yea, Nay, Present and Passing, Absent and Not Voting, Not Voting (exactly these 5)
 - Legislator slugs encode chamber: `sen_` prefix = Senate, `rep_` prefix = House
 
 ## Output
