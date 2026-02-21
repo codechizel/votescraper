@@ -187,9 +187,6 @@ def _add_feature_summary(
         "alpha_mean": "IRT bill params",
         "beta_mean": "IRT bill params",
         "is_veto_override": "IRT bill params",
-        "yea_count": "rollcalls.csv",
-        "nay_count": "rollcalls.csv",
-        "margin": "Computed",
         "day_of_session": "Computed",
         "xi_x_beta": "Interaction (xi × beta)",
     }
@@ -419,8 +416,8 @@ def _add_feature_importance_interpretation(
     legislators ideologically. High-discrimination bills are more predictable.</li>
     <li><strong>xi_mean (ideal point)</strong> captures the legislator's ideological position.
     Combined with beta, it determines whether a legislator is on the "Yea" or "Nay" side.</li>
-    <li><strong>margin</strong> captures how close the vote was. Wide-margin votes are nearly
-    unanimous and easy to predict; close votes are harder.</li>
+    <li><strong>alpha_mean (bill difficulty)</strong> captures how easy or hard a bill is to
+    pass. Easy bills (negative alpha) have more predictable Yea votes.</li>
     <li><strong>loyalty_rate</strong> captures party discipline. Low-loyalty legislators
     (Tyson, Schreiber) are harder to predict.</li>
     <li>If <strong>party_binary</strong> ranks below IRT features, it confirms that IRT

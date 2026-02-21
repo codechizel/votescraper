@@ -94,8 +94,9 @@ Three models trained per chamber on ~30K-60K (legislator, roll call) pairs:
 - **Random Forest** — non-boosted tree comparison (200 trees)
 
 Features combine legislator attributes (IRT ideal point, party loyalty, PCA scores,
-network centrality) with bill attributes (IRT difficulty/discrimination, vote type,
-margin) and a legislator-bill interaction (xi × beta).
+network centrality) with bill attributes (IRT difficulty/discrimination, vote type)
+and a legislator-bill interaction (xi × beta). Vote counts (yea/nay/margin) are
+intentionally excluded — they encode the outcome and would constitute target leakage.
 
 ### Bill Passage Prediction (Bill Level)
 Same three models on ~250-500 roll calls per chamber. Smaller sample requires
@@ -304,13 +305,10 @@ def build_vote_features(
     cent_features = centrality.select("legislator_slug", "betweenness", "eigenvector", "pagerank")
     chamber_votes = chamber_votes.join(cent_features, on="legislator_slug", how="left")
 
-    # Join bill/roll call features
+    # Join bill/roll call features (vote counts excluded — they encode the outcome)
     rc_features = rollcalls.select(
         "vote_id",
         "vote_type",
-        "yea_count",
-        "nay_count",
-        "total_votes",
         "vote_date",
     )
     chamber_votes = chamber_votes.join(rc_features, on="vote_id", how="left", suffix="_rc")
@@ -323,8 +321,6 @@ def build_vote_features(
     # Use the vote_date from the right (rollcalls) join if present
     date_col = "vote_date_rc" if "vote_date_rc" in chamber_votes.columns else "vote_date"
     chamber_votes = chamber_votes.with_columns(
-        # Margin: |yea - nay| / total
-        ((pl.col("yea_count") - pl.col("nay_count")).abs() / pl.col("total_votes")).alias("margin"),
         # Day of session
         _compute_day_of_session(chamber_votes[date_col]),
         # Interaction: xi × beta
@@ -340,6 +336,9 @@ def build_vote_features(
         )
 
     # Select final feature columns + metadata
+    # NOTE: yea_count, nay_count, margin are intentionally excluded — they encode
+    # the vote outcome (target leakage). The model must predict from pre-vote
+    # features only: legislator attributes + bill structural parameters.
     feature_cols = [
         "party_binary",
         "xi_mean",
@@ -353,9 +352,6 @@ def build_vote_features(
         "alpha_mean",
         "beta_mean",
         "is_veto_override",
-        "yea_count",
-        "nay_count",
-        "margin",
         "day_of_session",
         "xi_x_beta",
     ]
@@ -407,9 +403,10 @@ def build_bill_features(
     rc = rc.join(bp, on="vote_id", how="left")
 
     # Compute derived features
+    # NOTE: margin excluded — it's derived from vote counts that determine passage
+    # (target leakage). alpha_mean also excluded — IRT difficulty is a near-proxy
+    # for the passage outcome it was estimated from.
     rc = rc.with_columns(
-        # Margin
-        ((pl.col("yea_count") - pl.col("nay_count")).abs() / pl.col("total_votes")).alias("margin"),
         # Day of session
         _compute_day_of_session(rc["vote_date"]),
         # Chamber binary (1=House, 0=Senate)
@@ -436,11 +433,13 @@ def build_bill_features(
         )
 
     # Select feature columns
+    # NOTE: alpha_mean and margin excluded — alpha (IRT difficulty) is a near-proxy
+    # for passage outcome, and margin is derived from the vote counts that determine
+    # passage. Both constitute target leakage. beta (discrimination) is retained
+    # because it measures how partisan a bill is, not whether it passes.
     feature_cols = [
-        "alpha_mean",
         "beta_mean",
         "is_veto_override",
-        "margin",
         "day_of_session",
         "chamber_binary",
     ]

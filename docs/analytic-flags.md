@@ -224,21 +224,21 @@ This is a living document — add entries as each analysis phase surfaces new fi
 ### Vote Prediction: IRT Features Dominate
 
 - **Phase:** Prediction
-- **Observation:** XGBoost holdout AUC = 0.984 (House), 0.978 (Senate). All three models (LogReg, XGBoost, RF) perform within 0.5% of each other. Performance far exceeds majority-class baseline (72.7% House, 75.9% Senate) and party-only baseline (~75%).
+- **Observation:** XGBoost holdout AUC = 0.984 (House), 0.979 (Senate). All three models (LogReg, XGBoost, RF) perform within 0.5% of each other. Performance far exceeds majority-class baseline (72.7% House, 75.9% Senate) and party-only baseline (~75%). An initial version included vote counts (yea_count, nay_count, margin) as features — target leakage. Removing them had negligible impact (AUC unchanged), confirming the IRT features carry the signal.
 - **Explanation:** The IRT ideal points (xi_mean) and bill parameters (alpha_mean, beta_mean) capture the dominant voting structure so well that model choice barely matters. The xi_x_beta interaction feature (legislator position × bill discrimination) encodes the core IRT prediction directly. Adding network centrality, PCA scores, and party loyalty provides marginal improvement over IRT alone.
 - **Downstream:** For any future prediction task, IRT ideal points + bill parameters are sufficient. The additional features (centrality, PCA, loyalty) add complexity without meaningful accuracy gains. A simple IRT-based prediction (logistic on xi × beta) would likely achieve AUC > 0.95.
 
 ### Hardest-to-Predict House Legislators
 
 - **Phase:** Prediction
-- **Observation:** Bottom 5 accuracy: Helgerson (D, 0.872, xi=-0.99), Carmichael (D, 0.877, xi=-2.74), Poetter Parshall (R, 0.877, xi=+0.56), Rhiley (R, 0.889, xi=+1.22), Bergkamp (R, 0.892, xi=+1.29). The list includes both centrist Republicans and strongly ideological Democrats.
-- **Explanation:** Helgerson (xi=-0.99) is the most moderate Democrat — close to the party boundary, making vote direction uncertain. Carmichael and Brownlee Paige (0.907, xi=-3.25) are extreme Democrats who occasionally cross party lines in ways the model doesn't predict. Poetter Parshall, Rhiley, and Bergkamp are moderate Republicans (xi +0.5 to +1.3) whose centrist positions leave them unpredictable on contested bills.
+- **Observation:** Bottom 5 accuracy: Helgerson (D, 0.860, xi=-0.99), Carmichael (D, 0.863, xi=-2.74), Poetter Parshall (R, 0.865, xi=+0.56), Barth (R, 0.877, xi=+0.87), Winn (D, 0.882, xi=-3.25). The list includes both centrist Republicans and strongly ideological Democrats.
+- **Explanation:** Helgerson (xi=-0.99) is the most moderate Democrat — close to the party boundary, making vote direction uncertain. Carmichael and Winn are extreme Democrats who occasionally cross party lines in ways the model doesn't predict. Poetter Parshall and Barth are moderate Republicans (xi +0.5 to +0.9) whose centrist positions leave them unpredictable on contested bills.
 - **Downstream:** Notably, Schreiber (xi=+0.018, previously flagged as "hardest House R to predict") does NOT appear in the bottom 10. Despite his near-zero IRT position and low party loyalty (0.617), his votes are predictable enough — possibly because his centrism is consistent rather than erratic.
 
 ### Hardest-to-Predict Senate Legislators
 
 - **Phase:** Prediction
-- **Observation:** Bottom 5 accuracy: Shallenburger (R, 0.907, xi=+1.12), Clifford (R, 0.933, xi=+0.82), Blew (R, 0.948, xi=+1.90), Titus (R, 0.948, xi=+1.15), Haley (D, 0.952, xi=-1.83). Shallenburger is 2.6% worse than the next senator.
+- **Observation:** Bottom 5 accuracy: Shallenburger (R, 0.896, xi=+1.12), Clifford (R, 0.928, xi=+0.82), Titus (R, 0.948, xi=+1.15), Blew (R, 0.953, xi=+1.90), Francisco (D, 0.953, xi=-2.71). Shallenburger is 3.2% worse than the next senator.
 - **Explanation:** Shallenburger (Vice President of the Senate) may exercise procedural votes that diverge from ideological predictions. Clifford (xi=+0.82) is the most moderate Senate Republican with significant vote counts, making his direction harder to call. Note: Tyson (xi=+4.17, loyalty=0.417) does NOT appear in the bottom 10 — her contrarian pattern on routine bills is apparently consistent enough to be predictable.
 - **Downstream:** The 1D IRT model captures Tyson's behavior better than expected. Her dissent, while frequent, is concentrated on low-discrimination bills where the model already assigns lower confidence. The "Tyson paradox" remains interpretively important but not a prediction problem.
 
@@ -247,14 +247,14 @@ This is a living document — add entries as each analysis phase surfaces new fi
 - **Phase:** Prediction
 - **Observation:** House #1 surprise: Shannon Francis (R) voted Nay on SB 105 (Conference Committee Report) — model was 99.96% confident Yea. Senate #1 surprise: Caryn Tyson (R) voted Yea on HB 2007 (Corson amendment, rejected) — model was 99.98% confident Nay. Most surprising votes in both chambers are Republicans voting Nay on bills with near-unanimous R support.
 - **Explanation:** The Tyson surprise confirms the paradox from a different angle: the model correctly treats her as ultraconservative, but on this specific amendment (Corson), she broke from the conservative position. Francis's Nay on a conference committee report likely reflects a substantive policy objection invisible to the 1D model.
-- **Downstream:** Issue-specific variables (bill topic, committee of origin) are the obvious missing features that could explain these high-confidence misses. The current feature set has no bill content — only structural features (IRT difficulty/discrimination, vote type, margin).
+- **Downstream:** Issue-specific variables (bill topic, committee of origin) are the obvious missing features that could explain these high-confidence misses. The current feature set has no bill content — only structural features (IRT difficulty/discrimination, vote type, day of session).
 
-### Bill Passage Prediction: Near-Perfect but Small N
+### Bill Passage Prediction: Moderate Performance, Small N
 
 - **Phase:** Prediction
-- **Observation:** House: RF holdout AUC=1.000, temporal split AUC=0.900 (90 test bills). Senate: all models achieve AUC=1.000 on temporal split (59 test bills). Passage rates are 86.2% (House) and 88.1% (Senate).
-- **Explanation:** With ~200-300 bills and 86-88% passage rates, there are only 20-40 failed bills per chamber. The temporal test sets contain very few failures (Senate may have 0-7 failed bills in the test set of 59). Perfect AUC on this few examples is likely a small-sample artifact, not genuine perfect prediction.
-- **Downstream:** Bill passage prediction should not be over-interpreted. The temporal split results (train on first 70%, test on last 30%) are more honest than random holdout but still underpowered. With more sessions of data, cross-session validation (train on 2023-24, test on 2025-26) would be more meaningful.
+- **Observation:** After removing leaky features (margin, alpha_mean), bill passage performance dropped substantially. House: best holdout AUC=0.955 (XGBoost), temporal split AUC=0.858 (RF). Senate: best holdout AUC=0.931 (LogReg), temporal split still 1.000 (small-N artifact, 59 test bills). Features are now limited to beta (discrimination), vote type, bill prefix, day of session, and is_veto_override.
+- **Explanation:** The initial near-perfect results were driven by alpha_mean (IRT difficulty — a near-proxy for passage outcome) and margin (derived from vote counts that determine passage). With honest features, the model has limited signal: beta captures how partisan a bill is, vote type and bill prefix capture procedural structure, but none directly encode "will this pass." The remaining signal likely comes from beta — highly discriminating (partisan) bills have more predictable outcomes.
+- **Downstream:** Bill passage prediction from pre-vote features alone is a genuinely hard problem. The Senate temporal split of 1.000 is still a small-N artifact (59 test bills, ~7 failures). Cross-session validation would provide more honest estimates. Adding bill text features (NLP on titles/descriptions) could help.
 
 ### Shallenburger Name Not Stripped
 

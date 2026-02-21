@@ -72,6 +72,16 @@
 
 **Why:** In the IRT model, the probability of a Yea vote is a function of xi × beta (ideal point × discrimination). Making this interaction explicit helps the logistic regression baseline. XGBoost can discover it automatically, but the explicit feature improves interpretability.
 
+### Feature exclusion: vote counts and margin (target leakage)
+
+**Decision:** Exclude `yea_count`, `nay_count`, and `margin` from the vote-level feature set. Exclude `margin` and `alpha_mean` from the bill-level feature set.
+
+**Why — vote-level:** `yea_count` and `nay_count` are the roll call tallies that *include* the target legislator's vote. If legislator X voted Yea, their vote is part of `yea_count`. The model learns "when yea_count is high, predict Yea" — circular reasoning. `margin = |yea - nay| / total` encodes how lopsided the vote was, which is unavailable at prediction time. These features would inflate accuracy by giving the model post-hoc information about the vote outcome.
+
+**Why — bill-level:** `margin` is derived from the vote counts that determine passage (bills pass when yea > nay). Including it is equivalent to telling the model the answer. `alpha_mean` (IRT difficulty) is a near-proxy for passage — it measures how easy a bill was to pass, estimated from the same votes that determine the `passed` label. Failed bills: alpha = +0.3 to +1.1; passed bills: alpha = -1.7 to -2.4. Nearly separable by alpha alone.
+
+**What remains:** For vote-level: IRT bill parameters (alpha, beta), vote type, day of session. For bill-level: beta (discrimination — measures partisanship, not outcome), vote type, bill prefix, day of session, is_veto_override.
+
 ### Override handling: binary indicator
 
 **Decision:** Use `is_veto_override` as a binary indicator, not Kappa-based network features.

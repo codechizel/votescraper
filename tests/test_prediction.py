@@ -411,7 +411,6 @@ class TestBuildVoteFeatures:
             "alpha_mean",
             "beta_mean",
             "is_veto_override",
-            "margin",
             "day_of_session",
             "xi_x_beta",
             "vote_binary",
