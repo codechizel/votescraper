@@ -79,7 +79,7 @@ Every multi-URL operation follows this two-phase pattern. The fetch phase only r
 
 ## Caching
 
-HTML responses are cached to disk at `data/{output_name}/.cache/`. Cache key is the URL with `/`, `:`, `?` replaced by `_`, truncated to 200 chars. Cache hits skip rate limiting entirely. Use `--clear-cache` to force fresh fetches.
+All responses fetched via `_get()` are cached to disk at `data/{output_name}/.cache/`, including KLISS API JSON. Cache key is the URL with `/`, `:`, `?` replaced by `_`, truncated to 200 chars. Cache hits skip rate limiting entirely. Use `--clear-cache` to force fresh fetches.
 
 ## Data Flow: Vote Page → Data Objects
 
@@ -102,9 +102,9 @@ The vote page HTML structure:
 The Kansas Legislative Information Systems and Services (KLISS) API provides structured bill data at `/li/api/v13/rev-1/bill_status/`. The scraper uses it for:
 
 1. **Pre-filtering**: Only fetch bill pages for bills that have roll call votes (checks `HISTORY` entries for "Yea:" text)
-2. **Metadata enrichment**: Captures `SHORTTITLE` and `ORIGINAL_SPONSOR` from the same API call — no additional HTTP requests needed
+2. **Metadata enrichment**: Captures `SHORTTITLE` and `ORIGINAL_SPONSOR` from the same API call — no additional HTTP requests needed. Stored on `self.bill_metadata` for downstream sponsor backfill in `get_vote_links()`.
 
-The API response format varies: sometimes a raw JSON array, sometimes `{"content": [...]}`.
+The API call routes through `_get()` for retries, rate limiting, and caching. The response format varies: sometimes a raw JSON array, sometimes `{"content": [...]}`. The error-page guard in `_get()` only applies to HTML responses (detected by leading `<`), so JSON passes through safely.
 
 ## Vote Classification
 

@@ -59,8 +59,11 @@ All HTTP fetching uses a two-phase pattern: concurrent fetch via ThreadPoolExecu
 - **Timeout** → `"timeout"`, exponential backoff
 - **Connection error** → `"connection"`, fixed delay
 - **Other 4xx** → `"permanent"`, no retry
+- **HTTP 200 error page** → `"permanent"`, detected by HTML heuristics (short body, error `<title>`); JSON responses bypass this check
 
-Failed vote page fetches are recorded as `FetchFailure` with bill context (bill number, motion text, bill path) and written to a JSON failure manifest at the end of the run.
+All HTTP requests go through `_get()`, including the KLISS API call. This ensures consistent retries, rate limiting, caching, and error-page detection everywhere.
+
+Failed fetches and parse failures (e.g., 0 votes on a page) are recorded as `FetchFailure` with bill context (bill number, motion text, bill path) and written to a JSON failure manifest at the end of the run.
 
 ## HTML Parsing Pitfalls (Hard-Won Lessons)
 

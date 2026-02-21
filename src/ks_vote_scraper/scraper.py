@@ -171,12 +171,15 @@ class KSVoteScraper:
                 resp.raise_for_status()
                 html = resp.text
 
-                # Guard against error pages served with HTTP 200
-                if (
-                    not html
-                    or len(html) < 200
-                    or "<title>Page Not Found</title>" in html
-                    or "<title>Error</title>" in html
+                # Guard against HTML error pages served with HTTP 200
+                # (only applies to HTML responses, not JSON API responses)
+                if not html or (
+                    "<" in html[:10]
+                    and (
+                        len(html) < 200
+                        or "<title>Page Not Found</title>" in html
+                        or "<title>Error</title>" in html
+                    )
                 ):
                     return FetchResult(
                         url=url,
@@ -314,20 +317,27 @@ class KSVoteScraper:
         for "Yea:" in the status field, which indicates a recorded vote.
         Returns (filtered_urls, bill_metadata) where bill_metadata maps
         normalized codes like "sb1" to {"short_title": ..., "sponsor": ...}.
+        Also stores the metadata on self.bill_metadata for downstream use
+        by get_vote_links() (sponsor backfill).
 
         Falls back to (full list, {}) if the API call fails.
         """
         api_url = f"{BASE_URL}{self.session.api_path}/bill_status/"
         print(f"\n  Pre-filtering via KLISS API: {api_url}")
 
-        try:
-            self._rate_limit()
+        result = self._get(api_url)
+        if not result.ok:
+            print(
+                f"  API pre-filter failed"
+                f" ({result.error_type}: {result.error_message}),"
+                f" falling back to full scan"
+            )
+            return bill_urls, {}
 
-            resp = self.http.get(api_url, timeout=REQUEST_TIMEOUT)
-            resp.raise_for_status()
-            data = resp.json()
-        except (requests.RequestException, ValueError) as e:
-            print(f"  API pre-filter failed ({e}), falling back to full scan")
+        try:
+            data = json.loads(result.html)
+        except (json.JSONDecodeError, TypeError) as e:
+            print(f"  API pre-filter returned invalid JSON ({e}), falling back to full scan")
             return bill_urls, {}
 
         # Build a set of bill codes that have votes (e.g., "sb1", "hb2124")
@@ -638,6 +648,18 @@ class KSVoteScraper:
 
         if total_votes == 0:
             print(f"  WARNING: 0 votes parsed for {bill_number} — skipping")
+            self.failures.append(
+                FetchFailure(
+                    bill_number=bill_number,
+                    vote_text=vote_link.vote_text,
+                    vote_url=vote_link.vote_url,
+                    bill_path=vote_link.bill_path,
+                    status_code=200,
+                    error_type="parsing",
+                    error_message="0 votes parsed from page",
+                    timestamp=datetime.now().isoformat(timespec="seconds"),
+                )
+            )
             return
 
         # Create RollCall summary
