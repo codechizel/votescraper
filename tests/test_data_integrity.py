@@ -1,7 +1,7 @@
 """
 Data integrity tests for scraped Kansas Legislature CSVs.
 
-These tests run against the REAL data in data/ks_2025_26/ and verify
+These tests run against the REAL data in data/91st_2025-2026/ and verify
 structural correctness. They catch scraping bugs, not analysis logic.
 
 Run: uv run pytest tests/test_data_integrity.py -v
@@ -12,9 +12,13 @@ from pathlib import Path
 import polars as pl
 import pytest
 
+from ks_vote_scraper.session import KSSession
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
-DATA_DIR = Path("data/ks_2025_26")
+_SESSION = KSSession.from_year(2025)
+DATA_DIR = Path("data") / _SESSION.output_name
+_PREFIX = _SESSION.output_name
 HOUSE_SEATS = 125
 SENATE_SEATS = 40
 VALID_VOTE_CATEGORIES = {"Yea", "Nay", "Present and Passing", "Absent and Not Voting", "Not Voting"}
@@ -27,19 +31,19 @@ VALID_PARTIES = {"Republican", "Democrat"}
 @pytest.fixture(scope="module")
 def votes() -> pl.DataFrame:
     """Load the individual votes CSV."""
-    return pl.read_csv(DATA_DIR / "ks_2025_26_votes.csv")
+    return pl.read_csv(DATA_DIR / f"{_PREFIX}_votes.csv")
 
 
 @pytest.fixture(scope="module")
 def rollcalls() -> pl.DataFrame:
     """Load the rollcall summaries CSV."""
-    return pl.read_csv(DATA_DIR / "ks_2025_26_rollcalls.csv")
+    return pl.read_csv(DATA_DIR / f"{_PREFIX}_rollcalls.csv")
 
 
 @pytest.fixture(scope="module")
 def legislators() -> pl.DataFrame:
     """Load the legislators CSV."""
-    return pl.read_csv(DATA_DIR / "ks_2025_26_legislators.csv")
+    return pl.read_csv(DATA_DIR / f"{_PREFIX}_legislators.csv")
 
 
 # ── Structural Tests ─────────────────────────────────────────────────────────

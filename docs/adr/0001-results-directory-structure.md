@@ -5,7 +5,7 @@
 
 ## Context
 
-EDA Phase 1 outputs 8 PNGs, 7 parquets, and 1 JSON manifest, all dumped flat into `data/ks_2025_26/analysis/`. As we add more analysis phases (PCA, IRT, clustering), this flat structure becomes unmanageable:
+EDA Phase 1 outputs 8 PNGs, 7 parquets, and 1 JSON manifest, all dumped flat into `data/91st_2025-2026/analysis/`. As we add more analysis phases (PCA, IRT, clustering), this flat structure becomes unmanageable:
 
 - No separation between analysis types (EDA vs PCA vs IRT outputs mixed together)
 - No run history (each run overwrites the previous)
@@ -20,7 +20,7 @@ Analysis outputs go in a structured `results/` directory:
 
 ```
 results/
-  2025-2026/
+  91st_2025-2026/
     eda/
       2026-02-19/
         plots/                  <- PNGs
@@ -35,7 +35,7 @@ results/
 
 Key design choices:
 
-- **Session uses full years** (`2025-2026` not `2025-26`): avoids ambiguity, matches the legislature's own naming
+- **Biennium naming** (`91st_2025-2026` not `2025-26`): uses the Kansas Legislature's numbered biennium system for clarity
 - **Date-based run directories**: each run is immutable; re-running creates a new date directory (or overwrites same-day)
 - **`latest` symlink**: relative path (`latest -> 2026-02-19`) so the tree is portable across machines
 - **`run_info.json`**: captures git hash, timestamp, Python version, and script parameters for full reproducibility

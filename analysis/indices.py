@@ -86,10 +86,10 @@ Weighted: defections weighted by chamber vote closeness (close votes matter more
 
 ## Inputs
 
-Reads from `data/ks_{session}/`:
-- `ks_{slug}_votes.csv` — Individual vote records (~68K rows)
-- `ks_{slug}_rollcalls.csv` — Roll call metadata (~882 rows)
-- `ks_{slug}_legislators.csv` — Legislator metadata (~172 rows)
+Reads from `data/{legislature}_{start}-{end}/`:
+- `{output_name}_votes.csv` — Individual vote records (~68K rows)
+- `{output_name}_rollcalls.csv` — Roll call metadata (~882 rows)
+- `{output_name}_legislators.csv` — Legislator metadata (~172 rows)
 
 Optionally reads from upstream results:
 - `results/<session>/irt/latest/data/ideal_points_{chamber}.parquet`
@@ -201,14 +201,11 @@ def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
     print(f"  Saved: {path.name}")
 
 
-def _resolve_session_full(session: str) -> str:
-    """Convert '2025-26' to '2025-2026' for results paths."""
-    session_full = session.replace("_", "-")
-    parts = session_full.split("-")
-    if len(parts) == 2 and len(parts[1]) == 2:
-        century = parts[0][:2]
-        session_full = f"{parts[0]}-{century}{parts[1]}"
-    return session_full
+def _resolve_results_name(session: str) -> str:
+    """Convert '2025-26' to biennium results directory name (e.g. '91st_2025-2026')."""
+    from ks_vote_scraper.session import KSSession
+
+    return KSSession.from_session_string(session).output_name
 
 
 def _rice_from_counts(party_counts: pl.DataFrame) -> pl.DataFrame:
@@ -234,10 +231,10 @@ def load_raw_data(
     data_dir: Path,
 ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     """Load raw CSVs: votes, rollcalls, legislators."""
-    session_slug = data_dir.name.removeprefix("ks_")
-    votes = pl.read_csv(data_dir / f"ks_{session_slug}_votes.csv")
-    rollcalls = pl.read_csv(data_dir / f"ks_{session_slug}_rollcalls.csv")
-    legislators = pl.read_csv(data_dir / f"ks_{session_slug}_legislators.csv")
+    prefix = data_dir.name
+    votes = pl.read_csv(data_dir / f"{prefix}_votes.csv")
+    rollcalls = pl.read_csv(data_dir / f"{prefix}_rollcalls.csv")
+    legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
     return votes, rollcalls, legislators
 
 
@@ -1608,27 +1605,28 @@ def save_filtering_manifest(manifest: dict, out_dir: Path) -> None:
 
 def main() -> None:
     args = parse_args()
-    session_slug = args.session.replace("-", "_")
+
+    from ks_vote_scraper.session import KSSession
+
+    ks = KSSession.from_session_string(args.session)
 
     if args.data_dir:
         data_dir = Path(args.data_dir)
     else:
-        data_dir = Path(f"data/ks_{session_slug}")
+        data_dir = Path("data") / ks.output_name
 
-    session_full = _resolve_session_full(args.session)
+    results_root = Path("results") / ks.output_name
 
-    irt_dir = Path(args.irt_dir) if args.irt_dir else Path(f"results/{session_full}/irt/latest")
+    irt_dir = Path(args.irt_dir) if args.irt_dir else results_root / "irt" / "latest"
     network_dir = (
-        Path(args.network_dir)
-        if args.network_dir
-        else Path(f"results/{session_full}/network/latest")
+        Path(args.network_dir) if args.network_dir else results_root / "network" / "latest"
     )
     clustering_dir = (
         Path(args.clustering_dir)
         if args.clustering_dir
-        else Path(f"results/{session_full}/clustering/latest")
+        else results_root / "clustering" / "latest"
     )
-    eda_dir = Path(args.eda_dir) if args.eda_dir else Path(f"results/{session_full}/eda/latest")
+    eda_dir = Path(args.eda_dir) if args.eda_dir else results_root / "eda" / "latest"
 
     with RunContext(
         session=args.session,

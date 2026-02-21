@@ -1,5 +1,5 @@
 """
-Synthesis report builder — 22 narrative-driven sections.
+Synthesis report builder — 30 narrative-driven sections.
 
 Assembles findings from all 7 analysis phases into a single HTML report
 written for nontechnical audiences. Called by synthesis.py.
@@ -26,28 +26,64 @@ def build_synthesis_report(
     plots_dir: Path,
     upstream_plots: dict[str, Path],
 ) -> None:
-    """Build the full 22-section synthesis report."""
+    """Build the full 30-section synthesis report."""
+    # 1. intro
     _add_intro(report, manifests)
+    # 2. pipeline
     _add_pipeline_figure(report, plots_dir)
+    # 3. party-line (de-jargoned)
     _add_party_line_narrative(report, manifests)
+    # 4. clusters (NEW)
+    _add_clusters_figure(report, upstream_plots)
+    # 5-6. network house/senate (updated captions)
     _add_network_figure(report, upstream_plots, "house")
     _add_network_figure(report, upstream_plots, "senate")
+    # 7-8. dashboard house/senate
     _add_dashboard_figure(report, plots_dir, "house")
     _add_dashboard_figure(report, plots_dir, "senate")
+    # 9. mavericks
     _add_mavericks_narrative(report, leg_dfs)
+    # 10. agreement-house (NEW)
+    _add_agreement_figure(report, upstream_plots, "house")
+    # 11. profile-schreiber
     _add_profile_figure(report, plots_dir, "schreiber", "Legislator Profile: Mark Schreiber (R-60)")
+    # 12. forest-house (updated caption)
     _add_forest_figure(report, upstream_plots, "house")
-    _add_maverick_landscape(report, upstream_plots)
+    # 13. maverick-landscape-house
+    _add_maverick_landscape(report, upstream_plots, "house")
+    # 14. maverick-landscape-senate (NEW)
+    _add_maverick_landscape(report, upstream_plots, "senate")
+    # 15. profile-dietrich
     _add_profile_figure(report, plots_dir, "dietrich", "Legislator Profile: Brenda Dietrich (R-20)")
+    # 16. forest-senate (updated caption)
     _add_forest_figure(report, upstream_plots, "senate")
+    # 17. tyson-paradox
     _add_tyson_narrative(report, leg_dfs)
+    # 18. tyson-visual
     _add_tyson_figure(report, plots_dir)
+    # 19. profile-tyson
     _add_profile_figure(report, plots_dir, "tyson", "Legislator Profile: Caryn Tyson (R-12)")
+    # 20. veto-overrides
     _add_veto_narrative(report, manifests)
+    # 21. unpredictable
     _add_unpredictable_narrative(report, upstream)
-    _add_accuracy_figure(report, upstream_plots)
+    # 22. shap-house (NEW)
+    _add_shap_figure(report, upstream_plots, "house")
+    # 23. accuracy-house (updated caption)
+    _add_accuracy_figure(report, upstream_plots, "house")
+    # 24. accuracy-senate (NEW)
+    _add_accuracy_figure(report, upstream_plots, "senate")
+    # 25. calibration (NEW)
+    _add_calibration_figure(report, upstream_plots, "house")
+    # 26. surprising-votes
     _add_surprising_votes_table(report, upstream)
+    # 27. methodology (updated)
     _add_methodology_note(report)
+    # 28. convergence (NEW)
+    _add_convergence_figure(report, upstream_plots, "house")
+    # 29. discrimination (NEW)
+    _add_discrimination_figure(report, upstream_plots, "house")
+    # 30. full-scorecard
     _add_full_scorecard(report, leg_dfs)
 
     print(f"  Report: {len(report._sections)} sections added")
@@ -141,17 +177,16 @@ def _add_party_line_narrative(report: object, manifests: dict) -> None:
                 "about how a Kansas legislator votes.</p>"
                 "<p>Here is how every method confirms this:</p>"
                 "<ul>"
-                f"<li><strong>Clustering:</strong> The optimal number of voting blocs is k=2 — "
-                "exactly the two parties. Three different clustering algorithms agree with "
-                f"an Adjusted Rand Index of {mean_ari:.2f} (1.0 = perfect agreement).</li>"
-                f"<li><strong>Networks:</strong> When we build a network of legislators connected "
-                f"by voting similarity, party assortativity = {assortativity:.1f} — meaning "
-                "<em>zero</em> cross-party edges survive the similarity threshold. The two parties "
-                "form completely separate voting blocs.</li>"
-                f"<li><strong>Community detection:</strong> The Louvain algorithm independently "
-                "discovers the two parties with ARI = "
-                f"{ari_h:.2f} (House) and {ari_s:.2f} (Senate) "
-                "against the known party labels.</li>"
+                "<li><strong>Clustering:</strong> The optimal number of voting blocs is 2 — "
+                "exactly the two parties. Three different clustering algorithms agree, "
+                f"matching actual party labels {mean_ari:.0%} of the time.</li>"
+                "<li><strong>Networks:</strong> When we build a network of legislators connected "
+                "by voting similarity, party separation is total — not a single strong "
+                "connection crosses the party line. The two parties form completely "
+                "separate voting blocs.</li>"
+                "<li><strong>Community detection:</strong> A community-detection algorithm — "
+                "which knows nothing about party labels — independently discovers the two "
+                "parties in both the House and the Senate.</li>"
                 "<li><strong>Prediction:</strong> A model using party, ideology, and bill features "
                 "achieves AUC = 0.98 — near-perfect prediction.</li>"
                 "</ul>"
@@ -179,7 +214,10 @@ def _add_network_figure(report: object, upstream_plots: dict, chamber: str) -> N
                     f"Each dot is a {chamber_title} member. Lines connect legislators who vote "
                     "similarly (Cohen's Kappa > 0.4). Colors are communities detected by the "
                     "Louvain algorithm — which independently rediscovers the two parties. "
-                    "Notice the complete separation: no edges cross the party divide."
+                    "Legislators circled with a red halo are bridge legislators — members "
+                    "with unusually high cross-party connections. Their names are labeled "
+                    "directly on the plot. Notice the complete separation: no edges cross "
+                    "the party divide."
                 ),
             )
         )

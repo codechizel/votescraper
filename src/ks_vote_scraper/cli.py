@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None) -> None:
         "-o",
         type=Path,
         default=None,
-        help="Output directory (default: data/ks_{session}/)",
+        help="Output directory (default: data/{legislature}_{start}-{end}/)",
     )
     parser.add_argument(
         "--delay",
@@ -62,12 +62,12 @@ def main(argv: list[str] | None = None) -> None:
         print("  Regular sessions:")
         for start in range(CURRENT_BIENNIUM_START, 2010, -2):
             s = KSSession.from_year(start)
-            print(f"    {s.label:10s}  {BASE_URL}{s.bills_path}")
+            print(f"    {s.label:22s}  {BASE_URL}{s.bills_path}")
         print()
         print("  Special sessions:")
         for year in SPECIAL_SESSION_YEARS:
             s = KSSession(start_year=year, special=True)
-            print(f"    {s.label:16s}  {BASE_URL}{s.li_prefix}/")
+            print(f"    {s.label:22s}  {BASE_URL}{s.li_prefix}/")
         return
 
     session = KSSession.from_year(args.year, special=args.special)

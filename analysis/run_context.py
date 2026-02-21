@@ -55,24 +55,29 @@ class _TeeStream:
 
 
 def _normalize_session(session: str) -> str:
-    """Convert session shorthand to full-year format for directory naming.
+    """Convert session shorthand to biennium directory format.
+
+    Uses the Kansas Legislature numbering scheme (e.g., 91st_2025-2026).
 
     Examples:
-        "2025-26"  -> "2025-2026"
-        "2023-24"  -> "2023-2024"
+        "2025-26"  -> "91st_2025-2026"
+        "2023-24"  -> "90th_2023-2024"
         "2024s"    -> "2024s"  (special sessions pass through)
-        "2025_26"  -> "2025-2026"
+        "2025_26"  -> "91st_2025-2026"
     """
     # Normalize underscores to hyphens first
     session = session.replace("_", "-")
 
-    # Match "YYYY-YY" pattern (abbreviated end year)
-    m = re.match(r"^(\d{4})-(\d{2})$", session)
+    # Match "YYYY-YY" or "YYYY-YYYY" pattern (biennium)
+    m = re.match(r"^(\d{4})-(\d{2,4})$", session)
     if m:
+        try:
+            from ks_vote_scraper.session import KSSession
+        except ImportError:
+            from session import KSSession  # type: ignore[no-redef]
         start = int(m.group(1))
-        end_short = m.group(2)
-        century = str(start)[:2]
-        return f"{start}-{century}{end_short}"
+        ks = KSSession.from_year(start)
+        return ks.output_name
 
     return session
 
@@ -88,7 +93,7 @@ def _git_commit_hash() -> str:
         )
         if result.returncode == 0:
             return result.stdout.strip()
-    except FileNotFoundError, subprocess.TimeoutExpired:
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     return "unknown"
 

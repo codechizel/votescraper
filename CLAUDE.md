@@ -96,12 +96,14 @@ The KS Legislature uses different URL prefixes per session — this is the singl
 
 ## Output
 
-Three CSVs in `data/ks_{session}/`:
-- `ks_{session}_votes.csv` — ~68K rows, one per legislator per roll call
-- `ks_{session}_rollcalls.csv` — ~500 rows, one per roll call
-- `ks_{session}_legislators.csv` — ~172 rows, one per legislator
+Three CSVs in `data/{legislature}_{start}-{end}/` (e.g. `data/91st_2025-2026/`):
+- `{output_name}_votes.csv` — ~68K rows, one per legislator per roll call
+- `{output_name}_rollcalls.csv` — ~500 rows, one per roll call
+- `{output_name}_legislators.csv` — ~172 rows, one per legislator
 
-Cache lives in `data/ks_{session}/.cache/`. Use `--clear-cache` to force fresh fetches.
+Cache lives in `data/{output_name}/.cache/`. Use `--clear-cache` to force fresh fetches.
+
+The directory naming uses the Kansas Legislature numbering scheme: `(start_year - 1879) // 2 + 18` gives the legislature number (e.g., 91 for 2025-2026). Special sessions use `{year}s` (e.g., `2024s`).
 
 When vote page fetches fail, a `failure_manifest.json` is written alongside the CSVs with per-failure context (bill number, motion, URL, status code, error type). Failed pages are never cached, so re-running the scraper automatically retries them.
 
@@ -111,7 +113,7 @@ Analysis outputs go in `results/` (gitignored), organized by session, analysis t
 
 ```
 results/
-  2025-2026/
+  91st_2025-2026/
     eda/
       2026-02-19/
         plots/                  ← PNGs
@@ -131,7 +133,7 @@ results/
 
 All analysis scripts use `RunContext` from `analysis/run_context.py` as a context manager to get structured output. Downstream scripts read from `results/<session>/<analysis>/latest/`.
 
-Session uses full years in results paths: `2025-2026` (not `2025-26` or `2025_26`).
+Results paths use the biennium naming scheme: `91st_2025-2026` (matching the data directory).
 
 ## Architecture Decision Records
 

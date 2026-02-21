@@ -66,7 +66,7 @@ Filtering manifests from each phase for headline statistics.
 
 ## Outputs
 
-- `synthesis_report.html` — Self-contained 22-section narrative report
+- `synthesis_report.html` — Self-contained 30-section narrative report
 - `plots/` — 8 new PNGs: 2 dashboard scatters, 3 profile cards, 1 paradox, 1 pipeline
 - `data/` — Unified legislator DataFrames per chamber (parquet)
 
@@ -813,6 +813,14 @@ def main() -> None:
             "forest_senate": "irt/forest_senate.png",
             "maverick_landscape_house": "indices/maverick_landscape_house.png",
             "per_legislator_accuracy_house": "prediction/per_legislator_accuracy_house.png",
+            "shap_bar_house": "prediction/shap_bar_house.png",
+            "irt_clusters_house": "clustering/irt_clusters_house.png",
+            "convergence_summary_house": "irt/convergence_summary_house.png",
+            "calibration_house": "prediction/calibration_house.png",
+            "agreement_heatmap_house": "eda/agreement_heatmap_house.png",
+            "discrimination_house": "irt/discrimination_house.png",
+            "maverick_landscape_senate": "indices/maverick_landscape_senate.png",
+            "per_legislator_accuracy_senate": "prediction/per_legislator_accuracy_senate.png",
         }
         for key, rel_path in plot_map.items():
             phase = rel_path.split("/")[0]

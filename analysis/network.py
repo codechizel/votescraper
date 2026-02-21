@@ -323,9 +323,9 @@ def load_vote_matrices(eda_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
 
 def load_metadata(data_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Load rollcall and legislator CSVs for metadata enrichment."""
-    session_slug = data_dir.name.removeprefix("ks_")
-    rollcalls = pl.read_csv(data_dir / f"ks_{session_slug}_rollcalls.csv")
-    legislators = pl.read_csv(data_dir / f"ks_{session_slug}_legislators.csv")
+    prefix = data_dir.name
+    rollcalls = pl.read_csv(data_dir / f"{prefix}_rollcalls.csv")
+    legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
     return rollcalls, legislators
 
 
@@ -1638,34 +1638,32 @@ def plot_edge_weight_distribution(
 
 def main() -> None:
     args = parse_args()
-    session_slug = args.session.replace("-", "_")
+
+    from ks_vote_scraper.session import KSSession
+
+    ks = KSSession.from_session_string(args.session)
 
     if args.data_dir:
         data_dir = Path(args.data_dir)
     else:
-        data_dir = Path(f"data/ks_{session_slug}")
+        data_dir = Path("data") / ks.output_name
 
-    # Resolve session for results paths
-    session_full = args.session.replace("_", "-")
-    parts = session_full.split("-")
-    if len(parts) == 2 and len(parts[1]) == 2:
-        century = parts[0][:2]
-        session_full = f"{parts[0]}-{century}{parts[1]}"
+    results_root = Path("results") / ks.output_name
 
     if args.eda_dir:
         eda_dir = Path(args.eda_dir)
     else:
-        eda_dir = Path(f"results/{session_full}/eda/latest")
+        eda_dir = results_root / "eda" / "latest"
 
     if args.irt_dir:
         irt_dir = Path(args.irt_dir)
     else:
-        irt_dir = Path(f"results/{session_full}/irt/latest")
+        irt_dir = results_root / "irt" / "latest"
 
     if args.clustering_dir:
         clustering_dir = Path(args.clustering_dir)
     else:
-        clustering_dir = Path(f"results/{session_full}/clustering/latest")
+        clustering_dir = results_root / "clustering" / "latest"
 
     with RunContext(
         session=args.session,

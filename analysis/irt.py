@@ -111,9 +111,9 @@ Reads from `results/<session>/pca/latest/data/`:
 - `pc_scores_house.parquet` — House PCA scores (for anchor selection + comparison)
 - `pc_scores_senate.parquet` — Senate PCA scores
 
-Reads from `data/ks_{session}/`:
-- `ks_{slug}_rollcalls.csv` — Roll call metadata
-- `ks_{slug}_legislators.csv` — Legislator metadata
+Reads from `data/{legislature}_{start}-{end}/`:
+- `{output_name}_rollcalls.csv` — Roll call metadata
+- `{output_name}_legislators.csv` — Legislator metadata
 
 ## Outputs
 
@@ -283,9 +283,9 @@ def load_pca_scores(pca_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
 
 def load_metadata(data_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Load rollcall and legislator CSVs for metadata enrichment."""
-    session_slug = data_dir.name.removeprefix("ks_")
-    rollcalls = pl.read_csv(data_dir / f"ks_{session_slug}_rollcalls.csv")
-    legislators = pl.read_csv(data_dir / f"ks_{session_slug}_legislators.csv")
+    prefix = data_dir.name
+    rollcalls = pl.read_csv(data_dir / f"{prefix}_rollcalls.csv")
+    legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
     return rollcalls, legislators
 
 
@@ -2048,29 +2048,27 @@ def save_filtering_manifest(manifest: dict, out_dir: Path) -> None:
 
 def main() -> None:
     args = parse_args()
-    session_slug = args.session.replace("-", "_")
+
+    from ks_vote_scraper.session import KSSession
+
+    ks = KSSession.from_session_string(args.session)
 
     if args.data_dir:
         data_dir = Path(args.data_dir)
     else:
-        data_dir = Path(f"data/ks_{session_slug}")
+        data_dir = Path("data") / ks.output_name
 
-    # Resolve session for results paths
-    session_full = args.session.replace("_", "-")
-    parts = session_full.split("-")
-    if len(parts) == 2 and len(parts[1]) == 2:
-        century = parts[0][:2]
-        session_full = f"{parts[0]}-{century}{parts[1]}"
+    results_root = Path("results") / ks.output_name
 
     if args.eda_dir:
         eda_dir = Path(args.eda_dir)
     else:
-        eda_dir = Path(f"results/{session_full}/eda/latest")
+        eda_dir = results_root / "eda" / "latest"
 
     if args.pca_dir:
         pca_dir = Path(args.pca_dir)
     else:
-        pca_dir = Path(f"results/{session_full}/pca/latest")
+        pca_dir = results_root / "pca" / "latest"
 
     with RunContext(
         session=args.session,

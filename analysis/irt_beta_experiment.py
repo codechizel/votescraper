@@ -415,12 +415,14 @@ def main() -> None:
     args = parser.parse_args()
 
     # Resolve paths
-    session_slug = args.session.replace("-", "_")
-    full_session = f"20{args.session.split('-')[0][2:]}-20{args.session.split('-')[1]}"
-    data_dir = Path(f"data/ks_{session_slug}")
-    eda_dir = Path(f"results/{full_session}/eda/latest")
-    pca_dir = Path(f"results/{full_session}/pca/latest")
-    output_dir = Path(f"results/{full_session}/irt/beta_experiment")
+    from ks_vote_scraper.session import KSSession
+
+    ks = KSSession.from_session_string(args.session)
+    data_dir = Path("data") / ks.output_name
+    results_root = Path("results") / ks.output_name
+    eda_dir = results_root / "eda" / "latest"
+    pca_dir = results_root / "pca" / "latest"
+    output_dir = results_root / "irt" / "beta_experiment"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 80)

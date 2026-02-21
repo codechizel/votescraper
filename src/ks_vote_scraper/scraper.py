@@ -81,7 +81,7 @@ class KSVoteScraper:
         delay: float = REQUEST_DELAY,
     ):
         self.session = session
-        self.output_dir = output_dir or Path("data") / f"ks_{session.output_name}"
+        self.output_dir = output_dir or Path("data") / session.output_name
         self.cache_dir = self.output_dir / ".cache"
         self.delay = delay
         self.http = requests.Session()
@@ -108,6 +108,14 @@ class KSVoteScraper:
 
     # -- HTTP helpers ----------------------------------------------------------
 
+    def _rate_limit(self) -> None:
+        """Apply thread-safe rate limiting before an HTTP request."""
+        with self._rate_lock:
+            elapsed = time.monotonic() - self._last_request_time
+            if elapsed < self.delay:
+                time.sleep(self.delay - elapsed)
+            self._last_request_time = time.monotonic()
+
     def _get(self, url: str) -> FetchResult:
         """Fetch a URL with retries, caching, and rate limiting.
 
@@ -133,15 +141,27 @@ class KSVoteScraper:
         while attempt < max_attempts:
             try:
                 # Rate limit only actual network requests
-                with self._rate_lock:
-                    elapsed = time.monotonic() - self._last_request_time
-                    if elapsed < self.delay:
-                        time.sleep(self.delay - elapsed)
-                    self._last_request_time = time.monotonic()
+                self._rate_limit()
 
                 resp = self.http.get(url, timeout=REQUEST_TIMEOUT)
                 resp.raise_for_status()
                 html = resp.text
+
+                # Guard against error pages served with HTTP 200
+                if (
+                    not html
+                    or len(html) < 200
+                    or "<title>Page Not Found</title>" in html
+                    or "<title>Error</title>" in html
+                ):
+                    return FetchResult(
+                        url=url,
+                        html=None,
+                        status_code=200,
+                        error_type="permanent",
+                        error_message="Error page served with HTTP 200",
+                    )
+
                 try:
                     cache_file.write_text(html, encoding="utf-8")
                 except OSError:
@@ -277,11 +297,7 @@ class KSVoteScraper:
         print(f"\n  Pre-filtering via KLISS API: {api_url}")
 
         try:
-            with self._rate_lock:
-                elapsed = time.monotonic() - self._last_request_time
-                if elapsed < self.delay:
-                    time.sleep(self.delay - elapsed)
-                self._last_request_time = time.monotonic()
+            self._rate_limit()
 
             resp = self.http.get(api_url, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
@@ -604,6 +620,10 @@ class KSVoteScraper:
         # Compute total votes (all categories)
         total_votes = sum(len(members) for members in vote_categories.values())
 
+        if total_votes == 0:
+            print(f"  WARNING: 0 votes parsed for {bill_number} — skipping")
+            return
+
         # Create RollCall summary
         rollcall = RollCall(
             session=self.session.label,
@@ -881,16 +901,15 @@ class KSVoteScraper:
         print(f"  {'Total':30s} {self._fmt_elapsed(elapsed):>8s}")
         print("\nFiles created:")
         print(
-            f"  ks_{self.session.output_name}_votes.csv"
+            f"  {self.session.output_name}_votes.csv"
             f"         - {len(self.individual_votes)} individual votes"
         )
         print(
-            f"  ks_{self.session.output_name}_rollcalls.csv"
+            f"  {self.session.output_name}_rollcalls.csv"
             f"     - {len(self.rollcalls)} roll call summaries"
         )
         print(
-            f"  ks_{self.session.output_name}_legislators.csv"
-            f"   - {len(self.legislators)} legislators"
+            f"  {self.session.output_name}_legislators.csv   - {len(self.legislators)} legislators"
         )
 
         self._print_failure_summary()

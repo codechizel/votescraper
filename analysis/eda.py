@@ -8,7 +8,7 @@ Covers analytic methods 01-04:
   04: Agreement matrix & heatmap
 
 Usage:
-  uv run python analysis/eda.py [--session 2025-26] [--data-dir data/ks_2025_26]
+  uv run python analysis/eda.py [--session 2025-26] [--data-dir data/91st_2025-2026]
 
 Outputs (in results/<session>/eda/<date>/):
   - plots/:   8 PNG visualization plots
@@ -78,10 +78,10 @@ Covers analytic methods 01-04 from `Analytic_Methods/`.
 
 ## Inputs
 
-Reads from `data/ks_{session}/`:
-- `ks_{slug}_votes.csv` — One row per legislator per roll call (~68K rows)
-- `ks_{slug}_rollcalls.csv` — One row per roll call (~500-900 rows)
-- `ks_{slug}_legislators.csv` — One row per legislator (~170 rows)
+Reads from `data/{legislature}_{start}-{end}/`:
+- `{output_name}_votes.csv` — One row per legislator per roll call (~68K rows)
+- `{output_name}_rollcalls.csv` — One row per roll call (~500-900 rows)
+- `{output_name}_legislators.csv` — One row per legislator (~170 rows)
 
 ## Outputs
 
@@ -196,13 +196,13 @@ def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
 def load_data(data_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     """Load the three CSVs produced by the scraper.
 
-    File naming convention: ks_{session_slug}_{type}.csv
-    The data_dir name encodes the session slug (e.g. 'ks_2025_26').
+    File naming convention: {output_name}_{type}.csv (e.g. 91st_2025-2026_votes.csv).
+    The data_dir name IS the output_name prefix.
     """
-    session_slug = data_dir.name.removeprefix("ks_")
-    votes = pl.read_csv(data_dir / f"ks_{session_slug}_votes.csv")
-    rollcalls = pl.read_csv(data_dir / f"ks_{session_slug}_rollcalls.csv")
-    legislators = pl.read_csv(data_dir / f"ks_{session_slug}_legislators.csv")
+    prefix = data_dir.name
+    votes = pl.read_csv(data_dir / f"{prefix}_votes.csv")
+    rollcalls = pl.read_csv(data_dir / f"{prefix}_rollcalls.csv")
+    legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
     return votes, rollcalls, legislators
 
 
@@ -1546,12 +1546,13 @@ def save_filtering_manifest(manifests: dict, out_dir: Path) -> None:
 
 def main() -> None:
     args = parse_args()
-    session_slug = args.session.replace("-", "_")
 
     if args.data_dir:
         data_dir = Path(args.data_dir)
     else:
-        data_dir = Path(f"data/ks_{session_slug}")
+        from ks_vote_scraper.session import KSSession
+
+        data_dir = Path("data") / KSSession.from_session_string(args.session).output_name
 
     with RunContext(
         session=args.session,

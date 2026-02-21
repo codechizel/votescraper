@@ -12,6 +12,7 @@ This module encapsulates that logic so the scraper can target any session.
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 # Update this when a new biennium becomes the "current" session on kslegislature.gov.
 # The 2027-28 session will start in January 2027.
@@ -19,6 +20,15 @@ CURRENT_BIENNIUM_START = 2025
 
 # Known special session years
 SPECIAL_SESSION_YEARS = [2024, 2021, 2020, 2016, 2013]
+
+
+def _ordinal(n: int) -> str:
+    """Return the ordinal string for an integer (1st, 2nd, 3rd, 4th, ..., 91st)."""
+    if 11 <= (n % 100) <= 13:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
 
 
 @dataclass(frozen=True)
@@ -40,6 +50,16 @@ class KSSession:
     @property
     def is_current(self) -> bool:
         return self.start_year == CURRENT_BIENNIUM_START and not self.special
+
+    @property
+    def legislature_number(self) -> int:
+        """Kansas Legislature number (e.g., 91 for 2025-2026)."""
+        return (self.start_year - 1879) // 2 + 18
+
+    @property
+    def legislature_name(self) -> str:
+        """Ordinal legislature name (e.g., '91st')."""
+        return _ordinal(self.legislature_number)
 
     @property
     def li_prefix(self) -> str:
@@ -65,17 +85,17 @@ class KSSession:
 
     @property
     def label(self) -> str:
-        """Human-readable label, e.g., '2025-26' or '2024 Special'"""
+        """Human-readable label, e.g., '91st (2025-2026)' or '2024 Special'"""
         if self.special:
             return f"{self.start_year} Special"
-        return f"{self.start_year}-{self.end_year % 100:02d}"
+        return f"{self.legislature_name} ({self.start_year}-{self.end_year})"
 
     @property
     def output_name(self) -> str:
-        """Filesystem-safe name for output dirs/files, e.g., '2025_26' or '2024s'"""
+        """Filesystem-safe name for output dirs/files, e.g., '91st_2025-2026' or '2024s'"""
         if self.special:
             return f"{self.start_year}s"
-        return f"{self.start_year}_{self.end_year % 100:02d}"
+        return f"{self.legislature_name}_{self.start_year}-{self.end_year}"
 
     @property
     def bill_url_pattern(self) -> re.Pattern:
@@ -106,3 +126,27 @@ class KSSession:
         if year % 2 == 0:
             year = year - 1
         return cls(start_year=year)
+
+    @classmethod
+    def from_session_string(cls, session: str) -> "KSSession":
+        """Create a session from a CLI-style session string like '2025-26' or '2025_26'.
+
+        Special sessions (e.g., '2024s') are NOT handled here — use from_year() with
+        special=True for those.
+        """
+        normalized = session.replace("_", "-")
+        parts = normalized.split("-")
+        return cls.from_year(int(parts[0]))
+
+    @staticmethod
+    def data_dir_for_session(session: str, special: bool = False) -> Path:
+        """Convert a CLI-style session string to the data directory Path.
+
+        Examples:
+            "2025-26" -> Path("data/91st_2025-2026")
+            "2023-24" -> Path("data/90th_2023-2024")
+        """
+        normalized = session.replace("_", "-")
+        parts = normalized.split("-")
+        ks = KSSession.from_year(int(parts[0]), special=special)
+        return Path("data") / ks.output_name

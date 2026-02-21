@@ -203,19 +203,19 @@ def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
 # ── Phase 1: Load Data ──────────────────────────────────────────────────────
 
 
-def load_vote_data(data_dir: Path, session_slug: str) -> pl.DataFrame:
+def load_vote_data(data_dir: Path) -> pl.DataFrame:
     """Load individual votes CSV."""
-    return pl.read_csv(data_dir / f"ks_{session_slug}_votes.csv")
+    return pl.read_csv(data_dir / f"{data_dir.name}_votes.csv")
 
 
-def load_rollcall_data(data_dir: Path, session_slug: str) -> pl.DataFrame:
+def load_rollcall_data(data_dir: Path) -> pl.DataFrame:
     """Load rollcalls CSV."""
-    return pl.read_csv(data_dir / f"ks_{session_slug}_rollcalls.csv")
+    return pl.read_csv(data_dir / f"{data_dir.name}_rollcalls.csv")
 
 
-def load_legislator_data(data_dir: Path, session_slug: str) -> pl.DataFrame:
+def load_legislator_data(data_dir: Path) -> pl.DataFrame:
     """Load legislators CSV."""
-    return pl.read_csv(data_dir / f"ks_{session_slug}_legislators.csv")
+    return pl.read_csv(data_dir / f"{data_dir.name}_legislators.csv")
 
 
 def load_ideal_points(irt_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
@@ -1311,18 +1311,13 @@ def plot_surprising_votes(
 
 def main() -> None:
     args = parse_args()
-    session_slug = args.session.replace("-", "_")
-    data_dir = Path(args.data_dir) if args.data_dir else Path(f"data/ks_{session_slug}")
 
-    # Resolve upstream directories
-    session_full = args.session.replace("_", "-")
-    # Normalize to full year format: 2025-26 -> 2025-2026
-    parts = session_full.split("-")
-    if len(parts) == 2 and len(parts[1]) == 2:
-        century = parts[0][:2]
-        session_full = f"{parts[0]}-{century}{parts[1]}"
+    from ks_vote_scraper.session import KSSession
 
-    results_root = Path("results") / session_full
+    ks = KSSession.from_session_string(args.session)
+    data_dir = Path(args.data_dir) if args.data_dir else Path("data") / ks.output_name
+
+    results_root = Path("results") / ks.output_name
     irt_dir = Path(args.irt_dir) if args.irt_dir else results_root / "irt" / "latest"
     clustering_dir = (
         Path(args.clustering_dir) if args.clustering_dir else results_root / "clustering" / "latest"
@@ -1342,9 +1337,9 @@ def main() -> None:
         print_header("PHASE 1: LOADING DATA")
 
         print("  Loading vote data...")
-        votes = load_vote_data(data_dir, session_slug)
-        rollcalls = load_rollcall_data(data_dir, session_slug)
-        legislators = load_legislator_data(data_dir, session_slug)
+        votes = load_vote_data(data_dir)
+        rollcalls = load_rollcall_data(data_dir)
+        legislators = load_legislator_data(data_dir)
         print(f"    Votes: {votes.height:,} rows")
         print(f"    Roll calls: {rollcalls.height:,} rows")
         print(f"    Legislators: {legislators.height:,} rows")

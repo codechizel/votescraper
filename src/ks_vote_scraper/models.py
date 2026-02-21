@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
 class IndividualVote:
     """One legislator's vote on one roll call."""
 
@@ -20,7 +20,7 @@ class IndividualVote:
     vote: str  # Yea, Nay, Present and Passing, Absent and Not Voting, Not Voting
 
 
-@dataclass
+@dataclass(frozen=True)
 class RollCall:
     """Summary of one roll call vote."""
 
