@@ -231,7 +231,7 @@ Each entry records what was observed, which phase found it, why it matters, and 
 
 ```bash
 just test                    # run all tests
-just test-scraper            # scraper tests only (session, pure, html, models)
+just test-scraper            # scraper tests only (all scraper modules)
 uv run pytest tests/ -v      # pytest directly
 uv run ruff check src/       # lint clean
 ```
@@ -242,6 +242,8 @@ uv run ruff check src/       # lint clean
 - `tests/test_scraper_pure.py` — pure functions: bill codes, datetime parsing, result derivation (~35 tests)
 - `tests/test_scraper_html.py` — HTML parsing with inline BeautifulSoup fixtures (~25 tests)
 - `tests/test_models.py` — dataclass construction and immutability (~6 tests)
+- `tests/test_output.py` — CSV export: filenames, headers, row counts, roundtrip (~10 tests)
+- `tests/test_cli.py` — argument parsing with monkeypatched scraper (~17 tests)
 
 ### Manual Verification
 - Run scraper with `--clear-cache`, check that `vote_date`, `chamber`, `motion`, `bill_title` are populated
