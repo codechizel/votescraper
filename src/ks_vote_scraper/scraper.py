@@ -544,7 +544,7 @@ class KSVoteScraper:
 
     # -- Step 3: Parse each vote page -----------------------------------------
 
-    def parse_vote_pages(self, vote_links: list[VoteLink]):
+    def parse_vote_pages(self, vote_links: list[VoteLink]) -> None:
         """Visit each vote_view page and extract individual legislator votes."""
         print("\n" + "=" * 60)
         print("Step 3: Parsing individual roll call vote pages...")
@@ -830,7 +830,7 @@ class KSVoteScraper:
 
     # -- Step 4: Enrich legislator data ----------------------------------------
 
-    def enrich_legislators(self):
+    def enrich_legislators(self) -> None:
         """Fetch each legislator's page to get full name, party, and district."""
         print("\n" + "=" * 60)
         print("Step 4: Enriching legislator data (full name, party, district)...")
@@ -945,7 +945,7 @@ class KSVoteScraper:
             return f"{int(seconds // 60)}m {int(seconds % 60)}s"
         return f"{seconds:.1f}s"
 
-    def run(self, enrich: bool = True):
+    def run(self, enrich: bool = True) -> None:
         """Run the full scraping pipeline."""
         start = time.time()
         step_times: list[tuple[str, float]] = []
@@ -1015,7 +1015,7 @@ class KSVoteScraper:
 
         self._print_failure_summary()
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Remove cached HTML files to force fresh fetches."""
         import shutil
 
