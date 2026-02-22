@@ -105,10 +105,11 @@ def _add_landscape_figure(report: ReportBuilder, plots_dir: Path, chamber: str) 
                 f"{chamber} UMAP Ideological Landscape",
                 path,
                 caption=(
-                    f"UMAP 2D projection of voting behavior ({chamber}). "
-                    "Red = Republican, Blue = Democrat. Nearby legislators vote "
-                    "alike; distance reflects voting dissimilarity. UMAP1 oriented "
-                    "so Republicans are positive (conservative direction)."
+                    f"A map of voting behavior ({chamber}). Nearby legislators "
+                    "vote alike; distance = voting dissimilarity. Red = Republican, "
+                    "Blue = Democrat. The axes have no inherent meaning — only "
+                    "relative positions and distances matter. Cross-party outliers "
+                    "(if any) are labeled with imputation artifact warnings."
                 ),
             )
         )
@@ -224,8 +225,8 @@ def _add_legislator_embeddings(
         df,
         title=f"{chamber} -- Legislator UMAP Coordinates (ranked by UMAP1)",
         subtitle=(
-            f"{df.height} legislators, positive UMAP1 = conservative. "
-            "Higher = more consistently votes with Republican majority."
+            f"{df.height} legislators. UMAP coordinates are arbitrary — "
+            "only relative positions matter, not the numbers themselves."
         ),
         column_labels={
             "full_name": "Legislator",

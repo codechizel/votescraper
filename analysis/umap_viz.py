@@ -129,16 +129,32 @@ All outputs land in `results/<session>/umap/<date>/`:
 
 ## Interpretation Guide
 
-- **Nearby legislators** vote alike. Distance = voting dissimilarity.
-- **Party clusters**: Expect two main groups (Republican, Democrat). UMAP
-  preserves global structure, so the gap between clusters reflects how
-  different the parties' voting records are.
-- **Sub-clusters within a party**: Possible factions (moderates vs. hardliners).
-- **Bridge legislators** (between clusters): Moderates or cross-party voters.
-- **Isolated points**: Unique voting patterns (extreme ideologues or chronic
-  absentees with heavily imputed data).
-- **UMAP1** is oriented so Republicans are positive (same as PCA PC1).
-  But UMAP axes are arbitrary — only relative positions matter.
+This is a **map of voting behavior**. Read it like a geographic map where
+geography is replaced by voting patterns.
+
+- **Proximity = similarity.** Two legislators near each other vote the same
+  way most of the time. Two legislators far apart disagree often.
+- **The two clusters are the two parties.** The gap between them is the
+  partisan divide.
+- **Position within a cluster** shows where a legislator falls within their
+  party. Legislators at the edge nearest the other party are moderates.
+  Legislators at the far edge are hardliners.
+- **Isolated points are loners.** A legislator sitting away from their own
+  party's cluster has an unusual voting pattern — low participation
+  (imputation artifact), contrarianism, or genuine ideological independence.
+- **Do not interpret the axes.** UMAP1 and UMAP2 are arbitrary coordinates
+  — they do not measure ideology, partisanship, or any specific concept.
+  UMAP1 is oriented so Republicans are positive only for visual consistency
+  with PCA. The axes could be rotated and the map would be equally valid.
+  Only the distances and relative positions carry meaning.
+- **Do not compare axis values across chambers.** House UMAP1=+3 and Senate
+  UMAP1=+3 do not mean the same thing. Each chamber's embedding is
+  independent.
+
+The PCA and IRT reports provide quantitative ideology scores. The UMAP
+provides the picture — the visualization you show a journalist or
+constituent to say "here is where your legislator sits relative to
+everyone else."
 
 ## Caveats
 
@@ -149,7 +165,9 @@ All outputs land in `results/<session>/umap/<date>/`:
 - Small datasets (~40 senators) can produce unstable embeddings. Check
   the sensitivity sweep for robustness.
 - Row-mean imputation treats absences as uninformative. Legislators with
-  many absences may appear more moderate than they are.
+  many absences may appear artificially moderate or may land in the wrong
+  party cluster entirely (e.g., Silas Miller). Cross-party outliers are
+  annotated on the plot when detected.
 """
 
 # ── Constants ────────────────────────────────────────────────────────────────

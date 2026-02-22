@@ -75,9 +75,9 @@
 
 ### Data-driven annotation
 
-**Decision:** Label the top 5 legislators by |UMAP1| and |UMAP2| extremes, not hardcoded names.
+**Decision:** Label the top 5 legislators by |UMAP1| and |UMAP2| extremes, not hardcoded names. Additionally, any legislator whose UMAP position places them in the opposite party's territory is auto-detected and labeled with an "imputation artifact" callout.
 
-**Why:** No hardcoded legislator names. The same script works for any session without modification.
+**Why:** No hardcoded legislator names. The same script works for any session without modification. Cross-party outlier detection catches imputation-driven misplacements (e.g., Silas Miller in 2025-26) automatically.
 
 ## Downstream Implications
 
@@ -87,6 +87,9 @@
 - The Procrustes sensitivity metric provides a robustness statement for the synthesis narrative.
 
 ### For interpretation
-- **UMAP axes are arbitrary.** Only relative positions and distances are meaningful. Do not interpret UMAP1 as a specific ideological dimension — it is merely oriented to correlate with PC1 for convenience.
+- **UMAP is a map, not a measurement.** The plot shows "who votes like whom." Proximity = voting similarity, distance = voting dissimilarity. That is the entire message. PCA and IRT provide the quantitative scores; UMAP provides the picture for nontechnical audiences.
+- **UMAP axes are arbitrary.** UMAP1 and UMAP2 do not measure ideology, partisanship, or any specific concept. They are coordinates in a neighborhood-preserving projection. UMAP1 is oriented so Republicans are positive only for visual consistency with PCA. The axes could be rotated and the map would be equally valid.
+- **Do not compare axis values across chambers.** Each chamber's embedding is fit independently. House UMAP1=+3 and Senate UMAP1=+3 do not mean the same thing.
+- **Position within a cluster matters.** Edge of cluster nearest the other party = moderate. Far edge = hardliner. Isolated from own cluster = unusual voting pattern.
 - **Small chamber warning.** The Senate (~40 legislators) is at the lower end of UMAP's effective range. Sensitivity results for the Senate should be scrutinized more carefully than the House.
-- **Imputation artifacts.** Legislators with many imputed votes may appear artificially moderate (pulled toward the center). Cross-reference with IRT, which handles missing data natively.
+- **Imputation artifacts.** Legislators with many imputed votes may appear artificially moderate or land in the wrong party cluster entirely (e.g., Silas Miller, a Democrat with 85% imputed data, appears in the Republican cluster). Cross-party outliers are auto-annotated on the landscape plot. Cross-reference with IRT, which handles missing data natively.
