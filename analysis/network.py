@@ -816,55 +816,71 @@ def analyze_within_party_communities(
     }
 
 
-def check_tyson_thompson_edge_weights(
+def check_extreme_edge_weights(
     G: nx.Graph,
     chamber: str,
+    top_n: int = 2,
 ) -> dict | None:
-    """Check edge weights for Tyson and Thompson vs Republican median (Senate only)."""
-    if chamber != "Senate":
+    """Find the most ideologically extreme majority-party legislators and compare
+    their intra-party edge weights to the party median.
+
+    Data-driven: selects the top_n majority-party legislators with highest |xi_mean|.
+    """
+    # Determine majority party
+    party_counts: dict[str, int] = {}
+    for n in G.nodes():
+        p = G.nodes[n].get("party", "Unknown")
+        party_counts[p] = party_counts.get(p, 0) + 1
+    if not party_counts:
+        return None
+    majority_party = max(party_counts, key=party_counts.get)  # type: ignore[arg-type]
+
+    # Get majority-party nodes
+    maj_nodes = {n for n in G.nodes() if G.nodes[n].get("party") == majority_party}
+    if len(maj_nodes) < 3:
         return None
 
-    targets = {
-        "sen_tyson_caryn_1": "Caryn Tyson",
-        "sen_thompson_mike_1": "Mike Thompson",
-    }
-
-    # Get all R-R edge weights
-    r_nodes = {n for n in G.nodes() if G.nodes[n].get("party") == "Republican"}
-    r_edges = []
+    # All intra-majority edge weights
+    maj_edges = []
     for u, v, d in G.edges(data=True):
-        if u in r_nodes and v in r_nodes:
-            r_edges.append(d["weight"])
-
-    if not r_edges:
+        if u in maj_nodes and v in maj_nodes:
+            maj_edges.append(d["weight"])
+    if not maj_edges:
         return None
 
-    r_median = float(np.median(r_edges))
-    r_mean = float(np.mean(r_edges))
+    maj_median = float(np.median(maj_edges))
+    maj_mean = float(np.mean(maj_edges))
 
-    results = {
-        "r_median_edge_weight": round(r_median, 4),
-        "r_mean_edge_weight": round(r_mean, 4),
-        "r_n_edges": len(r_edges),
+    # Find top_n most ideologically extreme majority-party legislators by |xi_mean|
+    extreme = sorted(maj_nodes, key=lambda n: abs(G.nodes[n].get("xi_mean", 0.0)), reverse=True)[
+        :top_n
+    ]
+
+    results: dict = {
+        "majority_party": majority_party,
+        "chamber": chamber,
+        "r_median_edge_weight": round(maj_median, 4),
+        "r_mean_edge_weight": round(maj_mean, 4),
+        "r_n_edges": len(maj_edges),
         "legislators": [],
     }
 
-    for slug, name in targets.items():
-        if slug not in G.nodes():
-            continue
+    for slug in extreme:
+        name = G.nodes[slug].get("full_name", slug)
         edges = [(v, d["weight"]) for _, v, d in G.edges(slug, data=True)]
-        r_only = [(v, w) for v, w in edges if G.nodes[v].get("party") == "Republican"]
-        if r_only:
-            weights = [w for _, w in r_only]
+        maj_only = [(v, w) for v, w in edges if G.nodes[v].get("party") == majority_party]
+        if maj_only:
+            weights = [w for _, w in maj_only]
             results["legislators"].append(
                 {
                     "slug": slug,
                     "name": name,
-                    "n_r_edges": len(r_only),
+                    "xi_mean": round(G.nodes[slug].get("xi_mean", 0.0), 3),
+                    "n_r_edges": len(maj_only),
                     "mean_r_weight": round(float(np.mean(weights)), 4),
                     "median_r_weight": round(float(np.median(weights)), 4),
                     "min_r_weight": round(float(np.min(weights)), 4),
-                    "vs_r_median": round(float(np.mean(weights)) - r_median, 4),
+                    "vs_r_median": round(float(np.mean(weights)) - maj_median, 4),
                 }
             )
 
@@ -1110,6 +1126,10 @@ def plot_network_layout(
         node_colors = "#999999"
         legend_elements = []
 
+    # Compute betweenness for bridge highlighting and labeling
+    betweenness = nx.betweenness_centrality(G, weight="distance", normalized=True)
+    top_bridge_slugs = sorted(betweenness, key=betweenness.get, reverse=True)[:3]  # type: ignore[arg-type]
+
     # Node sizes proportional to degree
     degrees = dict(G.degree())
     max_deg = max(degrees.values()) if degrees else 1
@@ -1122,30 +1142,92 @@ def plot_network_layout(
 
     nx.draw_networkx_edges(G, pos, ax=ax, alpha=0.15, width=edge_widths, edge_color="#888888")
 
-    # Draw nodes
-    nx.draw_networkx_nodes(
-        G,
-        pos,
-        ax=ax,
-        node_color=node_colors,
-        node_size=node_sizes,
-        alpha=0.85,
-        edgecolors="white",
-        linewidths=0.5,
-    )
+    # Separate bridge vs non-bridge nodes
+    non_bridge = [n for n in nodes if n not in top_bridge_slugs]
+    bridge_nodes = [n for n in nodes if n in top_bridge_slugs]
 
-    # Label top-N by betweenness
+    # Draw non-bridge nodes
+    if non_bridge:
+        nb_colors = (
+            [node_colors[nodes.index(n)] for n in non_bridge]
+            if isinstance(node_colors, list)
+            else node_colors
+        )
+        nb_sizes = [node_sizes[nodes.index(n)] for n in non_bridge]
+        nx.draw_networkx_nodes(
+            G,
+            pos,
+            nodelist=non_bridge,
+            ax=ax,
+            node_color=nb_colors,
+            node_size=nb_sizes,
+            alpha=0.85,
+            edgecolors="white",
+            linewidths=0.5,
+        )
+
+    # Draw bridge nodes with red halo
+    if bridge_nodes:
+        br_colors = (
+            [node_colors[nodes.index(n)] for n in bridge_nodes]
+            if isinstance(node_colors, list)
+            else node_colors
+        )
+        nx.draw_networkx_nodes(
+            G,
+            pos,
+            nodelist=bridge_nodes,
+            ax=ax,
+            node_color=br_colors,
+            node_size=140,
+            alpha=0.9,
+            edgecolors="red",
+            linewidths=2.5,
+        )
+        # Label bridge legislators
+        for slug in bridge_nodes:
+            name = G.nodes[slug].get("full_name", slug).split()[-1]
+            ax.annotate(
+                name,
+                pos[slug],
+                fontsize=8,
+                fontweight="bold",
+                ha="center",
+                va="bottom",
+                xytext=(0, 10),
+                textcoords="offset points",
+                bbox={"boxstyle": "round,pad=0.2", "fc": "lightyellow", "alpha": 0.8},
+            )
+
+    # Label top-N by betweenness (skip those already labeled as bridges)
     if label_top_n > 0:
-        betweenness = nx.betweenness_centrality(G, weight="distance", normalized=True)
         top_nodes = sorted(betweenness, key=betweenness.get, reverse=True)[:label_top_n]  # type: ignore[arg-type]
-        labels = {n: G.nodes[n].get("full_name", n).split()[-1] for n in top_nodes}
+        labels = {
+            n: G.nodes[n].get("full_name", n).split()[-1]
+            for n in top_nodes
+            if n not in top_bridge_slugs
+        }
         nx.draw_networkx_labels(G, pos, labels, ax=ax, font_size=7, font_weight="bold")
 
     if legend_elements:
+        legend_elements.append(
+            Patch(facecolor="white", edgecolor="red", linewidth=2, label="Bridge legislator"),
+        )
         ax.legend(handles=legend_elements, loc="upper left", fontsize=9)
 
     ax.set_title(f"{chamber} — {title}", fontsize=14, fontweight="bold")
     ax.axis("off")
+
+    fig.text(
+        0.5,
+        0.01,
+        "Red-ringed nodes connect otherwise-separate voting blocs (highest betweenness centrality)",
+        ha="center",
+        fontsize=9,
+        fontstyle="italic",
+        color="#555555",
+    )
+    fig.tight_layout(rect=(0, 0.03, 1, 1))
 
     save_fig(fig, out_path)
     return pos
@@ -1201,6 +1283,57 @@ def plot_centrality_scatter(
     ax.set_title(f"{chamber} \u2014 {title}", fontsize=13, fontweight="bold")
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
+
+    # Quadrant labels (italic gray, using axes-relative coordinates)
+    quadrant_labels = {
+        (0.95, 0.95): "Central players \u2014\nhighly connected\nand influential",
+        (0.05, 0.95): "Unique connectors \u2014\nlink separate blocs",
+        (0.95, 0.05): "Well-connected\nfollowers",
+        (0.05, 0.05): "Rank and file",
+    }
+    for (qx, qy), qlabel in quadrant_labels.items():
+        ax.text(
+            qx,
+            qy,
+            qlabel,
+            transform=ax.transAxes,
+            fontsize=7,
+            fontstyle="italic",
+            color="#999999",
+            ha="right" if qx > 0.5 else "left",
+            va="top" if qy > 0.5 else "bottom",
+            alpha=0.7,
+        )
+
+    # Betweenness inset diagram (when y_col is betweenness)
+    if y_col == "betweenness":
+        inset = ax.inset_axes([0.72, 0.72, 0.22, 0.22])
+        inset.set_xlim(-0.5, 2.5)
+        inset.set_ylim(-0.5, 1.0)
+        inset.set_aspect("equal")
+        inset.axis("off")
+        # Draw 3 nodes: A(0,0), B(1,0), C(2,0)
+        for nx_pos, label, color in [(0, "A", "#cccccc"), (1, "B", "#E81B23"), (2, "C", "#cccccc")]:
+            circle = plt.Circle((nx_pos, 0.2), 0.15, color=color, ec="black", lw=1, zorder=3)
+            inset.add_patch(circle)
+            inset.text(
+                nx_pos,
+                0.2,
+                label,
+                ha="center",
+                va="center",
+                fontsize=7,
+                fontweight="bold",
+                zorder=4,
+            )
+        # Edges
+        inset.plot([0.15, 0.85], [0.2, 0.2], color="#555555", lw=1.5, zorder=2)
+        inset.plot([1.15, 1.85], [0.2, 0.2], color="#555555", lw=1.5, zorder=2)
+        inset.text(1, -0.3, "B bridges A and C", ha="center", fontsize=6, fontstyle="italic")
+        inset.patch.set_alpha(0.9)
+        inset.patch.set_facecolor("white")
+        for spine in inset.spines.values():
+            spine.set_visible(False)
 
     save_fig(fig, out_path)
 
@@ -1269,6 +1402,71 @@ def plot_centrality_vs_irt(
 ) -> None:
     """Scatter: betweenness centrality vs IRT ideal point."""
     plot_centrality_scatter(centralities, "xi_mean", "betweenness", chamber, out_path)
+
+
+def plot_centrality_ranking(
+    centralities: pl.DataFrame,
+    chamber: str,
+    out_dir: Path,
+) -> None:
+    """Horizontal bar chart of ALL legislators, sorted by betweenness, party-colored."""
+    if centralities.height == 0:
+        return
+
+    sorted_df = centralities.sort("betweenness")
+
+    names = sorted_df["full_name"].to_list()
+    scores = sorted_df["betweenness"].to_numpy()
+    parties = sorted_df["party"].to_list()
+    colors = [PARTY_COLORS.get(p, "#888888") for p in parties]
+
+    fig_height = max(8, len(names) * 0.18)
+    fig, ax = plt.subplots(figsize=(12, fig_height))
+
+    y = np.arange(len(names))
+    ax.barh(y, scores, color=colors, alpha=0.8, edgecolor="white", height=0.8)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(names, fontsize=6)
+    ax.set_xlabel(
+        "Network Influence (Betweenness \u2014 higher = connects more groups)", fontsize=10
+    )
+    ax.set_title(
+        f"{chamber} \u2014 Who Holds the Most Influence in the Voting Network?",
+        fontsize=14,
+        fontweight="bold",
+    )
+
+    # Annotate top and bottom 5 with last names + scores
+    for i in range(min(5, len(names))):
+        last_name = names[i].split()[-1]
+        ax.annotate(
+            f"{last_name}: {scores[i]:.4f}",
+            (scores[i] + 0.001, y[i]),
+            fontsize=7,
+            va="center",
+            fontweight="bold",
+        )
+    for i in range(max(0, len(names) - 5), len(names)):
+        last_name = names[i].split()[-1]
+        ax.annotate(
+            f"{last_name}: {scores[i]:.4f}",
+            (scores[i] + 0.001, y[i]),
+            fontsize=7,
+            va="center",
+            fontweight="bold",
+        )
+
+    # Legend
+    legend_handles = [
+        Patch(facecolor=PARTY_COLORS["Republican"], label="Republican"),
+        Patch(facecolor=PARTY_COLORS["Democrat"], label="Democrat"),
+    ]
+    ax.legend(handles=legend_handles, loc="lower right", fontsize=9)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    fig.tight_layout()
+    save_fig(fig, out_dir / f"centrality_ranking_{chamber.lower()}.png")
 
 
 def plot_community_network(
@@ -1478,6 +1676,31 @@ def plot_threshold_sweep(
     if split_threshold is None and len(components) > 0 and components[0] >= 2:
         split_threshold = thresholds[0]
 
+    # Detect stability zone: contiguous range where n_components stays constant
+    stable_start = None
+    stable_end = None
+    if len(components) >= 2:
+        # Find longest run of constant n_components
+        best_run_start = 0
+        best_run_len = 1
+        cur_start = 0
+        cur_len = 1
+        for i in range(1, len(components)):
+            if components[i] == components[cur_start]:
+                cur_len += 1
+            else:
+                if cur_len > best_run_len:
+                    best_run_len = cur_len
+                    best_run_start = cur_start
+                cur_start = i
+                cur_len = 1
+        if cur_len > best_run_len:
+            best_run_len = cur_len
+            best_run_start = cur_start
+        if best_run_len >= 2:
+            stable_start = thresholds[best_run_start]
+            stable_end = thresholds[best_run_start + best_run_len - 1]
+
     metrics = [
         ("n_edges", "Number of Connections"),
         ("density", "Network Density"),
@@ -1492,6 +1715,39 @@ def plot_threshold_sweep(
         ax.set_ylabel(label, fontsize=10)
         ax.set_title(label, fontsize=11, fontweight="bold")
         ax.grid(True, alpha=0.3)
+
+        # Stability zone shading
+        if stable_start is not None and stable_end is not None:
+            ax.axvspan(stable_start, stable_end, alpha=0.12, color="green", zorder=0)
+            if col == "n_components":
+                ax.text(
+                    (stable_start + stable_end) / 2,
+                    min(vals) + (max(vals) - min(vals)) * 0.15,
+                    "Findings stable\nacross this range",
+                    ha="center",
+                    fontsize=7,
+                    fontstyle="italic",
+                    color="green",
+                    alpha=0.8,
+                )
+
+        # Default threshold line
+        ax.axvline(
+            KAPPA_THRESHOLD_DEFAULT,
+            color="#0015BC",
+            linestyle="--",
+            alpha=0.5,
+            linewidth=1.2,
+        )
+        if col == "n_edges":
+            ax.annotate(
+                f"Default threshold (\u03ba={KAPPA_THRESHOLD_DEFAULT:.2f})",
+                (KAPPA_THRESHOLD_DEFAULT, max(vals) * 0.9),
+                fontsize=7,
+                color="#0015BC",
+                ha="center",
+                bbox={"boxstyle": "round,pad=0.2", "fc": "white", "alpha": 0.8},
+            )
 
         # Add vertical line at party split threshold
         if split_threshold is not None:
@@ -1624,11 +1880,36 @@ def plot_edge_weight_distribution(
             edgecolor="white",
         )
 
+    # Default threshold line
+    ax.axvline(
+        KAPPA_THRESHOLD_DEFAULT,
+        color="#0015BC",
+        linestyle="--",
+        alpha=0.6,
+        linewidth=1.5,
+        label=f"Threshold (\u03ba={KAPPA_THRESHOLD_DEFAULT:.2f})",
+    )
+
     ax.set_xlabel("Kappa (Edge Weight)", fontsize=11)
     ax.set_ylabel("Count", fontsize=11)
-    ax.set_title(f"{chamber} — Edge Weight Distribution", fontsize=13, fontweight="bold")
+    ax.set_title(f"{chamber} \u2014 Edge Weight Distribution", fontsize=13, fontweight="bold")
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
+
+    # Interpretation text box
+    ax.text(
+        0.97,
+        0.95,
+        "Higher \u03ba = more similar voting patterns.\n"
+        "Cross-party connections (gray) cluster at\n"
+        "lower weights \u2014 the two parties agree less\n"
+        "than members within each party.",
+        transform=ax.transAxes,
+        fontsize=8,
+        va="top",
+        ha="right",
+        bbox={"boxstyle": "round,pad=0.5", "fc": "lightyellow", "alpha": 0.85, "ec": "#cccccc"},
+    )
 
     save_fig(fig, out_path)
 
@@ -1866,15 +2147,17 @@ def main() -> None:
 
             chamber_results["within_party"] = within_party_results
 
-            # Tyson-Thompson edge weights (Senate only)
-            tt_result = check_tyson_thompson_edge_weights(G, chamber)
-            chamber_results["tyson_thompson"] = tt_result
-            if tt_result:
-                print(f"  R-R median edge weight: {tt_result['r_median_edge_weight']}")
-                for leg in tt_result.get("legislators", []):
+            # Extreme edge weight analysis (data-driven)
+            extreme_result = check_extreme_edge_weights(G, chamber)
+            chamber_results["extreme_edge_weights"] = extreme_result
+            if extreme_result:
+                maj = extreme_result["majority_party"]
+                print(f"  {maj} median edge weight: {extreme_result['r_median_edge_weight']}")
+                for leg in extreme_result.get("legislators", []):
                     print(
-                        f"    {leg['name']}: mean R weight={leg['mean_r_weight']:.4f} "
-                        f"(vs R median: {leg['vs_r_median']:+.4f})"
+                        f"    {leg['name']} (xi={leg['xi_mean']:+.3f}): "
+                        f"mean {maj[0]}-{maj[0]} weight={leg['mean_r_weight']:.4f} "
+                        f"(vs median: {leg['vs_r_median']:+.4f})"
                     )
 
             # ── Phase 6: Threshold Sensitivity ──
@@ -1959,6 +2242,9 @@ def main() -> None:
                 chamber,
                 ctx.plots_dir / f"centrality_vs_irt_{chamber.lower()}.png",
             )
+
+            # Centrality ranking (betweenness bar chart)
+            plot_centrality_ranking(centralities, chamber, ctx.plots_dir)
 
             # Multi-resolution
             res_df = chamber_results.get("resolution_df")
@@ -2075,13 +2361,13 @@ def main() -> None:
                             if k not in ("partition", "resolution_results")
                         }
                 manifest[f"{ch}_within_party"] = wp_summary
-            if r.get("tyson_thompson"):
-                tt = r["tyson_thompson"]
-                manifest[f"{ch}_tyson_thompson"] = {
-                    k: v for k, v in tt.items() if k != "legislators"
+            if r.get("extreme_edge_weights"):
+                ee = r["extreme_edge_weights"]
+                manifest[f"{ch}_extreme_edge_weights"] = {
+                    k: v for k, v in ee.items() if k != "legislators"
                 }
-                if tt.get("legislators"):
-                    manifest[f"{ch}_tyson_thompson"]["legislators"] = tt["legislators"]
+                if ee.get("legislators"):
+                    manifest[f"{ch}_extreme_edge_weights"]["legislators"] = ee["legislators"]
 
         manifest_path = ctx.run_dir / "filtering_manifest.json"
         with open(manifest_path, "w") as f:

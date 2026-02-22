@@ -71,6 +71,9 @@ def build_network_report(
     for chamber in chambers:
         _add_centrality_vs_irt_figure(report, plots_dir, chamber, results[chamber])
 
+    for chamber in chambers:
+        _add_centrality_ranking_figure(report, plots_dir, chamber)
+
     _add_centrality_interpretation(report, results, chambers, kappa_threshold)
 
     # Community detection
@@ -95,7 +98,7 @@ def build_network_report(
     for chamber in chambers:
         _add_within_party_communities(report, results[chamber], chamber)
 
-    _add_tyson_thompson(report, results, chambers)
+    _add_extreme_edge_analysis(report, results, chambers)
 
     # Threshold sensitivity
     for chamber in chambers:
@@ -214,7 +217,8 @@ def _add_edge_weight_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                 path,
                 caption=(
                     f"Distribution of edge weights (Kappa) for {chamber}, separated by "
-                    "within-party (R-R, D-D) and cross-party edges."
+                    "within-party (R-R, D-D) and cross-party edges. "
+                    "Blue dashed line marks the default threshold."
                 ),
             )
         )
@@ -230,7 +234,8 @@ def _add_network_party_figure(report: ReportBuilder, plots_dir: Path, chamber: s
                 path,
                 caption=(
                     f"Spring layout of {chamber} co-voting network. Node color = party. "
-                    "Node size proportional to degree. Labels = top betweenness."
+                    "Node size proportional to degree. Red-ringed nodes = top 3 bridge "
+                    "legislators (highest betweenness centrality)."
                 ),
             )
         )
@@ -443,6 +448,27 @@ def _add_centrality_vs_irt_figure(
                 f"{chamber} Centrality vs IRT",
                 path,
                 caption=f"IRT ideal point vs betweenness centrality for {chamber}. {qualifier}",
+            )
+        )
+
+
+def _add_centrality_ranking_figure(
+    report: ReportBuilder,
+    plots_dir: Path,
+    chamber: str,
+) -> None:
+    path = plots_dir / f"centrality_ranking_{chamber.lower()}.png"
+    if path.exists():
+        report.add(
+            FigureSection.from_file(
+                f"fig-centrality-ranking-{chamber.lower()}",
+                f"{chamber} Centrality Ranking",
+                path,
+                caption=(
+                    f"All {chamber} legislators ranked by betweenness centrality. "
+                    "Higher betweenness = more influence as a connector between "
+                    "otherwise-separate voting blocs."
+                ),
             )
         )
 
@@ -740,51 +766,56 @@ def _add_within_party_communities(
         )
 
 
-def _add_tyson_thompson(
+def _add_extreme_edge_analysis(
     report: ReportBuilder,
     results: dict[str, dict],
     chambers: list[str],
 ) -> None:
     for chamber in chambers:
-        tt = results[chamber].get("tyson_thompson")
-        if tt is None:
+        ee = results[chamber].get("extreme_edge_weights")
+        if ee is None:
             continue
 
+        maj = ee.get("majority_party", "Majority")
         rows = []
-        for leg in tt.get("legislators", []):
+        for leg in ee.get("legislators", []):
             rows.append(
                 {
                     "Legislator": leg["name"],
-                    "N R-R Edges": leg["n_r_edges"],
-                    "Mean R Weight": leg["mean_r_weight"],
-                    "Median R Weight": leg["median_r_weight"],
-                    "Min R Weight": leg["min_r_weight"],
-                    "vs R Median": leg["vs_r_median"],
+                    "Ideal Point": leg.get("xi_mean"),
+                    f"N {maj[0]}-{maj[0]} Edges": leg["n_r_edges"],
+                    f"Mean {maj[0]} Weight": leg["mean_r_weight"],
+                    f"Median {maj[0]} Weight": leg["median_r_weight"],
+                    f"Min {maj[0]} Weight": leg["min_r_weight"],
+                    f"vs {maj} Median": leg["vs_r_median"],
                 }
             )
 
         if rows:
             df = pl.DataFrame(rows)
             source = (
-                f"Republican median edge weight: {tt['r_median_edge_weight']:.4f} "
-                f"(mean: {tt['r_mean_edge_weight']:.4f}, N edges: {tt['r_n_edges']})"
+                f"{maj} median edge weight: {ee['r_median_edge_weight']:.4f} "
+                f"(mean: {ee['r_mean_edge_weight']:.4f}, N edges: {ee['r_n_edges']})"
             )
             html = make_gt(
                 df,
-                title=f"{chamber} — Tyson/Thompson Edge Weights",
-                subtitle="Within-Republican edge weights for flagged legislators",
+                title=f"{chamber} — Most Extreme {maj} Edge Weights",
+                subtitle=(
+                    f"Within-{maj} edge weights for the most ideologically extreme legislators"
+                ),
                 number_formats={
-                    "Mean R Weight": ".4f",
-                    "Median R Weight": ".4f",
-                    "Min R Weight": ".4f",
-                    "vs R Median": ".4f",
+                    "Ideal Point": ".3f",
+                    f"Mean {maj[0]} Weight": ".4f",
+                    f"Median {maj[0]} Weight": ".4f",
+                    f"Min {maj[0]} Weight": ".4f",
+                    f"vs {maj} Median": ".4f",
                 },
                 source_note=source,
             )
             report.add(
                 TableSection(
-                    id=f"tyson-thompson-{chamber.lower()}",
-                    title=f"{chamber} Tyson-Thompson Edge Weights",
+                    id=f"extreme-edge-{chamber.lower()}",
+                    title=f"{chamber} Extreme Edge Weights",
                     html=html,
                 )
             )
@@ -804,7 +835,8 @@ def _add_threshold_sweep_figure(
                 path,
                 caption=(
                     f"Network statistics at different Kappa thresholds for {chamber}. "
-                    "Checks whether findings are threshold-dependent."
+                    "Blue dashed line = default threshold; red dashed line = party split point. "
+                    "Green shading = range where the number of groups stays constant."
                 ),
             )
         )
