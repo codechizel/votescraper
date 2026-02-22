@@ -542,6 +542,42 @@ def plot_umap_landscape(
                 arrowprops={"arrowstyle": "->", "color": "#555555", "lw": 0.8},
             )
 
+    # Label cross-party outliers: legislators in the opposite party's territory
+    if "party" in embedding_df.columns:
+        rep_umap1 = embedding_df.filter(pl.col("party") == "Republican")["UMAP1"]
+        dem_umap1 = embedding_df.filter(pl.col("party") == "Democrat")["UMAP1"]
+        if rep_umap1.len() > 0 and dem_umap1.len() > 0:
+            rep_mean = float(rep_umap1.mean())
+            dem_mean = float(dem_umap1.mean())
+            for row in embedding_df.iter_rows(named=True):
+                party = row.get("party", "")
+                umap1 = row["UMAP1"]
+                slug = row["legislator_slug"]
+                # Democrat on the Republican side, or vice versa
+                is_cross_party = (party == "Democrat" and umap1 > rep_mean * 0.5) or (
+                    party == "Republican" and umap1 < dem_mean * 0.5
+                )
+                if is_cross_party and slug not in labeled:
+                    labeled.add(slug)
+                    name = row.get("full_name", slug)
+                    ax.annotate(
+                        f"{name}\n(imputation artifact — {party},\nlow participation)",
+                        (umap1, row["UMAP2"]),
+                        fontsize=8,
+                        fontweight="bold",
+                        ha="left",
+                        va="bottom",
+                        xytext=(10, 10),
+                        textcoords="offset points",
+                        bbox={
+                            "boxstyle": "round,pad=0.4",
+                            "fc": "lightyellow",
+                            "alpha": 0.9,
+                            "ec": "#cc0000",
+                        },
+                        arrowprops={"arrowstyle": "->", "color": "#cc0000", "lw": 1.5},
+                    )
+
     ax.set_xlabel("UMAP1 (oriented: positive = conservative)")
     ax.set_ylabel("UMAP2")
     ax.set_title(
