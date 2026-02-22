@@ -167,6 +167,7 @@ Each analysis phase has a design document in `analysis/design/` recording the st
 - `analysis/design/pca.md` — Imputation, standardization, sign convention, holdout design
 - `analysis/design/irt.md` — Priors (Normal(0,1) discrimination, anchors), MCMC settings, missing data handling
 - `analysis/design/clustering.md` — Three methods for robustness, party loyalty metric, k=2 finding
+- `analysis/design/prediction.md` — XGBoost primary, IRT features dominate, NLP topic features (NMF on short_title), target leakage assessment
 - `analysis/design/synthesis.md` — Data-driven detection thresholds, graceful degradation, template narratives
 
 ## Analytics
@@ -207,6 +208,7 @@ Each analysis phase produces a self-contained HTML report (`{analysis}_report.ht
 - `analysis/report.py` — Generic: section types (`TableSection`, `FigureSection`, `TextSection`), `ReportBuilder`, `make_gt()` helper, Jinja2 template + CSS.
 - `analysis/eda_report.py` — EDA-specific: `build_eda_report()` adds ~19 sections.
 - `analysis/umap_viz.py` + `analysis/umap_report.py` — UMAP: nonlinear dimensionality reduction on vote matrix (cosine metric, n_neighbors=15). Produces ideological landscape plots, validates against PCA/IRT via Spearman, Procrustes sensitivity sweep.
+- `analysis/nlp_features.py` — NLP: TF-IDF + NMF topic modeling on bill `short_title` text. Pure data logic (no I/O). `TopicModel` frozen dataclass, `fit_topic_features()`, `get_topic_display_names()`, `plot_topic_words()`. See ADR-0012.
 - `analysis/synthesis_detect.py` — Detection: pure data logic that identifies notable legislators (mavericks, bridge-builders, metric paradoxes) from upstream DataFrames. Returns frozen dataclasses with pre-formatted titles and subtitles.
 - `analysis/synthesis.py` + `analysis/synthesis_report.py` — Synthesis: loads upstream parquets from all 8 phases, joins into unified legislator DataFrames, runs data-driven detection, produces 29-32 section narrative HTML report for nontechnical audiences. No hardcoded legislator names.
 - `RunContext` auto-writes the HTML in `finalize()` if sections were added.
@@ -251,6 +253,8 @@ uv run ruff check src/       # lint clean
 - `tests/test_run_context.py` — TeeStream, session normalization, RunContext lifecycle (~26 tests)
 - `tests/test_report.py` — section rendering, format parsing, ReportBuilder, make_gt (~36 tests)
 - `tests/test_umap_viz.py` — imputation, orientation, embedding construction, Procrustes, validation correlations (~21 tests)
+- `tests/test_nlp_features.py` — TF-IDF + NMF fitting, edge cases, display names, TopicModel dataclass (~16 tests)
+- `tests/test_prediction.py` — vote/bill features, model training, SHAP, per-legislator, NLP integration (~22 tests)
 
 ### Manual Verification
 - Run scraper with `--clear-cache`, check that `vote_date`, `chamber`, `motion`, `bill_title` are populated

@@ -58,6 +58,19 @@ try:
 except ModuleNotFoundError:
     from prediction_report import build_prediction_report  # type: ignore[no-redef]
 
+try:
+    from analysis.nlp_features import (
+        fit_topic_features,
+        get_topic_display_names,
+        plot_topic_words,
+    )
+except ModuleNotFoundError:
+    from nlp_features import (  # type: ignore[no-redef]
+        fit_topic_features,
+        get_topic_display_names,
+        plot_topic_words,
+    )
+
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -391,6 +404,7 @@ def build_bill_features(
     rollcalls: pl.DataFrame,
     bill_params: pl.DataFrame,
     chamber: str,
+    topic_features: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     """Build the bill-level feature matrix for passage prediction.
 
@@ -444,6 +458,17 @@ def build_bill_features(
             pl.when(pl.col("bill_prefix") == pfx).then(1).otherwise(0).alias(f"pfx_{pfx.lower()}")
         )
 
+    # Join NLP topic features if provided
+    if topic_features is not None:
+        # topic_features must have vote_id + topic_* columns
+        topic_cols_to_join = [c for c in topic_features.columns if c.startswith("topic_")]
+        if topic_cols_to_join and "vote_id" in topic_features.columns:
+            rc = rc.join(
+                topic_features.select(["vote_id"] + topic_cols_to_join),
+                on="vote_id",
+                how="left",
+            )
+
     feature_cols = [
         "beta_mean",
         "is_veto_override",
@@ -451,8 +476,10 @@ def build_bill_features(
     ]
     vt_cols = [c for c in rc.columns if c.startswith("vt_")]
     pfx_cols = [c for c in rc.columns if c.startswith("pfx_")]
+    topic_cols = [c for c in rc.columns if c.startswith("topic_")]
     feature_cols.extend(vt_cols)
     feature_cols.extend(pfx_cols)
+    feature_cols.extend(topic_cols)
 
     metadata_cols = ["vote_id", "bill_number", "passed_binary", "vote_date"]
     keep_cols = [c for c in feature_cols + metadata_cols if c in rc.columns]
@@ -1549,13 +1576,48 @@ def main() -> None:
             }
 
         # ── Phase 5: Bill Passage Prediction ────────────────────────────
+        topic_models: dict[str, object] = {}
         if not args.skip_bill_passage:
             for chamber in ["House", "Senate"]:
                 cd = chamber_data[chamber]
 
                 print_header(f"PHASE 5: BILL PASSAGE — {chamber.upper()}")
 
-                bill_features = build_bill_features(rollcalls, cd["bill_params"], chamber)
+                # Fit NLP topic model on bill short_title text
+                chamber_rc = rollcalls.filter(pl.col("chamber") == chamber)
+                print("  Fitting NLP topic model on bill titles...")
+                topic_df, topic_model = fit_topic_features(chamber_rc["short_title"])
+                topic_models[chamber] = topic_model
+
+                # Attach vote_id for joining
+                topic_df = topic_df.with_columns(chamber_rc["vote_id"])
+                topic_df.write_parquet(
+                    ctx.data_dir / f"topic_features_{chamber.lower()}.parquet"
+                )
+                print(
+                    f"    Topics: {topic_model.n_topics}, "
+                    f"Vocab: {topic_model.vocabulary_size}, "
+                    f"Docs: {topic_model.n_documents}"
+                )
+                for i in range(topic_model.n_topics):
+                    col = f"topic_{i}"
+                    words = topic_model.topic_top_words.get(col, [])
+                    print(f"    {topic_model.topic_labels[i]}: {', '.join(words)}")
+
+                # Plot topic words
+                plot_topic_words(
+                    topic_model,
+                    chamber,
+                    ctx.plots_dir / f"topic_words_{chamber.lower()}.png",
+                )
+
+                # Update FEATURE_DISPLAY_NAMES with topic labels
+                display_names = get_topic_display_names(topic_model)
+                FEATURE_DISPLAY_NAMES.update(display_names)
+
+                bill_features = build_bill_features(
+                    rollcalls, cd["bill_params"], chamber, topic_features=topic_df
+                )
                 n_rows = bill_features.height
                 n_cols = bill_features.width
                 print(f"  Bill feature matrix: {n_rows:,} rows × {n_cols} cols")
@@ -1647,13 +1709,25 @@ def main() -> None:
         # ── Filtering Manifest ──────────────────────────────────────────
         print_header("FILTERING MANIFEST")
 
-        manifest = {
+        manifest: dict = {
             "test_size": TEST_SIZE,
             "n_splits": N_SPLITS,
             "random_seed": RANDOM_SEED,
             "note": "Minority/participation filtering done upstream in EDA/IRT",
             "chambers": {},
         }
+
+        # Add NLP metadata if topic models were fitted
+        if topic_models:
+            nlp_meta = {}
+            for chamber, tm in topic_models.items():
+                nlp_meta[chamber] = {
+                    "n_topics": tm.n_topics,
+                    "vocabulary_size": tm.vocabulary_size,
+                    "n_documents": tm.n_documents,
+                    "topic_labels": tm.topic_labels,
+                }
+            manifest["nlp_topic_models"] = nlp_meta
 
         for chamber in ["House", "Senate"]:
             r = results[chamber]
@@ -1680,6 +1754,7 @@ def main() -> None:
             results=results,
             plots_dir=ctx.plots_dir,
             skip_bill_passage=args.skip_bill_passage,
+            topic_models=topic_models if topic_models else None,
         )
 
         print(f"\n  Report sections: {len(ctx.report._sections)}")

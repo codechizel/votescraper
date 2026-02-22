@@ -34,6 +34,7 @@ def build_prediction_report(
     results: dict[str, dict],
     plots_dir: Path,
     skip_bill_passage: bool = False,
+    topic_models: dict[str, object] | None = None,
 ) -> None:
     """Build the full prediction HTML report by adding sections to the ReportBuilder."""
     chambers = [c for c in ["House", "Senate"] if c in results]
@@ -97,13 +98,22 @@ def build_prediction_report(
         for chamber in chambers:
             _add_passage_roc_figure(report, plots_dir, chamber)
 
+        # NLP topic features sections
+        if topic_models:
+            _add_nlp_interpretation(report)
+            for chamber in chambers:
+                if chamber in topic_models:
+                    _add_topic_summary_table(report, topic_models[chamber], chamber)
+            for chamber in chambers:
+                _add_topic_words_figure(report, plots_dir, chamber)
+
         for chamber in chambers:
             _add_temporal_split_table(report, results[chamber], chamber)
 
         for chamber in chambers:
             _add_surprising_bills_table(report, results[chamber], chamber)
 
-        _add_passage_interpretation(report)
+        _add_passage_interpretation(report, has_topics=topic_models is not None)
 
     _add_downstream_findings(report)
     _add_parameters_table(report)
@@ -193,7 +203,10 @@ def _add_feature_summary(
 
     rows = []
     for name in feature_names:
-        source = feature_sources.get(name, "Vote type (one-hot)")
+        if name.startswith("topic_"):
+            source = "NLP (bill title topics)"
+        else:
+            source = feature_sources.get(name, "Vote type (one-hot)")
         rows.append({"Feature": name, "Source": source})
 
     df = pl.DataFrame(rows)
@@ -706,25 +719,105 @@ def _add_surprising_bills_table(
     )
 
 
-def _add_passage_interpretation(
-    report: ReportBuilder,
-) -> None:
+def _add_nlp_interpretation(report: ReportBuilder) -> None:
     html = """
-    <p><strong>Bill Passage Interpretation:</strong></p>
+    <p><strong>Bill Title Topic Modeling (NLP):</strong></p>
+    <p>We applied NMF (Non-negative Matrix Factorization) topic modeling to the KLISS API
+    <code>short_title</code> field to extract subject-matter signal from bill titles.
+    This is the same text visible on the legislature's website — it captures what each bill
+    is <em>about</em> (taxes, elections, healthcare, etc.).</p>
     <ul>
-    <li>Bill passage prediction operates on a much smaller dataset (~250-500 roll calls per
-    chamber) compared to vote prediction (~30K-60K observations). This means wider confidence
-    intervals and more overfitting risk.</li>
-    <li>The <strong>temporal split</strong> tests whether early-session voting patterns generalize
-    to late-session votes. A large drop in temporal vs random CV suggests the legislature's
-    behavior shifts over the session (e.g., more contentious votes near deadlines).</li>
-    <li><strong>Surprising bills</strong> are bills the model was confident would pass/fail but
-    didn't — these may represent unexpected coalitions or procedural surprises.</li>
-    <li>Expected performance: bill passage AUC will be lower than vote AUC because we lack
-    legislator-level features at the bill level. The model sees bill characteristics but not
-    who will vote on it.</li>
+    <li><strong>Method:</strong> TF-IDF vectorization (unigrams + bigrams, max 500 features)
+    followed by NMF with K=6 topics. NMF was chosen over LDA because it is deterministic,
+    faster, and produces non-negative topic weights suitable as model features.</li>
+    <li><strong>Not target leakage:</strong> Bill titles are known before any votes are cast —
+    they are pre-vote public information, analogous to the bill prefix (HB, SB) already in the
+    model.</li>
+    <li><strong>Scope:</strong> Topic features are added to the bill passage model only (not
+    the individual vote model, which already achieves AUC=0.98).</li>
     </ul>
     """
+    report.add(
+        TextSection(
+            id="nlp-interpretation",
+            title="Bill Title Topic Modeling (NLP)",
+            html=html,
+        )
+    )
+
+
+def _add_topic_summary_table(report: ReportBuilder, topic_model: object, chamber: str) -> None:
+    rows = []
+    for i in range(topic_model.n_topics):
+        col = f"topic_{i}"
+        words = topic_model.topic_top_words.get(col, [])
+        rows.append(
+            {
+                "Topic": topic_model.topic_labels[i],
+                "Top Words": ", ".join(words),
+            }
+        )
+    if not rows:
+        return
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title=f"{chamber} — NMF Topic Summary (K={topic_model.n_topics})",
+        source_note=f"Vocabulary: {topic_model.vocabulary_size} terms, "
+        f"Documents: {topic_model.n_documents} bill titles.",
+    )
+    report.add(
+        TableSection(
+            id=f"topic-summary-{chamber.lower()}",
+            title=f"{chamber} Topic Summary",
+            html=html,
+        )
+    )
+
+
+def _add_topic_words_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:
+    path = plots_dir / f"topic_words_{chamber.lower()}.png"
+    if path.exists():
+        report.add(
+            FigureSection.from_file(
+                f"topic-words-{chamber.lower()}",
+                f"{chamber} NMF Topic Top Words",
+                path,
+                caption="Top words per NMF topic extracted from bill short_title text.",
+            )
+        )
+
+
+def _add_passage_interpretation(
+    report: ReportBuilder,
+    has_topics: bool = False,
+) -> None:
+    parts = [
+        "<p><strong>Bill Passage Interpretation:</strong></p>",
+        "<ul>",
+        "<li>Bill passage prediction operates on a much smaller dataset (~250-500 roll calls per "
+        "chamber) compared to vote prediction (~30K-60K observations). This means wider confidence "
+        "intervals and more overfitting risk.</li>",
+        "<li>The <strong>temporal split</strong> tests whether early-session voting patterns "
+        "generalize to late-session votes. A large drop in temporal vs random CV suggests the "
+        "legislature's behavior shifts over the session (e.g., more contentious votes near "
+        "deadlines).</li>",
+        "<li><strong>Surprising bills</strong> are bills the model was confident would pass/fail "
+        "but didn't — these may represent unexpected coalitions or procedural surprises.</li>",
+        "<li>Expected performance: bill passage AUC will be lower than vote AUC because we lack "
+        "legislator-level features at the bill level. The model sees bill characteristics but not "
+        "who will vote on it.</li>",
+    ]
+    if has_topics:
+        parts.append(
+            "<li><strong>Bill title topic features</strong> (NMF on TF-IDF) capture "
+            "subject-matter signal — e.g., tax bills, election bills, or healthcare bills may "
+            "have systematically different passage rates. These complement the structural features "
+            "(partisanship, vote type, bill prefix) already in the model.</li>"
+        )
+    parts.append("</ul>")
+    html = "\n".join(parts)
     report.add(
         TextSection(
             id="passage-interpretation",
@@ -799,6 +892,25 @@ def _add_parameters_table(
             XGB_MAX_DEPTH,
         )
 
+    try:
+        from analysis.nlp_features import (
+            NMF_N_TOPICS,
+            NMF_TOP_WORDS,
+            TFIDF_MAX_DF,
+            TFIDF_MAX_FEATURES,
+            TFIDF_MIN_DF,
+            TFIDF_NGRAM_RANGE,
+        )
+    except ModuleNotFoundError:
+        from nlp_features import (  # type: ignore[no-redef]
+            NMF_N_TOPICS,
+            NMF_TOP_WORDS,
+            TFIDF_MAX_DF,
+            TFIDF_MAX_FEATURES,
+            TFIDF_MIN_DF,
+            TFIDF_NGRAM_RANGE,
+        )
+
     rows = [
         {"Parameter": "RANDOM_SEED", "Value": str(RANDOM_SEED)},
         {"Parameter": "N_SPLITS", "Value": str(N_SPLITS)},
@@ -809,6 +921,12 @@ def _add_parameters_table(
         {"Parameter": "XGB_LEARNING_RATE", "Value": str(XGB_LEARNING_RATE)},
         {"Parameter": "TOP_SHAP_FEATURES", "Value": str(TOP_SHAP_FEATURES)},
         {"Parameter": "TOP_SURPRISING_N", "Value": str(TOP_SURPRISING_N)},
+        {"Parameter": "NMF_N_TOPICS", "Value": str(NMF_N_TOPICS)},
+        {"Parameter": "TFIDF_MAX_DF", "Value": str(TFIDF_MAX_DF)},
+        {"Parameter": "TFIDF_MIN_DF", "Value": str(TFIDF_MIN_DF)},
+        {"Parameter": "TFIDF_MAX_FEATURES", "Value": str(TFIDF_MAX_FEATURES)},
+        {"Parameter": "TFIDF_NGRAM_RANGE", "Value": str(TFIDF_NGRAM_RANGE)},
+        {"Parameter": "NMF_TOP_WORDS", "Value": str(NMF_TOP_WORDS)},
     ]
 
     df = pl.DataFrame(rows)

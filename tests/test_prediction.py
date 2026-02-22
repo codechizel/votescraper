@@ -11,6 +11,7 @@ import numpy as np
 import polars as pl
 import pytest
 
+from analysis.nlp_features import fit_topic_features
 from analysis.prediction import (
     build_bill_features,
     build_vote_features,
@@ -97,14 +98,80 @@ def synthetic_votes(synthetic_legislators: pl.DataFrame) -> pl.DataFrame:
 
 @pytest.fixture
 def synthetic_rollcalls() -> pl.DataFrame:
-    """50 roll calls with realistic metadata."""
+    """50 roll calls with realistic metadata and varied short_title text."""
     rows = []
     rng = np.random.default_rng(RANDOM_SEED)
+
+    # Three topic clusters for NLP testing
+    tax_titles = [
+        "income tax rate reduction act",
+        "property tax exemption for veterans",
+        "sales tax on digital goods",
+        "tax credit for small business investment",
+        "property tax assessment reform",
+        "corporate income tax adjustment",
+        "sales tax exemption for food items",
+        "tax increment financing authorization",
+        "estate tax threshold modification",
+        "revenue neutral tax reform package",
+        "income tax bracket indexing",
+        "property tax relief for seniors",
+        "sales tax holiday for school supplies",
+        "tax deduction for charitable giving",
+        "fuel tax rate adjustment",
+        "tax compliance and enforcement",
+        "tobacco tax increase for health funding",
+    ]
+    election_titles = [
+        "elections and voting procedures reform",
+        "voter registration modernization act",
+        "ballot access and election security",
+        "campaign finance reform and disclosure",
+        "election day polling place requirements",
+        "absentee ballot processing standards",
+        "voter identification requirements update",
+        "election audit procedures and oversight",
+        "campaign contribution limits revision",
+        "voting rights protection and access",
+        "election equipment certification standards",
+        "polling place accessibility requirements",
+        "early voting expansion act",
+        "election results certification process",
+        "campaign advertising disclosure requirements",
+        "redistricting commission establishment",
+        "ranked choice voting pilot program",
+    ]
+    health_titles = [
+        "medicaid expansion and coverage update",
+        "healthcare facility licensing standards",
+        "mental health services funding increase",
+        "hospital transparency reporting requirements",
+        "prescription drug cost reduction act",
+        "school health services expansion",
+        "emergency medical services funding",
+        "public health emergency preparedness",
+        "healthcare workforce development act",
+        "telemedicine practice standards",
+        "nursing home quality standards",
+        "healthcare price transparency act",
+        "rural hospital preservation fund",
+        "substance abuse treatment funding",
+        "maternal health care improvement",
+        "health insurance marketplace reform",
+    ]
 
     for j in range(N_ROLLCALLS):
         yea = rng.integers(8, 18)
         nay = 20 - yea
         passed = yea > nay
+        # Cycle through topic clusters
+        if j % 3 == 0:
+            short_title = tax_titles[j // 3 % len(tax_titles)]
+        elif j % 3 == 1:
+            short_title = election_titles[j // 3 % len(election_titles)]
+        else:
+            short_title = health_titles[j // 3 % len(health_titles)]
+
         rows.append(
             {
                 "session": "2025-26",
@@ -118,7 +185,7 @@ def synthetic_rollcalls() -> pl.DataFrame:
                 "motion": "Final Action",
                 "vote_type": "Final Action" if j % 3 != 2 else "Emergency Final Action",
                 "result": "Passed" if passed else "Failed",
-                "short_title": f"Test {j}",
+                "short_title": short_title,
                 "sponsor": "Test Sponsor",
                 "yea_count": int(yea),
                 "nay_count": int(nay),
@@ -506,3 +573,65 @@ class TestSHAP:
         X_sample = trained_models["X_test"][:50]
         shap_vals = compute_shap_values(xgb, X_sample, feature_cols)
         assert shap_vals.feature_names == feature_cols
+
+
+# ── Tests: Build Bill Features with NLP Topics ──────────────────────────────
+
+
+class TestBuildBillFeaturesWithTopics:
+    """Tests for build_bill_features() with NLP topic features."""
+
+    def test_topic_columns_present(self, synthetic_rollcalls, synthetic_bill_params):
+        """When topic_features provided, topic_* columns appear in output."""
+        chamber_rc = synthetic_rollcalls.filter(pl.col("chamber") == "House")
+        topic_df, _ = fit_topic_features(chamber_rc["short_title"])
+        topic_df = topic_df.with_columns(chamber_rc["vote_id"])
+
+        result = build_bill_features(
+            synthetic_rollcalls, synthetic_bill_params, "House", topic_features=topic_df
+        )
+        topic_cols = [c for c in result.columns if c.startswith("topic_")]
+        assert len(topic_cols) > 0
+
+    def test_backward_compat_with_none(self, synthetic_rollcalls, synthetic_bill_params):
+        """Passing topic_features=None produces the same result as before."""
+        result_none = build_bill_features(
+            synthetic_rollcalls, synthetic_bill_params, "House", topic_features=None
+        )
+        result_default = build_bill_features(
+            synthetic_rollcalls, synthetic_bill_params, "House"
+        )
+        assert result_none.columns == result_default.columns
+        assert result_none.height == result_default.height
+
+    def test_feature_count_increases(self, synthetic_rollcalls, synthetic_bill_params):
+        """Adding topics should increase the feature column count."""
+        result_no_topics = build_bill_features(
+            synthetic_rollcalls, synthetic_bill_params, "House"
+        )
+        chamber_rc = synthetic_rollcalls.filter(pl.col("chamber") == "House")
+        topic_df, _ = fit_topic_features(chamber_rc["short_title"])
+        topic_df = topic_df.with_columns(chamber_rc["vote_id"])
+
+        result_with_topics = build_bill_features(
+            synthetic_rollcalls, synthetic_bill_params, "House", topic_features=topic_df
+        )
+        assert result_with_topics.width > result_no_topics.width
+
+    def test_passage_model_trains_with_topics(self, synthetic_rollcalls, synthetic_bill_params):
+        """Passage models should train successfully with topic features."""
+        chamber_rc = synthetic_rollcalls.filter(pl.col("chamber") == "House")
+        topic_df, _ = fit_topic_features(chamber_rc["short_title"])
+        topic_df = topic_df.with_columns(chamber_rc["vote_id"])
+
+        features = build_bill_features(
+            synthetic_rollcalls, synthetic_bill_params, "House", topic_features=topic_df
+        )
+        result = train_passage_models(features, "House")
+        if result.get("skipped"):
+            pytest.skip("Too few observations")
+        assert "XGBoost" in result["models"]
+        assert len(result["feature_names"]) > 0
+        # Verify topic columns are in the feature list
+        topic_feature_names = [f for f in result["feature_names"] if f.startswith("topic_")]
+        assert len(topic_feature_names) > 0

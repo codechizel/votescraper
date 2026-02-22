@@ -403,6 +403,25 @@ XGBoost adds almost nothing over logistic regression on xi x beta. The IRT ideal
 - **Observation:** Senate has only 42 legislators. The n_neighbors=50 setting is truncated to n=41 by umap-learn (warning emitted). Senate Procrustes similarities (0.91-0.96) are higher than House (0.78-0.98) paradoxically because the small sample constrains possible layouts.
 - **Downstream:** Senate UMAP results should be presented with the caveat that n=42 is at the lower end of UMAP's effective range. The House (n=130) embedding is more reliable.
 
+## Flagged Patterns — NLP Bill Text Features
+
+### NMF Topic Features Added to Bill Passage Model
+
+- **Phase:** Prediction (bill passage enhancement)
+- **Observation:** TF-IDF + NMF (K=6 topics) fitted per chamber on `short_title` text from the KLISS API. Topic proportions added as 6 additional features to the bill passage model alongside existing structural features (beta, vote type, bill prefix, day of session, is_veto_override).
+- **Explanation:** Bill passage AUC was 0.84-0.96 with structural features alone. Subject-matter signal (elections, taxes, healthcare) may explain "surprising" bills that structural features miss. NMF chosen for determinism and zero new dependencies.
+- **Downstream:**
+  - **Interpretation:** Topic labels are auto-generated from top words (e.g., "Topic: Tax / Income / Property") — inspect these after running on real data to verify they correspond to intuitive policy areas. If topics are incoherent, consider adjusting K or the min_df/max_df parameters.
+  - **SHAP analysis:** Topic features appear in SHAP plots with plain-English labels. If a topic feature ranks high in SHAP importance, it indicates subject matter affects passage odds independently of partisanship.
+  - **Overfitting risk:** 6 extra features on ~200-500 rows increases dimensionality. Monitor CV-vs-holdout gap and temporal split degradation. If topics add noise rather than signal, the `topic_features=None` default allows easy ablation.
+  - **Cross-session stability:** Topics are corpus-specific — 2023-24 session may produce entirely different topic structure than 2025-26. Topic labels are not comparable across sessions without alignment.
+
+### short_title Text Quality
+
+- **Phase:** Prediction (NLP preprocessing)
+- **Observation:** `short_title` from the KLISS API is never null for standard roll calls. However, amendment vote pages may have different title structures. The NLP module handles null/empty strings gracefully (zero-filled topic columns).
+- **Downstream:** If future sessions introduce roll calls without `short_title` data, the fallback to zero-filled columns ensures the pipeline doesn't crash, but those rows contribute no topic signal. Monitor the fraction of zero-topic rows in the filtering manifest's NLP metadata.
+
 ## Template
 
 ```

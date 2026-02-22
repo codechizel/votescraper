@@ -106,6 +106,35 @@
 
 **Why:** The 82% Yea base rate means a "predict all Yea" classifier achieves 82% accuracy. Accuracy alone is misleading. AUC-ROC measures discrimination independent of the base rate. A party-only baseline (predict by party median) provides a more informative comparison than majority-class.
 
+### NLP topic features: NMF on bill short_title
+
+**Decision:** Add NMF topic features (K=6) from TF-IDF on `short_title` to the bill passage model only.
+
+**Why NMF, not LDA or embeddings:**
+- NMF is deterministic (given a fixed random seed), faster than LDA, and produces non-negative topic weights that are directly interpretable as feature values.
+- LDA requires Bayesian inference (Gibbs sampling or variational), adds stochasticity, and gains little on ~500 short documents.
+- Sentence embeddings (e.g., sentence-transformers) would add a large dependency (~400MB model) for marginal benefit on 5-15 word titles.
+- NMF is already available via scikit-learn — zero new dependencies.
+
+**Why K=6:** The Senate has ~194 roll calls. With 6 topics, each topic covers ~30 documents on average — enough for stable NMF estimation. Higher K risks sparse topics; lower K loses granularity. K=6 balances coherence with discrimination.
+
+**Why `short_title`, not `bill_title`:** `short_title` comes from the KLISS API and is never empty. `bill_title` can be empty for some roll calls and contains formulaic preamble ("AN ACT concerning...") that adds noise without signal.
+
+**Data leakage assessment:** Bill titles are public information known before any votes are cast. The text is fixed at bill introduction — it does not change based on vote outcomes. Using it as a feature is analogous to using the bill prefix (HB, SB) or vote type, which are already in the model. The topic model is fit on all documents (not train-only) because the text is pre-vote information, same as IRT ideal points which are also pre-computed on all data.
+
+**Scope:** Topic features are added to the bill passage model only, not the individual vote model (which already achieves AUC=0.98 — marginal topic signal would not justify the added complexity).
+
+**Constants:**
+
+| Constant | Value | Justification |
+|----------|-------|---------------|
+| `NMF_N_TOPICS` | 6 | Senate N=194 ceiling; balances granularity vs coherence |
+| `TFIDF_MAX_DF` | 0.85 | Exclude terms appearing in >85% of docs (stop-word-like) |
+| `TFIDF_MIN_DF` | 2 | Require term in at least 2 docs (avoid hapax legomena) |
+| `TFIDF_MAX_FEATURES` | 500 | Cap vocabulary; short titles have limited vocabulary |
+| `TFIDF_NGRAM_RANGE` | (1, 2) | Unigrams + bigrams capture phrases like "income tax" |
+| `NMF_TOP_WORDS` | 5 | Words per topic for display/labeling |
+
 ## Downstream Implications
 
 ### For interpretation
@@ -114,6 +143,6 @@
 - Surprising votes identify specific (legislator, bill) pairs where behavior deviates from the model's expectations — these are the most analytically interesting observations
 
 ### For future work
-- If AUC < 0.90, consider adding bill text features (NLP) or temporal features (session progression)
+- NLP topic features (NMF on `short_title`) are now included in the bill passage model; if AUC remains low, consider temporal features (session progression) or cross-session stacking
 - If per-legislator accuracy is bimodal, consider legislator-specific models or mixture-of-experts
 - Bill passage prediction on ~500 rows is inherently limited; more sessions would improve this

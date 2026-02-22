@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the KS Vote Scraper analytics pipeline.
 
-**Last updated:** 2026-02-22 (after UMAP integration into Synthesis)
+**Last updated:** 2026-02-22 (after NLP bill text features for Prediction)
 
 ---
 
@@ -18,6 +18,7 @@ What's been done, what's next, and what's on the horizon for the KS Vote Scraper
 | 6 | Prediction | 2026-02-20 | Vote AUC=0.98; IRT features do all the work; XGBoost adds nothing over logistic |
 | 7 | Classical Indices | 2026-02-21 | Rice, CQ unity, ENP, weighted maverick; Schreiber/Dietrich top mavericks |
 | 2b | UMAP | 2026-02-22 | Nonlinear ideological landscape; validates PCA/IRT; most accessible visualization |
+| 6+ | NLP Bill Text Features | 2026-02-22 | NMF topic features on short_title added to bill passage prediction |
 | — | Synthesis Report | 2026-02-22 | 32-section narrative HTML; joins all 8 phases into one deliverable |
 
 ---
@@ -153,20 +154,9 @@ Two methods documented but not yet implemented:
 
 Requires the `ruptures` library (already in `pyproject.toml`). Becomes much more powerful once 2023-24 data is available for cross-session comparison.
 
-### 8. NLP on Bill Text for Passage Prediction
+### 8. 2D Bayesian IRT Model
 
-**Priority:** Medium — the obvious missing feature for prediction.
-
-Current bill passage prediction uses only structural features (beta, vote_type, bill_prefix, day_of_session). AUC is 0.90 (House) / 0.84 (Senate). Adding bill text features could improve substantially:
-
-- Bill titles and descriptions are already available from the KLISS API (fetched during scraping)
-- Simple TF-IDF or sentence embeddings on `short_title` / `bill_title`
-- Topic modeling to classify bills into policy areas
-- Would explain the "surprising" bills that structural features miss
-
-### 9. 2D Bayesian IRT Model
-
-**Priority:** Medium — solves the Tyson paradox properly.
+**Priority:** Medium — solves the Tyson paradox properly. (Formerly item #9.)
 
 The 1D model compresses Tyson's two-dimensional behavior (ideology + contrarianism) into one axis. A 2D model would:
 - Place Tyson as (very conservative on Dim 1, extreme outlier on Dim 2)
