@@ -54,6 +54,10 @@ network *args:
 prediction *args:
     uv run python analysis/prediction.py {{args}}
 
+# Run UMAP analysis
+umap *args:
+    uv run python analysis/umap_viz.py {{args}}
+
 # Run synthesis report
 synthesis *args:
     uv run python analysis/synthesis.py {{args}}
@@ -66,6 +70,7 @@ test *args:
 test-scraper *args:
     uv run pytest tests/test_session.py tests/test_scraper_pure.py tests/test_scraper_html.py tests/test_models.py tests/test_output.py tests/test_cli.py {{args}} -v
 
-# Full check (lint)
+# Full check (lint + tests)
 check:
     just lint-check
+    just test

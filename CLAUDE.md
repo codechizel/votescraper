@@ -18,6 +18,7 @@ just lint                                    # lint + format
 just lint-check                              # check only
 just sessions                                # list available sessions
 just check                                   # full check
+just umap                                    # UMAP ideological landscape
 just synthesis                               # run synthesis report
 uv run ks-vote-scraper 2023                  # historical session
 uv run ks-vote-scraper 2024 --special        # special session
@@ -205,6 +206,7 @@ Each analysis phase produces a self-contained HTML report (`{analysis}_report.ht
 
 - `analysis/report.py` — Generic: section types (`TableSection`, `FigureSection`, `TextSection`), `ReportBuilder`, `make_gt()` helper, Jinja2 template + CSS.
 - `analysis/eda_report.py` — EDA-specific: `build_eda_report()` adds ~19 sections.
+- `analysis/umap_viz.py` + `analysis/umap_report.py` — UMAP: nonlinear dimensionality reduction on vote matrix (cosine metric, n_neighbors=15). Produces ideological landscape plots, validates against PCA/IRT via Spearman, Procrustes sensitivity sweep.
 - `analysis/synthesis_detect.py` — Detection: pure data logic that identifies notable legislators (mavericks, bridge-builders, metric paradoxes) from upstream DataFrames. Returns frozen dataclasses with pre-formatted titles and subtitles.
 - `analysis/synthesis.py` + `analysis/synthesis_report.py` — Synthesis: loads upstream parquets from all 7 phases, joins into unified legislator DataFrames, runs data-driven detection, produces 27-30 section narrative HTML report for nontechnical audiences. No hardcoded legislator names.
 - `RunContext` auto-writes the HTML in `finalize()` if sections were added.
@@ -248,6 +250,7 @@ uv run ruff check src/       # lint clean
 ### Analysis Infrastructure Test Files
 - `tests/test_run_context.py` — TeeStream, session normalization, RunContext lifecycle (~26 tests)
 - `tests/test_report.py` — section rendering, format parsing, ReportBuilder, make_gt (~36 tests)
+- `tests/test_umap_viz.py` — imputation, orientation, embedding construction, Procrustes, validation correlations (~21 tests)
 
 ### Manual Verification
 - Run scraper with `--clear-cache`, check that `vote_date`, `chamber`, `motion`, `bill_title` are populated

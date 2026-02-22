@@ -381,6 +381,28 @@ XGBoost adds almost nothing over logistic regression on xi x beta. The IRT ideal
 - **Explanation:** This is a valid paradox case but less narratively interesting than the Tyson-style paradox (extreme ideology but low loyalty). The "toward the center" direction indicates the gap comes from being a reliable caucus member who isn't an ideologue — the opposite of Tyson's "reliable conservative who bucks the party."
 - **Downstream:** The paradox narrative template handles both directions, but the "toward the center" case reads less dramatically. Consider whether the paradox detector should prefer "extreme ideology + low loyalty" over "high loyalty + moderate ideology" when both exceed the threshold.
 
+## Flagged Patterns — UMAP
+
+### Clear Party Separation with Nonlinear Fidelity
+
+- **Phase:** UMAP
+- **Observation:** Both chambers show unambiguous R/D party separation in the 2D UMAP landscape. House shows a clean gap between party clusters; Senate shows the same with tighter grouping (smaller n). Procrustes similarity > 0.78 (House) and > 0.91 (Senate) across all n_neighbors pairs, confirming structural stability.
+- **Explanation:** UMAP's cosine metric and neighborhood preservation produce a layout consistent with the linear PCA and nonlinear IRT results. The party boundary is the dominant structure regardless of method.
+- **Downstream:** UMAP landscapes are the most accessible visualization for nontechnical audiences. Use as the primary "ideological map" in reporting, with PCA and IRT providing quantitative validation.
+
+### Moderate UMAP1-PCA/IRT Correlation — Expected, Not Concerning
+
+- **Phase:** UMAP
+- **Observation:** Spearman rho between UMAP1 and PCA PC1: House=0.64, Senate=0.29. Between UMAP1 and IRT xi_mean: House=0.57, Senate=0.21.
+- **Explanation:** These are lower than PCA-IRT correlations (r=0.97) but this is expected. UMAP is nonlinear and 2D — UMAP1 alone doesn't capture the full embedding. The gradient validation plots (smooth red-to-blue transitions when coloring UMAP by PC1 or IRT) provide stronger visual evidence of alignment than the scalar correlation suggests. The Senate's low rho reflects its small sample (n=42) and UMAP's instability at that size.
+- **Downstream:** Do not use UMAP1 as a substitute for PCA PC1 or IRT ideal points in quantitative analyses. UMAP is a visualization tool; PCA and IRT remain the quantitative ideal-point estimates.
+
+### Senate UMAP Instability at n=42
+
+- **Phase:** UMAP
+- **Observation:** Senate has only 42 legislators. The n_neighbors=50 setting is truncated to n=41 by umap-learn (warning emitted). Senate Procrustes similarities (0.91-0.96) are higher than House (0.78-0.98) paradoxically because the small sample constrains possible layouts.
+- **Downstream:** Senate UMAP results should be presented with the caveat that n=42 is at the lower end of UMAP's effective range. The House (n=130) embedding is more reliable.
+
 ## Template
 
 ```
