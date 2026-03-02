@@ -551,7 +551,7 @@ def _add_absenteeism_analysis(report: ReportBuilder, absence: pl.DataFrame) -> N
             "appear consistent with general absence rates."
         )
     report.add(
-        TextSection(id="strategic-absence-flags", title="Strategic Absence Flags", text=text)
+        TextSection(id="strategic-absence-flags", title="Strategic Absence Flags", html=text)
     )
 
 
