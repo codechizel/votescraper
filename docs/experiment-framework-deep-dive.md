@@ -377,6 +377,14 @@ if __name__ == "__main__":
 
 ## Experiment Monitoring and Process Visibility
 
+> **Status (2026-03-02):** The callback-based monitoring described below (Layers 1-2)
+> was designed for PyMC's `pm.sample(callback=...)` API. After migrating to nutpie
+> (ADR-0051, ADR-0053), which uses Rust threads instead of Python multiprocessing,
+> the callback infrastructure became dead code and was removed (ADR-0080). nutpie
+> provides its own terminal progress bar (step size, divergences, gradients/draw per
+> chain). Layer 3 (PID lock + process group) remains in production as
+> `ExperimentLifecycle`. `just monitor` now checks the PID file.
+
 ### The Opacity Problem
 
 When a hierarchical IRT experiment runs, `ps aux` shows something like:
@@ -608,15 +616,16 @@ Tinkering with the open source code is tempting — inject `setproctitle` into `
 
 The one scenario where modifying PyMC would help is if children hang on `pipe.recv()` after the parent dies (the "abort message never sent" case). But process group management solves this too — SIGTERM reaches every process in the group.
 
-### Alternative: nutpie (Long-Term)
+### Production: nutpie (Implemented)
 
-The nutpie sampler (Rust-based NUTS, maintained by the PyMC team) eliminates the multiprocessing problem entirely:
+All MCMC models now use nutpie (ADR-0051, ADR-0053), which eliminates the multiprocessing problem entirely:
 
 - **Single process**: All chains run as Rust threads within one Python process. No child processes, no orphans.
-- **Non-blocking API**: `sampler = nutpie.sample(model, blocking=False)` returns immediately. `sampler.inspect()` returns the partial trace. `sampler.pause()` / `sampler.resume()` / `sampler.abort()` provide full control.
+- **Built-in progress bar**: nutpie's Rust `indicatif` crate shows per-chain step size, divergences, and gradients/draw directly in the terminal.
 - **One PID to monitor**: `setproctitle` on the single process shows everything. `ps` shows one process, not five.
+- **Non-blocking API**: `sampler.inspect()` can grab partial posterior at any time without interrupting.
 
-nutpie is a drop-in replacement for `pm.sample()` and benchmarks at 2-10x faster effective samples per second on hierarchical models. It's not in our dependency tree yet, but it's the cleanest long-term path.
+This made the PyMC callback infrastructure (Layers 1-2 above) unnecessary, and it was removed in ADR-0080.
 
 ### New Dependencies
 
@@ -642,17 +651,16 @@ nutpie is a drop-in replacement for `pm.sample()` and benchmarks at 2-10x faster
 
 ### Phase 2: Process Monitoring Infrastructure
 
-1. Add `setproctitle` and `pid` to `pyproject.toml` dependencies
+1. Add `setproctitle` to `pyproject.toml` dependencies
 2. Create `analysis/experiment_monitor.py` with:
-   - `create_monitoring_callback()` — PyMC callback for process title + status file updates
+   - `PlatformCheck` dataclass with `validate()` encoding M3 Pro rules from ADR-0022
    - `write_status()` — atomic JSON status file writer
-   - `ExperimentLifecycle` context manager — wraps PID file, process group, SIGTERM handler, status file cleanup
-3. Add `PlatformCheck` dataclass with `validate()` encoding M3 Pro rules from ADR-0022
-4. Add `_count_active_mcmc_processes()` using `pgrep -f tallgrass` (avoids `psutil` dependency)
-5. Add Justfile recipe: `just monitor` → `watch -n 5 'cat /tmp/tallgrass/experiment.status.json ...'`
-6. Add tests: mock environment variables, verify warnings fire; verify atomic write; verify PID lock conflict detection
+   - `ExperimentLifecycle` context manager — wraps PID file, process group, SIGTERM handler, cleanup
+3. Add `_count_active_mcmc_processes()` using `pgrep -f tallgrass` (avoids `psutil` dependency)
+4. Add Justfile recipe: `just monitor` → check PID file (nutpie shows its own progress bar)
+5. Add tests: mock environment variables, verify warnings fire; verify atomic write; verify PID lock conflict detection
 
-**Risk:** Low. Pure addition. Does not modify production code. `setproctitle` and `pid` are tiny, well-maintained packages with no transitive dependencies.
+**Risk:** Low. Pure addition. Does not modify production code.
 
 ### Phase 3: Experiment Configuration Dataclass
 
@@ -665,11 +673,10 @@ nutpie is a drop-in replacement for `pm.sample()` and benchmarks at 2-10x faster
 
 ### Phase 4: Shared Experiment Runner
 
-1. Add `run_experiment()` function that orchestrates: `ExperimentLifecycle` → platform check → data load → model build → sample (with monitoring callback) → diagnose → save → report
+1. Add `run_experiment()` function that orchestrates: `ExperimentLifecycle` → platform check → data load → model build → sample → diagnose → save → report
 2. Factor out the data-loading, PCA-init, and reporting logic currently duplicated across experiment scripts
 3. Support both per-chamber and joint model runs via config flags
-4. Wire the monitoring callback into every `pm.sample()` call automatically
-5. Produce standardized `metrics.json` with platform info, config dump, convergence results, and timing
+4. Produce standardized `metrics.json` with platform info, config dump, convergence results, and timing
 
 **Risk:** Medium. This is the largest change. Test by running the existing positive-beta experiment through the new runner and comparing output.
 

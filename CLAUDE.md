@@ -229,7 +229,7 @@ Key references:
 
 ## Experiment Framework
 
-Three components eliminate code duplication in MCMC experiments (ADR-0048):
+Four components eliminate code duplication in MCMC experiments (ADR-0048):
 
 - **`analysis/10_hierarchical/model_spec.py`** — `BetaPriorSpec` frozen dataclass + `PRODUCTION_BETA`, `JOINT_BETA`. Both `build_per_chamber_model()` and `build_joint_model()` accept `beta_prior=` parameter (defaults to production). Joint model uses `JOINT_BETA` (`lognormal_reparam`: exp(Normal(0,1)) for positive discrimination without boundary geometry). Experiments pass alternative specs — no code duplication. `build_per_chamber_graph()` returns the PyMC model without sampling (importable by experiments).
 - **`analysis/10_hierarchical/irt_linking.py`** — IRT scale linking for cross-chamber alignment. Implements Stocking-Lord, Haebara, Mean-Sigma, and Mean-Mean linking using shared (anchor) bills. Sign-aware anchor extraction handles unconstrained per-chamber betas. Production alternative to concurrent calibration (joint model).

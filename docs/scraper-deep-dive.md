@@ -97,29 +97,17 @@ Severity: Low (the invariant currently holds). Risk: maintenance fragility.
 
 **Issue 2: Magic numbers not in config** (`scraper.py:168, 1055, 1082; odt_parser.py:121`)
 
-- `200` — cache filename truncation length
 - `500` — bill title truncation length
 
-Both should be constants in `config.py` for discoverability:
-
-```python
-CACHE_FILENAME_MAX_LENGTH = 200
-BILL_TITLE_MAX_LENGTH = 500
-```
+Extracted as `BILL_TITLE_MAX_LENGTH` in `config.py`. Cache filenames now use SHA-256 hashing (ADR-0080), eliminating the truncation approach entirely.
 
 **Issue 3: Silent bill title truncation**
 
 `bill_title[:500]` truncates without logging. If a title exceeds 500 characters, the CSV will have incomplete data with no indication. Should log a warning when truncation occurs.
 
-**Issue 4: Cache filename collision risk** (`scraper.py:168`)
+**Issue 4: Cache filename collision risk** (`scraper.py:168`) — **RESOLVED (ADR-0080)**
 
-```python
-cache_file = self.cache_dir / f"{cache_key[:200]}{cache_ext}"
-```
-
-URLs are truncated to 200 characters for filesystem compatibility. If two URLs share the same first 200 characters (possible for very long bill URLs with different query parameters), they'd collide in cache. A hash-based approach (`hashlib.sha256(url.encode()).hexdigest()[:32]`) would eliminate this risk, but the current approach works in practice because KS Legislature URLs are well under 200 characters.
-
-Severity: Theoretical only. No action required.
+Cache filenames now use SHA-256 hashing (`hashlib.sha256(url.encode()).hexdigest()[:16]`), eliminating the truncation-based collision risk entirely.
 
 **Issue 5: `self.delay` mutation during retry waves** (`scraper.py:331`)
 
