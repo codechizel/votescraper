@@ -28,6 +28,7 @@ Each phase produces a self-contained HTML report with SPSS/APA-style tables and 
 - `analysis/report.py` — Generic: `TableSection`, `FigureSection`, `TextSection`, `ReportBuilder`, `make_gt()`, Jinja2 template + CSS
 - `analysis/run_context.py` — `RunContext` context manager: structured output, elapsed timing, auto-primers, `strip_leadership_suffix()` utility, `generate_run_id()`, `resolve_upstream_dir()` (ADR-0052)
 - Phase-specific report builders: `*_report.py` in each subdirectory (e.g., `analysis/01_eda/eda_report.py`)
+- Enhancement survey: `docs/report-enhancement-survey.md` (current inventory, gap analysis, 26 prioritized recommendations in `docs/roadmap.md`)
 
 ## Key Data Modules (Pure Logic, No I/O)
 

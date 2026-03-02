@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-01 (84th audit — 2 bug fixes, 3 backlog items added)
+**Last updated:** 2026-03-01 (report enhancement survey — 26 items added to backlog)
 
 ---
 
@@ -124,6 +124,74 @@ In the 84th pipeline run, 28 House legislators (beyond the 2 expected IRT anchor
 ### 3. 84th Biennium Pipeline Re-run
 
 The current 84th results (`84-260228.5`) predate three code fixes: (1) Carey Unity `group_by` race condition (non-deterministic party member count swap), (2) clustering sensitivity ARI row-ordering mismatch (meaningless ARI values), (3) IRT sensitivity sign-flip handling (already fixed in code, results show stale negative correlations with `raw_pearson_r: null`). A fresh pipeline re-run (`just pipeline 2011-12`) would validate all fixes and produce clean results.
+
+---
+
+## Report Enhancement Backlog
+
+Prioritized improvements to HTML report output, based on a comprehensive survey of the open-source landscape, academic standards, and general-audience best practices. Full analysis: [`docs/report-enhancement-survey.md`](report-enhancement-survey.md).
+
+### Tier 1: High-Impact, Lower Effort
+
+Presentation-layer enhancements — no pipeline changes required.
+
+| # | Enhancement | Phases | Effort | Rationale |
+|---|-------------|--------|--------|-----------|
+| R1 | **Key Findings section** at top of every report | All 17 | Low | Every newsroom leads with findings. Academic papers have abstracts. Our reports jump straight to tables. Auto-generate 3-5 bullets from results data. |
+| R2 | **ITables for legislator tables** (sort, search, filter, paginate) | All phases with full tables | Low | Every modern data site has searchable tables. Static HTML tables in 2026 feel dated. Zero-dependency library (v2.6+), Polars support. |
+| R3 | **Party ideal point density overlay** | 04 IRT | Low | The single most published figure in IRT literature (Bafumi et al. 2005, Shor & McCarty 2011). Overlapping KDE curves show party separation and overlap at a glance. Missing from Phase 04; hierarchical has party posteriors but flat does not. |
+| R4 | **Headline-style section titles** | All (Synthesis already partial) | Low | "Moderate Republicans Broke Ranks on 23 Key Votes" instead of "Cluster Analysis Results." Makes reports scannable and quotable. Follows FiveThirtyEight, Economist, Pew design. |
+| R5 | **Absenteeism as analysis** (not just filtering) | 01 EDA, 07 Indices | Low | General audiences care deeply about who shows up. ProPublica and GovTrack use missed votes as a headline metric. Data already computed; present as finding, not filter. Rank legislators, correlate with vote closeness. |
+| R6 | **ICCs in flat IRT report** | 04 IRT | Low | Code already exists in Phase 10 hierarchical. Item characteristic curves are standard in psychometric reporting. Show for top 5-10 most discriminating bills. |
+
+### Tier 2: High-Impact, Medium Effort
+
+New analysis code or visualization infrastructure changes.
+
+| # | Enhancement | Phases | Effort | Rationale |
+|---|-------------|--------|--------|-----------|
+| R7 | **Per-vote spatial visualization** (cutting lines) | 04 IRT | Medium | VoteView's signature figure — legislators on ideology axis with cutting line showing Yea/Nay split. The most recognizable chart in legislative analysis. No equivalent in Tallgrass. Show for top-5 most discriminating votes per chamber. |
+| R8 | **Swing vote identification** | 04 IRT or 07 Indices | Medium | "Whose vote decided the outcome?" — the most newsworthy question for close votes. Identify legislator(s) with ideal points nearest the cutting point on margin-≤5 votes. Aggregate to "swing vote frequency" ranking. |
+| R9 | **Plotly for ideology scatter plots** | 02 PCA, 04 IRT, 05 Clustering | Medium | Interactive hover-to-identify on the most viewed figures. Plotly v6 has native Polars support, standalone HTML fragment export via `.to_html(full_html=False)`. Requires new section type in `report.py`. |
+| R10 | **PyVis for network graphs** | 06 Network, 06b Bipartite | Medium | Interactive force-directed networks (drag, zoom, hover) from existing NetworkX objects. `from_nx(G)` one-liner. Standalone HTML output. Current static PNGs don't convey network structure well. |
+| R11 | **Predicted vs. actual ("plus-minus") framing** | 07 Indices or 08 Prediction | Medium | FiveThirtyEight's most effective device: "Expected to vote with party 78%, actually 92%. Difference: +14." Dumbbell chart + ranked table. Uses existing prediction and party unity data. |
+| R12 | **Vote-based bipartisanship index** | 07 Indices | Medium | Distinct from maverick score. Maverick = breaks from own party. Bipartisan = aligns with opposing party on party-line votes. Lugar Center BPI is the cosponsorship standard; vote-based analogue is straightforward. |
+| R13 | **Named/described coalitions** | 05 Clustering, 11 Synthesis | Medium | Phases 05/05b/06 identify groups by number. Journalists need: "the moderate Republican faction (12 members, median IRT -0.3)." Auto-label from party composition, IRT range, and size. |
+
+### Tier 3: High-Impact, Higher Effort
+
+Substantial new features or infrastructure.
+
+| # | Enhancement | Phases | Effort | Rationale |
+|---|-------------|--------|--------|-----------|
+| R14 | **Folium district choropleth maps** | New section in EDA or Profiles | High | Kansas legislative districts colored by ideology, party unity, or maverick score. Requires district GeoJSON (Census/redistricting). Interactive Leaflet maps with hover tooltips. |
+| R15 | **Full voting record per legislator** | 12 Profiles | High | ProPublica, GovTrack, VoteView all show vote-by-vote detail. Profiles currently show defections and surprising votes but not the complete record. ITables with search/sort. |
+| R16 | **Quarto unified dashboard** | All phases | High | Single navigable website combining all 17 phase reports with cross-linking. Supports Python, Plotly, Folium. Publishes to GitHub Pages. Replaces per-phase HTML files. |
+| R17 | **Downloadable CSV alongside reports** | All phases | Medium | VoteView, ProPublica, GovTrack all offer data downloads. Add CSV export links for underlying data tables in each report. |
+| R18 | **Freshmen cohort analysis** | 13 Cross-Session or new | Medium-High | Do newly elected legislators vote differently from incumbents? Convergence toward party mean over time? Comparative density plots, within-session drift. |
+| R19 | **Voting bloc stability tracking** | 13 Cross-Session | Medium-High | Do clusters persist, split, or merge across bienniums? ARI of cluster assignments for returning legislators. Sankey diagram of bloc evolution. |
+| R20 | **Scrollytelling in Synthesis** | 11 Synthesis | High | Progressive narrative reveal (D3.js + Scrollama.js). NYT/WaPo signature format. High engagement but requires JavaScript integration. |
+
+### Tier 4: Nice-to-Have
+
+| # | Enhancement | Notes |
+|---|-------------|-------|
+| R21 | **Parliament/hemicircle charts** for vote composition | Visually striking (Flourish/Plotly). Not analytically essential. |
+| R22 | **Sankey diagrams** for bill flow (intro → committee → floor → passage) | Requires bill lifecycle data beyond roll calls. |
+| R23 | **Ridgeline plots** for temporal ideology distributions | Alternative to existing density plots. More compact for multi-session views. |
+| R24 | **Animated scatter** (Gapminder-style) for dynamic IRT | Engaging but complex. Plotly `animation_frame`. |
+| R25 | **Descriptive alt text** for all figures | Accessibility improvement. Current `FigureSection` uses title only, not descriptive. |
+| R26 | **Bill outcome prediction model** | Logistic regression on bill passage. Stanford CS229 achieves ~80% on congressional data. Requires bill-level features. |
+
+### Key Library Additions
+
+| Library | Purpose | Integration Point |
+|---------|---------|-------------------|
+| [Plotly](https://plotly.com/python/) (v6) | Interactive scatter, bar, heatmap, Sankey | New `InteractiveSection` in `report.py` |
+| [PyVis](https://pyvis.readthedocs.io/) | Interactive network graphs | Phase 06, 06b |
+| [ITables](https://github.com/mwouts/itables) (v2.6+) | Searchable/sortable tables | All phases with legislator tables |
+| [Folium](https://python-visualization.github.io/folium/) | Interactive choropleth maps | New geographic sections |
+| [Quarto](https://quarto.org/) | Unified multi-phase dashboard/website | Long-term publishing system |
 
 ---
 
