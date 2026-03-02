@@ -671,6 +671,11 @@ def main() -> None:
 
             # Save parquet
             loyalty_df.write_parquet(ctx.data_dir / f"posterior_loyalty_{chamber.lower()}.parquet")
+            ctx.export_csv(
+                loyalty_df,
+                f"posterior_loyalty_{chamber.lower()}.csv",
+                f"Bayesian posterior party loyalty for {chamber}",
+            )
             all_loyalty[chamber] = loyalty_df
             chamber_results[chamber]["loyalty_df"] = loyalty_df
 

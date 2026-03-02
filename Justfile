@@ -164,8 +164,13 @@ pipeline session="2025-26" *args:
     just synthesis --session {{session}} --run-id "$RUN_ID" {{args}}
     just profiles --session {{session}} --run-id "$RUN_ID" {{args}}
     just tsa       --session {{session}} --run-id "$RUN_ID" {{args}}
+    just dashboard {{session}} --run-id "$RUN_ID"
     echo ""
     echo "Pipeline complete: $RUN_ID"
+
+# Generate dashboard index for a session
+dashboard session="2025-26" *args:
+    uv run python analysis/dashboard.py {{session}} {{args}}
 
 # Run all tests
 test *args:

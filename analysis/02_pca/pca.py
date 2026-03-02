@@ -1080,6 +1080,7 @@ def main() -> None:
 
             # Save parquet files
             result["scores_df"].write_parquet(ctx.data_dir / f"pc_scores_{label.lower()}.parquet")
+            ctx.export_csv(result["scores_df"], f"pc_scores_{label.lower()}.csv", f"PCA scores for {label} legislators")
             result["loadings_df"].write_parquet(
                 ctx.data_dir / f"pc_loadings_{label.lower()}.parquet"
             )

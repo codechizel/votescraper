@@ -299,6 +299,9 @@ class RunContext:
         self._original_stdout: TextIO | None = None
         self._start_time: datetime | None = None
 
+        # Track exported CSVs for DownloadSection
+        self._exported_csvs: list[tuple[str, str]] = []
+
         # Lazy-init report builder (avoids importing report.py at module level)
         self.report = self._init_report()
 
@@ -327,6 +330,52 @@ class RunContext:
             )
         except ImportError:
             return None
+
+    def export_csv(
+        self,
+        df: object,
+        filename: str,
+        description: str,
+        column_labels: dict[str, str] | None = None,
+    ) -> Path:
+        """Export a Polars DataFrame as CSV and register it for the download section.
+
+        Args:
+            df: A polars DataFrame to export.
+            filename: Output filename (e.g. "ideal_points_house.csv").
+            description: Human-readable description for the download link.
+            column_labels: Optional column rename mapping for the exported CSV.
+
+        Returns:
+            Path to the written CSV file.
+        """
+        import polars as pl
+
+        if not isinstance(df, pl.DataFrame):
+            msg = f"export_csv expects a polars DataFrame, got {type(df).__name__}"
+            raise TypeError(msg)
+
+        out = df
+        if column_labels:
+            rename_map = {k: v for k, v in column_labels.items() if k in out.columns}
+            if rename_map:
+                out = out.rename(rename_map)
+
+        # Drop columns with nested types (List, Struct, Array) that CSV cannot serialize
+        nested = [
+            c for c in out.columns
+            if out[c].dtype.base_type() in (pl.List, pl.Struct, pl.Array)
+        ]
+        if nested:
+            out = out.drop(nested)
+
+        csv_path = self.data_dir / filename
+        out.write_csv(csv_path)
+
+        # Store relative path from report HTML location to CSV
+        rel_path = f"data/{filename}"
+        self._exported_csvs.append((rel_path, description))
+        return csv_path
 
     def setup(self) -> None:
         """Create directories, write primer, and start log capture."""
@@ -390,6 +439,7 @@ class RunContext:
         # Write HTML report if sections were added
         if self.report is not None and hasattr(self.report, "has_sections"):
             if self.report.has_sections:
+                _append_download_section(self.report, self._exported_csvs)
                 _append_missing_votes(self.report, self.session)
                 self.report.git_hash = run_info["git_commit"]
                 self.report.elapsed_display = run_info["elapsed_display"]
@@ -429,6 +479,26 @@ class RunContext:
                 if latest.is_symlink() or latest.exists():
                     latest.unlink()
                 latest.symlink_to(self._run_label)
+
+
+def _append_download_section(report: object, exported_csvs: list[tuple[str, str]]) -> None:
+    """Append a Data Downloads section if any CSVs were exported."""
+    if not exported_csvs:
+        return
+
+    try:
+        from analysis.report import DownloadSection
+    except ModuleNotFoundError:
+        from report import DownloadSection  # type: ignore[no-redef]
+
+    report.add(  # type: ignore[union-attr]
+        DownloadSection(
+            id="data-downloads",
+            title="Data Downloads",
+            files=exported_csvs,
+            caption="CSV files for use in external analysis tools.",
+        )
+    )
 
 
 def _parse_vote_tally(vote_text: str) -> tuple[int, int, int] | None:

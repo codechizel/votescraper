@@ -16,6 +16,7 @@ import polars as pl
 try:
     from analysis.report import (
         FigureSection,
+        InteractiveSection,
         KeyFindingsSection,
         ReportBuilder,
         TableSection,
@@ -25,6 +26,7 @@ try:
 except ModuleNotFoundError:
     from report import (  # type: ignore[no-redef]
         FigureSection,
+        InteractiveSection,
         KeyFindingsSection,
         ReportBuilder,
         TableSection,
@@ -48,6 +50,7 @@ def build_eda_report(
     desposato_findings: dict | None = None,
     item_total_findings: dict | None = None,
     strategic_absence: pl.DataFrame | None = None,
+    district_maps: dict[str, str] | None = None,
     plots_dir: Path,
 ) -> None:
     """Build the full EDA HTML report by adding sections to the ReportBuilder."""
@@ -83,6 +86,20 @@ def build_eda_report(
     _add_filtering_decisions(report, manifests)
     _add_heatmap_figure(report, plots_dir, "House")
     _add_heatmap_figure(report, plots_dir, "Senate")
+    if district_maps:
+        for chamber_label, map_html in district_maps.items():
+            report.add(
+                InteractiveSection(
+                    id=f"district-map-{chamber_label.lower()}",
+                    title=f"Legislative District Map — {chamber_label}",
+                    html=map_html,
+                    caption=(
+                        f"Interactive {chamber_label} district map. "
+                        "Use layer control to toggle between party and ideology views. "
+                        "Hover for district details."
+                    ),
+                )
+            )
     _add_integrity_results(report, integrity_findings)
     _add_analysis_parameters(report)
     print(f"  Report: {len(report._sections)} sections added")

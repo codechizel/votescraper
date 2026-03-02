@@ -567,3 +567,115 @@ def find_legislator_surprising_votes(
         return None
 
     return filtered.sort("confidence_error", descending=True).head(n)
+
+
+# ── Full Voting Record ──────────────────────────────────────────────────────
+
+
+def build_full_voting_record(
+    slug: str,
+    votes_long: pl.DataFrame,
+    rollcalls: pl.DataFrame,
+    party: str,
+    party_slugs: list[str],
+) -> pl.DataFrame:
+    """Build a complete voting record for one legislator.
+
+    Returns every Yea/Nay vote cast, joined with bill metadata and party context.
+    Columns: date, bill_number, short_title, motion, vote, party_majority,
+    with_party, passed.
+
+    Args:
+        slug: Legislator slug.
+        votes_long: Long-form vote DataFrame (legislator_slug, vote_id, vote_binary).
+        rollcalls: Roll calls DataFrame with bill metadata.
+        party: Party name of the target legislator.
+        party_slugs: All slugs in the same party (same chamber).
+
+    Returns empty DataFrame if no votes found.
+    """
+    target_votes = votes_long.filter(pl.col("legislator_slug") == slug)
+    if target_votes.height == 0:
+        return _empty_voting_record()
+
+    # Compute party majority per vote_id
+    party_votes = votes_long.filter(pl.col("legislator_slug").is_in(party_slugs))
+    party_agg = party_votes.group_by("vote_id").agg(
+        pl.col("vote_binary").mean().alias("party_yea_pct"),
+    )
+    party_agg = party_agg.with_columns(
+        pl.when(pl.col("party_yea_pct") > 0.5)
+        .then(pl.lit("Yea"))
+        .otherwise(pl.lit("Nay"))
+        .alias("party_majority"),
+    )
+
+    # Join target votes with party majority
+    joined = target_votes.join(party_agg, on="vote_id", how="left")
+
+    # Add vote label and with_party flag
+    joined = joined.with_columns(
+        pl.when(pl.col("vote_binary") == 1)
+        .then(pl.lit("Yea"))
+        .otherwise(pl.lit("Nay"))
+        .alias("vote"),
+    )
+    joined = joined.with_columns(
+        (pl.col("vote") == pl.col("party_majority")).alias("with_party"),
+    )
+
+    # Extract date from vote_id (format: je_YYYYMMDDHHmmss)
+    joined = joined.with_columns(
+        pl.col("vote_id").str.extract(r"_(\d{4})(\d{2})(\d{2})", 1).alias("_year"),
+        pl.col("vote_id").str.extract(r"_(\d{4})(\d{2})(\d{2})", 2).alias("_month"),
+        pl.col("vote_id").str.extract(r"_(\d{4})(\d{2})(\d{2})", 3).alias("_day"),
+    )
+    joined = joined.with_columns(
+        (pl.col("_year") + "-" + pl.col("_month") + "-" + pl.col("_day")).alias("date"),
+    )
+
+    # Join with rollcalls for bill metadata
+    rc_cols = ["vote_id"]
+    for col in ("bill_number", "short_title", "motion", "passed"):
+        if col in rollcalls.columns:
+            rc_cols.append(col)
+
+    result = joined.join(
+        rollcalls.select(rc_cols).unique(subset=["vote_id"]),
+        on="vote_id",
+        how="left",
+    )
+
+    # Ensure expected columns exist
+    for col_name in ("bill_number", "short_title", "motion"):
+        if col_name not in result.columns:
+            result = result.with_columns(pl.lit(None).cast(pl.Utf8).alias(col_name))
+    if "passed" not in result.columns:
+        result = result.with_columns(pl.lit(None).cast(pl.Boolean).alias("passed"))
+
+    return result.select(
+        pl.col("date"),
+        pl.col("bill_number").fill_null("Unknown"),
+        pl.col("short_title").fill_null(""),
+        pl.col("motion").fill_null(""),
+        "vote",
+        "party_majority",
+        "with_party",
+        "passed",
+    ).sort("date", descending=True)
+
+
+def _empty_voting_record() -> pl.DataFrame:
+    """Return an empty DataFrame with the voting record schema."""
+    return pl.DataFrame(
+        schema={
+            "date": pl.Utf8,
+            "bill_number": pl.Utf8,
+            "short_title": pl.Utf8,
+            "motion": pl.Utf8,
+            "vote": pl.Utf8,
+            "party_majority": pl.Utf8,
+            "with_party": pl.Boolean,
+            "passed": pl.Boolean,
+        }
+    )

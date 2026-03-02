@@ -8,7 +8,7 @@ paths:
 ## Commands
 
 ```bash
-just test                    # run all tests (~1701)
+just test                    # run all tests (~1803)
 just test-scraper            # scraper tests only (-m scraper, ~264)
 just test-fast               # skip slow tests (-m "not slow", ~1445)
 just check                   # full check (lint + typecheck + tests)
@@ -50,6 +50,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_run_context.py` — TeeStream, session normalization, strip_leadership_suffix, lifecycle, generate_run_id, resolve_upstream_dir, run-directory mode, auto-run-id, symlink race guard (~76 tests)
 - `tests/test_eda.py` — vote matrix, filtering, agreement, Rice, party-line, integrity, new diagnostics (~28 tests)
 - `tests/test_report.py` — section rendering, format parsing, ReportBuilder, make_gt, elapsed (~38 tests)
+- `tests/test_report_sections.py` — DownloadSection, ScrollyStep, ScrollySection rendering, ReportBuilder scrolly integration, CSS styles (~18 tests)
 - `tests/test_irt.py` — IRT data prep, anchor selection, sensitivity, forest, paradox detection, convergence diagnostics, posterior extraction, equating (~73 tests)
 - `tests/test_umap_viz.py` — imputation, orientation, embedding, Procrustes, validation, trustworthiness, sensitivity sweep, stability, three-party (~40 tests)
 - `tests/test_nlp_features.py` — TF-IDF + NMF fitting, edge cases, display names (~16 tests)
@@ -58,8 +59,8 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_prediction.py` — vote/bill features, model training, SHAP, NLP integration, holdout eval, baselines, proper scoring rules (~54 tests)
 - `tests/test_beta_binomial.py` — method of moments, posteriors, shrinkage, edge cases (~26 tests)
 - `tests/test_hierarchical.py` — hierarchical data prep, model structure, variance decomposition, small-group warning, joint ordering, rescaling fallback, Independent exclusion, sign convention fix, bill-matching, adaptive priors (~48 tests)
-- `tests/test_profiles.py` — profile targets, scorecard, bill-type breakdown, defections, name resolution (~36 tests)
-- `tests/test_cross_session.py` — matching, IRT alignment, shift, stability, PSI, ICC, fuzzy matching, prediction transfer, detection, plot smoke tests, report (~95 tests)
+- `tests/test_profiles.py` — profile targets, scorecard, bill-type breakdown, defections, name resolution, full voting record (~44 tests)
+- `tests/test_cross_session.py` — matching, IRT alignment, shift, stability, PSI, ICC, fuzzy matching, prediction transfer, detection, freshmen cohort, bloc stability, plot smoke tests, report (~111 tests)
 - `tests/test_clustering.py` — party loyalty, cross-method ARI, within-party, kappa distance, hierarchical, spectral, HDBSCAN, characterization (~70 tests)
 - `tests/test_network.py` — network construction, centrality, Leiden/CPM community detection, bridges, threshold sweep, polarization, disparity filter backbone, extreme edge weights (~53 tests)
 - `tests/test_bipartite.py` — bipartite graph construction, bill polarization, bipartite betweenness, bill projection, bill communities, BiCM backbone extraction, backbone comparison, constants (~50 tests)
@@ -78,6 +79,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 ## Integration & Structure Test Files
 
 - `tests/test_report_structure.py` — HTML report skeleton: TOC anchors, section ordering, numbering, container types, duplicate IDs, empty report, CSS embedding, make_gt integration (~22 tests)
+- `tests/test_dashboard.py` — phase ordering, dashboard generation, sidebar/iframe rendering, elapsed formatting, git hash display, missing phase handling (~14 tests)
 - `tests/test_integration_pipeline.py` — end-to-end: synthetic data → EDA → PCA pipeline chain, RunContext lifecycle, upstream resolution, generate_run_id (~26 tests). Marked `@pytest.mark.integration`.
 - `tests/test_data_integrity.py` — real-data CSV structural tests (~24 tests). Marked `@pytest.mark.integration` + `@pytest.mark.slow`.
 

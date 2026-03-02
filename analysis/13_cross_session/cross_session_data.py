@@ -6,6 +6,7 @@ DataFrames or dicts out.
 """
 
 import re
+from dataclasses import dataclass
 from difflib import SequenceMatcher
 
 import numpy as np
@@ -609,6 +610,213 @@ def compute_metric_stability(
         return _empty_stability_df()
 
     return pl.DataFrame(rows)
+
+
+@dataclass(frozen=True)
+class FreshmenAnalysis:
+    """Results of comparing new vs returning legislators in session B."""
+
+    n_new: int
+    n_returning: int
+    ideology_new_mean: float | None
+    ideology_returning_mean: float | None
+    ideology_ks_stat: float | None
+    ideology_ks_p: float | None
+    unity_new_mean: float | None
+    unity_returning_mean: float | None
+    unity_t_stat: float | None
+    unity_t_p: float | None
+    maverick_new_mean: float | None
+    maverick_returning_mean: float | None
+    cohort_df: pl.DataFrame  # per-legislator with is_new flag
+
+
+def analyze_freshmen_cohort(
+    turnover: dict[str, pl.DataFrame],
+    leg_df_b: pl.DataFrame,
+    irt_b: pl.DataFrame,
+) -> FreshmenAnalysis | None:
+    """Compare new (freshmen) vs returning legislators in session B.
+
+    Computes ideology distribution comparison (KS test), party unity comparison
+    (t-test), and maverick rate comparison for the two cohorts.
+
+    Args:
+        turnover: Output of classify_turnover() with "returning" and "new" keys.
+        leg_df_b: Session B legislator DataFrame (from build_legislator_df).
+        irt_b: IRT ideal points for session B.
+
+    Returns FreshmenAnalysis or None if insufficient data.
+    """
+    new_slugs = set(turnover["new"]["legislator_slug"].to_list())
+    ret_slugs_b = set(turnover["returning"]["slug_b"].to_list())
+
+    if len(new_slugs) < 3 or len(ret_slugs_b) < 3:
+        return None
+
+    # Tag each session-B legislator
+    cohort_df = leg_df_b.with_columns(
+        pl.col("legislator_slug").is_in(new_slugs).alias("is_new"),
+    )
+
+    new_df = cohort_df.filter(pl.col("is_new"))
+    ret_df = cohort_df.filter(~pl.col("is_new") & pl.col("legislator_slug").is_in(ret_slugs_b))
+
+    # Ideology comparison
+    ideology_ks_stat = ideology_ks_p = None
+    ideology_new_mean = ideology_ret_mean = None
+
+    new_xi = irt_b.filter(pl.col("legislator_slug").is_in(new_slugs))
+    ret_xi = irt_b.filter(pl.col("legislator_slug").is_in(ret_slugs_b))
+
+    if new_xi.height >= 2 and ret_xi.height >= 2:
+        xi_new_arr = new_xi["xi_mean"].to_numpy()
+        xi_ret_arr = ret_xi["xi_mean"].to_numpy()
+        ideology_new_mean = float(np.mean(xi_new_arr))
+        ideology_ret_mean = float(np.mean(xi_ret_arr))
+        ks_result = stats.ks_2samp(xi_new_arr, xi_ret_arr)
+        ideology_ks_stat = float(ks_result.statistic)
+        ideology_ks_p = float(ks_result.pvalue)
+
+    # Party unity comparison
+    unity_t_stat = unity_t_p = None
+    unity_new_mean = unity_ret_mean = None
+    if "unity_score" in new_df.columns and "unity_score" in ret_df.columns:
+        u_new = new_df["unity_score"].drop_nulls().to_numpy()
+        u_ret = ret_df["unity_score"].drop_nulls().to_numpy()
+        if len(u_new) >= 2 and len(u_ret) >= 2:
+            unity_new_mean = float(np.mean(u_new))
+            unity_ret_mean = float(np.mean(u_ret))
+            t_result = stats.ttest_ind(u_new, u_ret, equal_var=False)
+            unity_t_stat = float(t_result.statistic)
+            unity_t_p = float(t_result.pvalue)
+
+    # Maverick rate comparison
+    maverick_new_mean = maverick_ret_mean = None
+    if "maverick_rate" in new_df.columns and "maverick_rate" in ret_df.columns:
+        m_new = new_df["maverick_rate"].drop_nulls().to_numpy()
+        m_ret = ret_df["maverick_rate"].drop_nulls().to_numpy()
+        if len(m_new) >= 1:
+            maverick_new_mean = float(np.mean(m_new))
+        if len(m_ret) >= 1:
+            maverick_ret_mean = float(np.mean(m_ret))
+
+    return FreshmenAnalysis(
+        n_new=len(new_slugs),
+        n_returning=len(ret_slugs_b),
+        ideology_new_mean=ideology_new_mean,
+        ideology_returning_mean=ideology_ret_mean,
+        ideology_ks_stat=ideology_ks_stat,
+        ideology_ks_p=ideology_ks_p,
+        unity_new_mean=unity_new_mean,
+        unity_returning_mean=unity_ret_mean,
+        unity_t_stat=unity_t_stat,
+        unity_t_p=unity_t_p,
+        maverick_new_mean=maverick_new_mean,
+        maverick_returning_mean=maverick_ret_mean,
+        cohort_df=cohort_df,
+    )
+
+
+def compute_bloc_stability(
+    km_a: pl.DataFrame,
+    km_b: pl.DataFrame,
+    matched: pl.DataFrame,
+    leg_df_a: pl.DataFrame | None = None,
+    leg_df_b: pl.DataFrame | None = None,
+) -> dict | None:
+    """Track voting bloc (cluster) stability between sessions.
+
+    Computes ARI between cluster assignments, builds a transition matrix,
+    and identifies legislators who switched clusters.
+
+    Args:
+        km_a: K-means assignments from session A (legislator_slug, cluster).
+        km_b: K-means assignments from session B (legislator_slug, cluster).
+        matched: Output of match_legislators().
+        leg_df_a: Optional session A legislator DataFrame for names/party.
+        leg_df_b: Optional session B legislator DataFrame for names/party.
+
+    Returns dict with ARI, transition_matrix, switchers DataFrame, or None.
+    """
+    from sklearn.metrics import adjusted_rand_score
+
+    # Normalize column names
+    km_a = _normalize_slug_col(km_a)
+    km_b = _normalize_slug_col(km_b)
+
+    # Find the cluster column dynamically (cluster_k2, cluster_k6, etc.)
+    def _find_cluster_col(df: pl.DataFrame) -> str:
+        for c in df.columns:
+            if c.startswith("cluster_k") and not c.startswith("cluster_2d_"):
+                return c
+        if "cluster" in df.columns:
+            return "cluster"
+        msg = f"No cluster column found in {df.columns}"
+        raise ValueError(msg)
+
+    cluster_col_a = _find_cluster_col(km_a)
+    cluster_col_b = _find_cluster_col(km_b)
+
+    # Join through matched to get cluster labels for same legislators
+    pairs = (
+        matched.select("slug_a", "slug_b")
+        .join(
+            km_a.select(
+                pl.col("legislator_slug").alias("slug_a"),
+                pl.col(cluster_col_a).alias("cluster_a"),
+            ),
+            on="slug_a",
+            how="inner",
+        )
+        .join(
+            km_b.select(
+                pl.col("legislator_slug").alias("slug_b"),
+                pl.col(cluster_col_b).alias("cluster_b"),
+            ),
+            on="slug_b",
+            how="inner",
+        )
+        .drop_nulls(subset=["cluster_a", "cluster_b"])
+    )
+
+    if pairs.height < 5:
+        return None
+
+    labels_a = pairs["cluster_a"].to_numpy()
+    labels_b = pairs["cluster_b"].to_numpy()
+    ari = float(adjusted_rand_score(labels_a, labels_b))
+
+    # Transition matrix
+    transitions: dict[tuple[int, int], int] = {}
+    for row in pairs.iter_rows(named=True):
+        key = (int(row["cluster_a"]), int(row["cluster_b"]))
+        transitions[key] = transitions.get(key, 0) + 1
+
+    # Build transition DataFrame
+    trans_rows = [
+        {"cluster_a": ca, "cluster_b": cb, "count": cnt}
+        for (ca, cb), cnt in sorted(transitions.items())
+    ]
+    transition_df = pl.DataFrame(trans_rows)
+
+    # Identify switchers (legislators who changed cluster)
+    switchers = pairs.filter(pl.col("cluster_a") != pl.col("cluster_b"))
+    if leg_df_b is not None:
+        name_lookup = leg_df_b.select("legislator_slug", "full_name", "party")
+        switchers = switchers.join(
+            name_lookup.rename({"legislator_slug": "slug_b"}),
+            on="slug_b",
+            how="left",
+        )
+
+    return {
+        "ari": ari,
+        "n_paired": pairs.height,
+        "transition_df": transition_df,
+        "switchers": switchers,
+        "pairs": pairs,
+    }
 
 
 def compute_turnover_impact(

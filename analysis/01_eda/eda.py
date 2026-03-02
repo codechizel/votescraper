@@ -2065,6 +2065,7 @@ def main() -> None:
         party_unity = compute_party_unity_scores(votes, rollcalls, legislators)
         if not party_unity.is_empty():
             party_unity.write_parquet(ctx.data_dir / "party_unity_scores.parquet")
+            ctx.export_csv(party_unity, "party_unity_scores.csv", "Party unity scores per legislator")
             print("  Saved: party_unity_scores.parquet")
 
         # ── 3c. Eigenvalue preview ──
@@ -2078,6 +2079,7 @@ def main() -> None:
         strategic_absence = compute_strategic_absence(votes, rollcalls, legislators, vote_alignment)
         if not strategic_absence.is_empty():
             strategic_absence.write_parquet(ctx.data_dir / "strategic_absence.parquet")
+            ctx.export_csv(strategic_absence, "strategic_absence.csv", "Strategic absence analysis")
             print("  Saved: strategic_absence.parquet")
 
         # ── 3e. Desposato Rice correction ──
@@ -2142,6 +2144,33 @@ def main() -> None:
         manifests["item_total_correlations"] = item_total_findings
         save_filtering_manifest(manifests, ctx.run_dir)
 
+        # ── 7b. Geographic district maps (optional) ──
+        district_maps: dict[str, str] | None = None
+        try:
+            from analysis.geographic import create_district_maps, download_kansas_districts
+        except ModuleNotFoundError:
+            try:
+                from geographic import create_district_maps, download_kansas_districts  # type: ignore[no-redef]
+            except ModuleNotFoundError:
+                create_district_maps = None  # type: ignore[assignment]
+                download_kansas_districts = None  # type: ignore[assignment]
+
+        if create_district_maps is not None:
+            print_header("GEOGRAPHIC MAPS")
+            district_maps = {}
+            for chamber_label in ("House", "Senate"):
+                geojson_path = download_kansas_districts(chamber_label.lower())
+                if geojson_path is not None:
+                    map_html = create_district_maps(
+                        geojson_path, legislators, None, chamber_label.lower(),
+                    )
+                    if map_html is not None:
+                        district_maps[chamber_label] = map_html
+                        print(f"  {chamber_label} map generated")
+            if not district_maps:
+                district_maps = None
+                print("  No maps generated (GeoJSON not available)")
+
         # ── 8. HTML report ──
         print_header("HTML REPORT")
         build_eda_report(
@@ -2158,6 +2187,7 @@ def main() -> None:
             desposato_findings=desposato_findings,
             item_total_findings=item_total_findings,
             strategic_absence=strategic_absence,
+            district_maps=district_maps,
             plots_dir=ctx.plots_dir,
         )
 

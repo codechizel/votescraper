@@ -16,20 +16,26 @@ import polars as pl
 try:
     from analysis.report import (
         FigureSection,
+        InteractiveSection,
+        InteractiveTableSection,
         KeyFindingsSection,
         ReportBuilder,
         TableSection,
         TextSection,
         make_gt,
+        make_interactive_table,
     )
 except ModuleNotFoundError:
     from report import (  # type: ignore[no-redef]
         FigureSection,
+        InteractiveSection,
+        InteractiveTableSection,
         KeyFindingsSection,
         ReportBuilder,
         TableSection,
         TextSection,
         make_gt,
+        make_interactive_table,
     )
 
 try:
@@ -90,6 +96,20 @@ def build_cross_session_report(
                 )
                 _add_prediction_comparison_figure(report, plots_dir, chamber)
                 _add_feature_importance_figure(report, plots_dir, chamber)
+
+    # Freshmen cohort analysis (if available)
+    for chamber in sorted(results["chambers"]):
+        cr = results[chamber]
+        freshmen = cr.get("freshmen")
+        if freshmen is not None:
+            _add_freshmen_cohort(report, freshmen, chamber, plots_dir)
+
+    # Bloc stability (if available)
+    for chamber in sorted(results["chambers"]):
+        cr = results[chamber]
+        bloc = cr.get("bloc_stability")
+        if bloc is not None:
+            _add_bloc_stability(report, bloc, chamber, plots_dir)
 
     _add_detection_validation(report, results)
     _add_methodology(report, results, session_a_label, session_b_label)
@@ -525,6 +545,208 @@ def _generate_cross_session_key_findings(results: dict) -> list[str]:
         break  # First chamber only
 
     return findings
+
+
+def _add_freshmen_cohort(
+    report: ReportBuilder,
+    freshmen: object,
+    chamber: str,
+    plots_dir: Path,
+) -> None:
+    """Add freshmen vs returning legislators comparison section."""
+    chamber_cap = chamber.capitalize()
+
+    lines = [
+        f"<p><strong>{freshmen.n_new}</strong> new {chamber_cap} members entered this session, "
+        f"joining <strong>{freshmen.n_returning}</strong> returning incumbents.</p>",
+        "<table style='width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;'>",
+        "<thead><tr>"
+        "<th style='text-align:left; border-bottom:2px solid #333; padding:6px;'>Metric</th>"
+        "<th style='text-align:center; border-bottom:2px solid #333; padding:6px;'>New</th>"
+        "<th style='text-align:center; border-bottom:2px solid #333; padding:6px;'>Returning</th>"
+        "<th style='text-align:center; border-bottom:2px solid #333; padding:6px;'>Test</th>"
+        "</tr></thead><tbody>",
+    ]
+
+    # Ideology row
+    if freshmen.ideology_new_mean is not None:
+        sig = (
+            f"<strong>p={freshmen.ideology_ks_p:.3f}</strong>"
+            if freshmen.ideology_ks_p is not None and freshmen.ideology_ks_p < 0.05
+            else f"p={freshmen.ideology_ks_p:.3f}"
+            if freshmen.ideology_ks_p is not None
+            else "—"
+        )
+        lines.append(
+            "<tr>"
+            "<td style='padding:4px 6px; border-bottom:1px solid #eee;'>Ideology (mean)</td>"
+            "<td style='padding:4px 6px; border-bottom:1px solid #eee; text-align:center;'>"
+            f"{freshmen.ideology_new_mean:+.3f}</td>"
+            "<td style='padding:4px 6px; border-bottom:1px solid #eee; text-align:center;'>"
+            f"{freshmen.ideology_returning_mean:+.3f}</td>"
+            f"<td style='padding:4px 6px; border-bottom:1px solid #eee; text-align:center;'>"
+            f"KS {sig}</td></tr>"
+        )
+
+    # Unity row
+    if freshmen.unity_new_mean is not None:
+        sig = (
+            f"<strong>p={freshmen.unity_t_p:.3f}</strong>"
+            if freshmen.unity_t_p is not None and freshmen.unity_t_p < 0.05
+            else f"p={freshmen.unity_t_p:.3f}"
+            if freshmen.unity_t_p is not None
+            else "—"
+        )
+        lines.append(
+            "<tr>"
+            "<td style='padding:4px 6px; border-bottom:1px solid #eee;'>Party Unity (mean)</td>"
+            "<td style='padding:4px 6px; border-bottom:1px solid #eee; text-align:center;'>"
+            f"{freshmen.unity_new_mean:.3f}</td>"
+            "<td style='padding:4px 6px; border-bottom:1px solid #eee; text-align:center;'>"
+            f"{freshmen.unity_returning_mean:.3f}</td>"
+            f"<td style='padding:4px 6px; border-bottom:1px solid #eee; text-align:center;'>"
+            f"t-test {sig}</td></tr>"
+        )
+
+    # Maverick row
+    if freshmen.maverick_new_mean is not None and freshmen.maverick_returning_mean is not None:
+        lines.append(
+            "<tr>"
+            "<td style='padding:4px 6px; border-bottom:1px solid #eee;'>Maverick Rate (mean)</td>"
+            "<td style='padding:4px 6px; border-bottom:1px solid #eee; text-align:center;'>"
+            f"{freshmen.maverick_new_mean:.1%}</td>"
+            "<td style='padding:4px 6px; border-bottom:1px solid #eee; text-align:center;'>"
+            f"{freshmen.maverick_returning_mean:.1%}</td>"
+            "<td style='padding:4px 6px; border-bottom:1px solid #eee; text-align:center;'>"
+            "—</td></tr>"
+        )
+
+    lines.append("</tbody></table>")
+
+    # Add freshmen density overlay plot if it exists
+    fig_path = plots_dir / f"freshmen_ideology_{chamber}.png"
+    if fig_path.exists():
+        report.add(
+            FigureSection.from_file(
+                f"freshmen-density-{chamber}",
+                f"Freshmen vs Returning Ideology — {chamber_cap}",
+                fig_path,
+                caption=(
+                    "Ideology density overlay: new members vs returning incumbents. "
+                    "KS test assesses whether the distributions differ significantly."
+                ),
+            )
+        )
+
+    report.add(
+        TextSection(
+            id=f"freshmen-{chamber}",
+            title=f"Freshmen Cohort Analysis — {chamber_cap}",
+            html="\n".join(lines),
+        )
+    )
+
+
+def _add_bloc_stability(
+    report: ReportBuilder,
+    bloc: dict,
+    chamber: str,
+    plots_dir: Path,
+) -> None:
+    """Add voting bloc stability section with Sankey, transition table, and switchers."""
+    chamber_cap = chamber.capitalize()
+    ari = bloc["ari"]
+    n_paired = bloc["n_paired"]
+
+    # ARI interpretation
+    if ari > 0.65:
+        ari_label = "strong"
+    elif ari > 0.25:
+        ari_label = "moderate"
+    else:
+        ari_label = "weak"
+
+    overview = (
+        f"<p>Cluster assignments for <strong>{n_paired}</strong> returning "
+        f"{chamber_cap} legislators were compared across sessions. "
+        f"Adjusted Rand Index: <strong>{ari:.3f}</strong> ({ari_label} agreement).</p>"
+    )
+
+    report.add(
+        TextSection(
+            id=f"bloc-overview-{chamber}",
+            title=f"Voting Bloc Stability — {chamber_cap}",
+            html=overview,
+        )
+    )
+
+    # Sankey diagram (if plotly available)
+    sankey_path = plots_dir / f"bloc_sankey_{chamber}.html"
+    if sankey_path.exists():
+        report.add(
+            InteractiveSection(
+                id=f"bloc-sankey-{chamber}",
+                title=f"Bloc Transition Flow — {chamber_cap}",
+                html=sankey_path.read_text(encoding="utf-8"),
+                caption="Sankey diagram showing how legislators moved between clusters.",
+            )
+        )
+
+    # Transition matrix table
+    transition_df = bloc.get("transition_df")
+    if transition_df is not None and transition_df.height > 0:
+        html = make_gt(
+            transition_df,
+            title=f"Cluster Transition Matrix — {chamber_cap}",
+            subtitle="Count of legislators moving from cluster A to cluster B",
+            column_labels={
+                "cluster_a": "Session A Cluster",
+                "cluster_b": "Session B Cluster",
+                "count": "Count",
+            },
+        )
+        report.add(
+            TableSection(
+                id=f"bloc-transition-{chamber}",
+                title=f"Transition Matrix — {chamber_cap}",
+                html=html,
+            )
+        )
+
+    # Switchers table
+    switchers = bloc.get("switchers")
+    if switchers is not None and switchers.height > 0:
+        display_cols = ["slug_b", "cluster_a", "cluster_b"]
+        labels = {
+            "slug_b": "Legislator",
+            "cluster_a": "Old Cluster",
+            "cluster_b": "New Cluster",
+        }
+        if "full_name" in switchers.columns:
+            display_cols = ["full_name", "party", "cluster_a", "cluster_b"]
+            labels = {
+                "full_name": "Legislator",
+                "party": "Party",
+                "cluster_a": "Old Cluster",
+                "cluster_b": "New Cluster",
+            }
+
+        avail_cols = [c for c in display_cols if c in switchers.columns]
+        avail_labels = {k: v for k, v in labels.items() if k in avail_cols}
+
+        html = make_interactive_table(
+            switchers.select(avail_cols),
+            title=f"Cluster Switchers — {chamber_cap} ({switchers.height})",
+            column_labels=avail_labels,
+            caption="Legislators who changed cluster assignment between sessions.",
+        )
+        report.add(
+            InteractiveTableSection(
+                id=f"bloc-switchers-{chamber}",
+                title=f"Cluster Switchers — {chamber_cap}",
+                html=html,
+            )
+        )
 
 
 def _add_methodology(

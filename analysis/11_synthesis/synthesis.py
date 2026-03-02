@@ -54,9 +54,12 @@ except ModuleNotFoundError:
     )
 
 try:
-    from analysis.synthesis_report import build_synthesis_report
+    from analysis.synthesis_report import build_scrolly_synthesis_report, build_synthesis_report
 except ModuleNotFoundError:
-    from synthesis_report import build_synthesis_report  # type: ignore[no-redef]
+    from synthesis_report import (  # type: ignore[no-redef]
+        build_scrolly_synthesis_report,
+        build_synthesis_report,
+    )
 
 # ── Primer ───────────────────────────────────────────────────────────────────
 
@@ -585,6 +588,11 @@ def parse_args() -> argparse.Namespace:
         help="Session identifier (default: %(default)s)",
     )
     parser.add_argument("--run-id", default=None, help="Run ID for grouped pipeline output")
+    parser.add_argument(
+        "--scrolly",
+        action="store_true",
+        help="Use scrollytelling layout (progressive narrative reveal)",
+    )
     return parser.parse_args()
 
 
@@ -619,6 +627,11 @@ def main() -> None:
             leg_dfs[chamber] = df
             print(f"  {chamber}: {df.height} legislators, {df.width} columns")
             df.write_parquet(ctx.data_dir / f"legislator_df_{chamber}.parquet")
+            ctx.export_csv(
+                df,
+                f"full_scorecard_{chamber}.csv",
+                f"Full legislator scorecard for {chamber.title()} (all metrics)",
+            )
 
         # ── Detect Notable Legislators ────────────────────────────────
         print("\nDetecting notable legislators...")
@@ -696,11 +709,11 @@ def main() -> None:
                 print(f"  WARNING: upstream plot not found: {full_path}")
 
         # ── Build Report ─────────────────────────────────────────────────
-        print("\nBuilding synthesis report...")
+        report_style = "scrolly" if args.scrolly else "linear"
+        print(f"\nBuilding synthesis report ({report_style})...")
         ctx.report.title = f"Kansas Legislature {ctx.session} — Synthesis Report"
 
-        build_synthesis_report(
-            ctx.report,
+        report_kwargs = dict(
             leg_dfs=leg_dfs,
             manifests=manifests,
             upstream=upstream,
@@ -709,6 +722,10 @@ def main() -> None:
             notables=notables,
             session=ctx.session,
         )
+        if args.scrolly:
+            build_scrolly_synthesis_report(ctx.report, **report_kwargs)
+        else:
+            build_synthesis_report(ctx.report, **report_kwargs)
 
         # ── Manifest ─────────────────────────────────────────────────────
         manifest = {

@@ -14,6 +14,7 @@ import pytest
 from analysis.profiles_data import (
     MAX_PROFILE_TARGETS,
     ProfileTarget,
+    build_full_voting_record,
     build_scorecard,
     compute_bill_type_breakdown,
     find_defection_bills,
@@ -612,3 +613,108 @@ class TestResolveNames:
         targets = gather_profile_targets(leg_dfs_with_dupes, extra_slugs=slugs)
         target_slugs = [t.slug for t in targets]
         assert "sen_unique_gina_1" in target_slugs
+
+
+# ── Tests: Build Full Voting Record ─────────────────────────────────────────
+
+
+class TestBuildFullVotingRecord:
+    """Tests for the build_full_voting_record() function."""
+
+    def test_returns_all_votes(self, votes_long, rollcalls):
+        """Should return one row per vote cast by the legislator."""
+        party_slugs = ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "rep_g"]
+        result = build_full_voting_record(
+            "rep_a", votes_long, rollcalls, "Republican", party_slugs
+        )
+        assert result.height == 10  # rep_a votes on all 10 rollcalls
+
+    def test_correct_columns(self, votes_long, rollcalls):
+        """Should have the expected output columns."""
+        party_slugs = ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "rep_g"]
+        result = build_full_voting_record(
+            "rep_a", votes_long, rollcalls, "Republican", party_slugs
+        )
+        expected_cols = {
+            "date", "bill_number", "short_title", "motion",
+            "vote", "party_majority", "with_party", "passed",
+        }
+        assert set(result.columns) == expected_cols
+
+    def test_with_party_flag_correct(self, votes_long, rollcalls):
+        """Loyal voter should have with_party=True on all votes."""
+        party_slugs = ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "rep_g"]
+        result = build_full_voting_record(
+            "rep_a", votes_long, rollcalls, "Republican", party_slugs
+        )
+        # rep_a always votes Yea, party majority is Yea (5/6 R voters = Yea)
+        assert result["with_party"].all()
+
+    def test_maverick_has_defections(self, votes_long, rollcalls):
+        """Maverick (rep_g) should have some with_party=False rows."""
+        party_slugs = ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "rep_g"]
+        result = build_full_voting_record(
+            "rep_g", votes_long, rollcalls, "Republican", party_slugs
+        )
+        defections = result.filter(~pl.col("with_party"))
+        assert defections.height > 0
+
+    def test_empty_for_unknown_slug(self, votes_long, rollcalls):
+        """Should return empty DataFrame for nonexistent slug."""
+        result = build_full_voting_record(
+            "rep_nonexistent", votes_long, rollcalls, "Republican", ["rep_a"]
+        )
+        assert result.height == 0
+        assert "vote" in result.columns  # schema preserved
+
+    def test_vote_labels_are_yea_nay(self, votes_long, rollcalls):
+        """Vote column should contain only 'Yea' and 'Nay'."""
+        party_slugs = ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "rep_g"]
+        result = build_full_voting_record(
+            "rep_g", votes_long, rollcalls, "Republican", party_slugs
+        )
+        unique_votes = set(result["vote"].to_list())
+        assert unique_votes <= {"Yea", "Nay"}
+
+    def test_bill_metadata_joined(self, votes_long, rollcalls):
+        """Should join bill metadata from rollcalls."""
+        party_slugs = ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "rep_g"]
+        result = build_full_voting_record(
+            "rep_a", votes_long, rollcalls, "Republican", party_slugs
+        )
+        # All bill_numbers should be "HB N" format from our fixture
+        bills = result["bill_number"].to_list()
+        assert all(b.startswith("HB ") for b in bills)
+
+    def test_sorted_by_date_descending(self):
+        """Result should be sorted by date descending (most recent first)."""
+        # Use vote_ids with the actual format: je_YYYYMMDDHHmmss
+        vl = pl.DataFrame(
+            {
+                "legislator_slug": ["rep_a"] * 3,
+                "vote_id": [
+                    "je_20250115100000",
+                    "je_20250320140000",
+                    "je_20250210120000",
+                ],
+                "vote_binary": [1, 1, 0],
+                "chamber": ["house"] * 3,
+            }
+        )
+        rc = pl.DataFrame(
+            {
+                "vote_id": [
+                    "je_20250115100000",
+                    "je_20250320140000",
+                    "je_20250210120000",
+                ],
+                "bill_number": ["HB 1", "HB 2", "HB 3"],
+                "short_title": ["A", "B", "C"],
+                "motion": ["Final Action"] * 3,
+            }
+        )
+        result = build_full_voting_record(
+            "rep_a", vl, rc, "Republican", ["rep_a"]
+        )
+        dates = result["date"].to_list()
+        assert dates == ["2025-03-20", "2025-02-10", "2025-01-15"]

@@ -15,6 +15,8 @@ try:
         FigureSection,
         InteractiveTableSection,
         KeyFindingsSection,
+        ScrollySection,
+        ScrollyStep,
         TableSection,
         TextSection,
         make_gt,
@@ -25,6 +27,8 @@ except ModuleNotFoundError:
         FigureSection,
         InteractiveTableSection,
         KeyFindingsSection,
+        ScrollySection,
+        ScrollyStep,
         TableSection,
         TextSection,
         make_gt,
@@ -1108,6 +1112,449 @@ def _generate_synthesis_key_findings(
         )
 
     return findings[:4]
+
+
+def build_scrolly_synthesis_report(
+    report: ReportBuilder,
+    *,
+    leg_dfs: dict[str, pl.DataFrame],
+    manifests: dict[str, dict],
+    upstream: dict,
+    plots_dir: Path,
+    upstream_plots: dict[str, Path],
+    notables: dict,
+    session: str,
+) -> None:
+    """Build a scrollytelling synthesis report (6 chapters + scorecard).
+
+    Progressive narrative reveal using IntersectionObserver-driven scroll
+    transitions. Reuses all existing data, plots, and detection logic —
+    only changes presentation from linear sections to sticky-visual chapters.
+    """
+    import base64
+
+    findings = _generate_synthesis_key_findings(leg_dfs, notables)
+    if findings:
+        report.add(KeyFindingsSection(findings=findings))
+
+    # Helper: embed a PNG as base64 <img>
+    def _embed_img(path: Path, alt: str = "") -> str:
+        if not path.exists():
+            return f"<p><em>(Figure not available: {path.name})</em></p>"
+        b64 = base64.b64encode(path.read_bytes()).decode("ascii")
+        return (
+            f'<img src="data:image/png;base64,{b64}" alt="{alt}" '
+            f'style="max-width:100%;height:auto;border-radius:4px;" />'
+        )
+
+    # ── Chapter 1: The Kansas Legislature at a Glance ─────────────────────
+    eda = manifests.get("eda", {})
+    total_votes = eda.get("All", {}).get("votes_before", 882)
+    contested = eda.get("All", {}).get("votes_after", 491)
+    n_legislators = eda.get("All", {}).get("legislators_before", 172)
+
+    ch1_visuals: dict[str, str] = {}
+    pipeline_path = plots_dir / "pipeline_summary.png"
+    ch1_visuals["pipeline"] = _embed_img(pipeline_path, "Pipeline Summary")
+
+    ch1_steps = [
+        ScrollyStep(
+            narrative_html=(
+                f"<h3>From {total_votes:,} Votes to a Complete Picture</h3>"
+                f"<p>The Kansas Legislature cast <strong>{total_votes:,} roll call votes</strong> "
+                f"across <strong>{n_legislators} legislators</strong> in the {session} session. "
+                "This report distills those votes into a clear picture of how Kansas legislators "
+                "actually vote.</p>"
+            ),
+            visual_id="pipeline",
+        ),
+        ScrollyStep(
+            narrative_html=(
+                "<p>We applied eight analytical methods — from classical statistics to Bayesian "
+                "modeling to machine learning. Each method asks a different question, but they "
+                "all converge on the same answers.</p>"
+                f"<p>Of {total_votes:,} roll calls, only <strong>{contested:,}</strong> had "
+                "meaningful dissent. The rest were near-unanimous.</p>"
+            ),
+            visual_id="pipeline",
+        ),
+    ]
+
+    report.add(
+        ScrollySection(
+            id="scrolly-overview",
+            title="The Kansas Legislature at a Glance",
+            steps=ch1_steps,
+            visuals=ch1_visuals,
+        )
+    )
+
+    # ── Chapter 2: Party Is Everything ────────────────────────────────────
+    ch2_visuals: dict[str, str] = {}
+
+    clusters_path = upstream_plots.get("irt_clusters_house")
+    if clusters_path and clusters_path.exists():
+        ch2_visuals["clusters"] = _embed_img(clusters_path, "Clustering k=2")
+
+    dash_house_path = plots_dir / "dashboard_scatter_house.png"
+    ch2_visuals["dashboard"] = _embed_img(dash_house_path, "House Dashboard")
+
+    net_path = upstream_plots.get("community_network_house")
+    if net_path and net_path.exists():
+        ch2_visuals["network"] = _embed_img(net_path, "Network")
+
+    clust = manifests.get("clustering", {})
+    mean_ari = clust.get("house_mean_ari", 0.96)
+
+    ch2_steps = [
+        ScrollyStep(
+            narrative_html=(
+                "<h3>Party Affiliation Predicts Nearly Everything</h3>"
+                "<p>The single most important finding: <strong>party affiliation predicts "
+                "nearly all voting behavior.</strong> Every method confirms this — clustering, "
+                "networks, prediction.</p>"
+            ),
+            visual_id="clusters",
+        ),
+        ScrollyStep(
+            narrative_html=(
+                f"<p>Three clustering algorithms independently found <strong>exactly two "
+                f"groups</strong>, matching party labels {mean_ari:.0%} of the time. "
+                "There are no hidden factions.</p>"
+            ),
+            visual_id="clusters",
+        ),
+        ScrollyStep(
+            narrative_html=(
+                "<p>The voting network tells the same story. When we connect legislators "
+                "by voting similarity, party separation is total — not a single strong "
+                "connection crosses the party line.</p>"
+            ),
+            visual_id="network",
+        ),
+        ScrollyStep(
+            narrative_html=(
+                "<p>But this does <em>not</em> mean all legislators vote identically. "
+                "Within each party, meaningful variation exists — some members are reliably "
+                "loyal, others are frequent dissenters. The gap <em>between</em> parties is "
+                "vastly larger than variation <em>within</em> them.</p>"
+            ),
+            visual_id="dashboard",
+        ),
+    ]
+
+    report.add(
+        ScrollySection(
+            id="scrolly-party",
+            title="Party Is Everything",
+            steps=ch2_steps,
+            visuals=ch2_visuals,
+        )
+    )
+
+    # ── Chapter 3: The Mavericks ──────────────────────────────────────────
+    ch3_visuals: dict[str, str] = {}
+
+    forest_path = upstream_plots.get("forest_house")
+    if forest_path and forest_path.exists():
+        ch3_visuals["forest"] = _embed_img(forest_path, "IRT Forest")
+
+    mav_land_path = upstream_plots.get("maverick_landscape_house")
+    if mav_land_path and mav_land_path.exists():
+        ch3_visuals["maverick_landscape"] = _embed_img(mav_land_path, "Maverick Landscape")
+
+    # Profile cards for mavericks
+    mavericks = notables.get("mavericks", {})
+    for chamber, mav in mavericks.items():
+        slug_short = mav.slug.split("_", 1)[1]
+        profile_path = plots_dir / f"profile_{slug_short}.png"
+        if profile_path.exists():
+            vid = f"profile_{slug_short}"
+            ch3_visuals[vid] = _embed_img(profile_path, f"Profile: {mav.full_name}")
+            break
+
+    ch3_steps = [
+        ScrollyStep(
+            narrative_html=(
+                "<h3>Who Breaks Ranks?</h3>"
+                "<p>In a legislature where party discipline is the norm, a few members "
+                "consistently break ranks. These <strong>mavericks</strong> reveal where "
+                "the party line has cracks.</p>"
+            ),
+            visual_id="forest",
+        ),
+    ]
+
+    for chamber, mav in mavericks.items():
+        row = _get_legislator_row(leg_dfs, mav.slug, mav.chamber)
+        if row is None:
+            continue
+        unity = row.get("unity_score", 0)
+        xi = row.get("xi_mean", 0)
+        slug_short = mav.slug.split("_", 1)[1]
+        vid = f"profile_{slug_short}" if f"profile_{slug_short}" in ch3_visuals else "forest"
+
+        ch3_steps.append(
+            ScrollyStep(
+                narrative_html=(
+                    f"<p><strong>{mav.title}</strong> is the {chamber.title()}'s most "
+                    f"prominent maverick. Their party unity score is {unity:.0%} — well "
+                    f"below the party average. Their IRT ideal point ({xi:.2f}) places "
+                    "them away from their party's mainstream.</p>"
+                ),
+                visual_id=vid,
+            )
+        )
+
+    ch3_steps.append(
+        ScrollyStep(
+            narrative_html=(
+                "<p>The maverick landscape reveals who defects strategically versus who "
+                "votes independently as a matter of principle. Legislators near the center "
+                "are genuinely moderate; those at the extremes defect in unexpected directions.</p>"
+            ),
+            visual_id="maverick_landscape",
+        )
+    )
+
+    if ch3_visuals:
+        report.add(
+            ScrollySection(
+                id="scrolly-mavericks",
+                title="The Mavericks",
+                steps=ch3_steps,
+                visuals=ch3_visuals,
+            )
+        )
+
+    # ── Chapter 4: Who Bridges the Divide? ────────────────────────────────
+    ch4_visuals: dict[str, str] = {}
+
+    for chamber in ("house", "senate"):
+        net_key = f"community_network_{chamber}"
+        net_p = upstream_plots.get(net_key)
+        if net_p and net_p.exists():
+            ch4_visuals[f"network_{chamber}"] = _embed_img(net_p, f"Network {chamber.title()}")
+
+    bridges = notables.get("bridges", {})
+    minority_mavericks = notables.get("minority_mavericks", {})
+
+    ch4_steps = [
+        ScrollyStep(
+            narrative_html=(
+                "<h3>Bridge Builders and Cross-Aisle Voters</h3>"
+                "<p>While parties form separate voting blocs, a few legislators "
+                "maintain connections across the divide. Their network centrality "
+                "scores identify them as bridge builders.</p>"
+            ),
+            visual_id=f"network_{'house' if 'network_house' in ch4_visuals else 'senate'}",
+        ),
+    ]
+
+    for chamber, bridge in bridges.items():
+        row = _get_legislator_row(leg_dfs, bridge.slug, bridge.chamber)
+        if row is None:
+            continue
+        unity = row.get("unity_score", 0)
+        xi = row.get("xi_mean", 0)
+        vid = (
+            f"network_{chamber}"
+            if f"network_{chamber}" in ch4_visuals
+            else next(iter(ch4_visuals), "network_house")
+        )
+        ch4_steps.append(
+            ScrollyStep(
+                narrative_html=(
+                    f"<p><strong>{bridge.title}</strong> is the {chamber.title()}'s "
+                    f"bridge-builder. With party unity of {unity:.0%} and an IRT ideal "
+                    f"point of {xi:.2f}, they vote more like a moderate than a party "
+                    "stalwart.</p>"
+                ),
+                visual_id=vid,
+            )
+        )
+
+    for chamber, min_mav in minority_mavericks.items():
+        row = _get_legislator_row(leg_dfs, min_mav.slug, min_mav.chamber)
+        if row is None:
+            continue
+        unity = row.get("unity_score", 0)
+        vid = (
+            f"network_{chamber}"
+            if f"network_{chamber}" in ch4_visuals
+            else next(iter(ch4_visuals), "network_house")
+        )
+        ch4_steps.append(
+            ScrollyStep(
+                narrative_html=(
+                    f"<p>On the other side, <strong>{min_mav.title}</strong> is the "
+                    f"{min_mav.party} most likely to cross party lines in the "
+                    f"{chamber.title()}, with party unity of {unity:.0%}.</p>"
+                ),
+                visual_id=vid,
+            )
+        )
+
+    if ch4_visuals:
+        report.add(
+            ScrollySection(
+                id="scrolly-bridges",
+                title="Who Bridges the Divide?",
+                steps=ch4_steps,
+                visuals=ch4_visuals,
+            )
+        )
+
+    # ── Chapter 5: The Paradoxes ──────────────────────────────────────────
+    paradoxes = notables.get("paradoxes", {})
+    if paradoxes:
+        ch5_visuals: dict[str, str] = {}
+
+        p = next(iter(paradoxes.values()))
+        paradox_path = plots_dir / f"metric_paradox_{p.chamber}.png"
+        if paradox_path.exists():
+            ch5_visuals["paradox"] = _embed_img(paradox_path, "Metric Paradox")
+
+        agree_path = upstream_plots.get("agreement_heatmap_house")
+        if agree_path and agree_path.exists():
+            ch5_visuals["agreement"] = _embed_img(agree_path, "Agreement Heatmap")
+
+        rv = p.raw_values
+        xi = rv.get("xi_mean", 0)
+        loyalty = rv.get("loyalty_rate", 0)
+        unity = rv.get("unity_score")
+
+        ch5_steps = [
+            ScrollyStep(
+                narrative_html=(
+                    f"<h3>The {p.full_name.split()[-1]} Paradox</h3>"
+                    f"<p>{p.full_name} ({p.party[0]}-{p.district}) presents a puzzle: "
+                    "different metrics give contradictory answers about the same legislator.</p>"
+                ),
+                visual_id="paradox" if "paradox" in ch5_visuals else next(iter(ch5_visuals)),
+            ),
+            ScrollyStep(
+                narrative_html=(
+                    f"<p>By <strong>{p.metric_high_name}</strong>, they rank #{p.rank_high} "
+                    f"among {p.n_in_party} {p.party}s (score: {xi:.1f}). By "
+                    f"<strong>{p.metric_low_name}</strong>, they are among the "
+                    f"<em>least</em> loyal ({loyalty:.0%})."
+                    + (
+                        f" By CQ party unity, they score {unity:.0%} — solidly in the upper ranks."
+                        if unity is not None
+                        else ""
+                    )
+                    + "</p>"
+                ),
+                visual_id="paradox" if "paradox" in ch5_visuals else next(iter(ch5_visuals)),
+            ),
+            ScrollyStep(
+                narrative_html=(
+                    "<p>The answer: they don't defect <em>toward</em> the other party — "
+                    f"they defect <em>{p.direction}</em> from their own party's mainstream. "
+                    "This is why multiple metrics matter. No single number captures the "
+                    "full story.</p>"
+                ),
+                visual_id="agreement"
+                if "agreement" in ch5_visuals
+                else ("paradox" if "paradox" in ch5_visuals else next(iter(ch5_visuals))),
+            ),
+        ]
+
+        if ch5_visuals:
+            report.add(
+                ScrollySection(
+                    id="scrolly-paradoxes",
+                    title="The Paradoxes",
+                    steps=ch5_steps,
+                    visuals=ch5_visuals,
+                )
+            )
+
+    # ── Chapter 6: Can We Predict Their Votes? ────────────────────────────
+    ch6_visuals: dict[str, str] = {}
+
+    shap_path = upstream_plots.get("shap_bar_house")
+    if shap_path and shap_path.exists():
+        ch6_visuals["shap"] = _embed_img(shap_path, "SHAP Feature Importance")
+
+    acc_path = upstream_plots.get("per_legislator_accuracy_house")
+    if acc_path and acc_path.exists():
+        ch6_visuals["accuracy"] = _embed_img(acc_path, "Per-Legislator Accuracy")
+
+    cal_path = upstream_plots.get("calibration_house")
+    if cal_path and cal_path.exists():
+        ch6_visuals["calibration"] = _embed_img(cal_path, "Calibration")
+
+    # Get AUC values
+    house_hr = upstream.get("house", {}).get("holdout_results")
+    house_auc = "0.98"
+    if house_hr is not None:
+        xgb = house_hr.filter(pl.col("model") == "XGBoost")
+        if xgb.height > 0:
+            house_auc = f"{xgb['auc'].item():.3f}"
+
+    mav_names = _maverick_name_list(notables)
+
+    ch6_steps = [
+        ScrollyStep(
+            narrative_html=(
+                "<h3>Near-Perfect Prediction</h3>"
+                f"<p>An XGBoost classifier achieves AUC = {house_auc} on held-out "
+                "votes. Party and ideology explain nearly all voting behavior.</p>"
+            ),
+            visual_id="shap" if "shap" in ch6_visuals else next(iter(ch6_visuals), "accuracy"),
+        ),
+        ScrollyStep(
+            narrative_html=(
+                "<p>The most important features are a legislator's ideology score and "
+                "how sharply the bill divides the legislature. Party label matters less "
+                "than you might expect — because ideology already captures most of what "
+                "party tells you.</p>"
+            ),
+            visual_id="shap" if "shap" in ch6_visuals else next(iter(ch6_visuals), "accuracy"),
+        ),
+        ScrollyStep(
+            narrative_html=(
+                "<p>But 'nearly all' is not 'all'. The model's errors cluster around "
+                f"specific legislators — <strong>{mav_names}</strong> — and specific "
+                "bills. The residuals tell us where the interesting politics happen.</p>"
+            ),
+            visual_id="accuracy" if "accuracy" in ch6_visuals else next(iter(ch6_visuals), "shap"),
+        ),
+    ]
+
+    if "calibration" in ch6_visuals:
+        ch6_steps.append(
+            ScrollyStep(
+                narrative_html=(
+                    "<p>The model is also well-calibrated: when it says 80% chance of Yea, "
+                    "roughly 80% of those votes actually are Yea. The confidence scores "
+                    "are trustworthy.</p>"
+                ),
+                visual_id="calibration",
+            )
+        )
+
+    if ch6_visuals:
+        report.add(
+            ScrollySection(
+                id="scrolly-prediction",
+                title="Can We Predict Their Votes?",
+                steps=ch6_steps,
+                visuals=ch6_visuals,
+            )
+        )
+
+    # ── Methodology + Technical (non-scrolly sections) ────────────────────
+    _add_methodology_note(report, session)
+    _add_convergence_figure(report, upstream_plots, "house")
+    _add_discrimination_figure(report, upstream_plots, "house")
+
+    # ── Full scorecard (always included) ──────────────────────────────────
+    _add_full_scorecard(report, leg_dfs, session)
+
+    print(f"  Report (scrolly): {len(report._sections)} sections added")
 
 
 def _add_full_scorecard(report: object, leg_dfs: dict, session: str) -> None:

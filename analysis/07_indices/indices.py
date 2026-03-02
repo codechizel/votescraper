@@ -2101,6 +2101,7 @@ def main() -> None:
             )
             if unity_df.height > 0:
                 unity_df.write_parquet(ctx.data_dir / f"party_unity_{chamber.lower()}.parquet")
+                ctx.export_csv(unity_df, f"party_unity_{chamber.lower()}.csv", f"Party unity rankings for {chamber}")
                 plot_party_unity_ranking(unity_df, chamber, ctx.plots_dir)
 
             co_defection = None
@@ -2108,6 +2109,7 @@ def main() -> None:
                 maverick_df.write_parquet(
                     ctx.data_dir / f"maverick_scores_{chamber.lower()}.parquet"
                 )
+                ctx.export_csv(maverick_df, f"maverick_scores_{chamber.lower()}.csv", f"Maverick scores for {chamber} legislators")
                 plot_maverick_landscape(maverick_df, chamber, ctx.plots_dir)
 
                 co_defection = compute_co_defection_matrix(
@@ -2130,6 +2132,7 @@ def main() -> None:
             )
             if bpi_df.height > 0:
                 bpi_df.write_parquet(ctx.data_dir / f"bipartisanship_{chamber.lower()}.parquet")
+                ctx.export_csv(bpi_df, f"bipartisanship_{chamber.lower()}.csv", f"Bipartisanship index for {chamber} legislators")
                 print(f"  {bpi_df.height} legislators scored")
                 top_bpi = bpi_df.head(3)
                 for row in top_bpi.iter_rows(named=True):

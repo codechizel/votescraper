@@ -36,6 +36,7 @@ try:
         SCORECARD_METRICS,
         BillTypeBreakdown,
         ProfileTarget,
+        build_full_voting_record,
         build_scorecard,
         compute_bill_type_breakdown,
         find_defection_bills,
@@ -49,6 +50,7 @@ except ModuleNotFoundError:
         SCORECARD_METRICS,
         BillTypeBreakdown,
         ProfileTarget,
+        build_full_voting_record,
         build_scorecard,
         compute_bill_type_breakdown,
         find_defection_bills,
@@ -605,6 +607,12 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--run-id", default=None, help="Run ID for grouped pipeline output")
+    parser.add_argument(
+        "--full-record",
+        action="store_true",
+        default=None,
+        help="Include complete voting record per legislator (auto-enabled with --names)",
+    )
     return parser.parse_args()
 
 
@@ -653,6 +661,11 @@ def _resolve_name_args(
 def main() -> None:
     args = parse_args()
     extra_slugs = args.slugs.split(",") if args.slugs else None
+
+    # Default --full-record to on when --names is used
+    include_full_record = args.full_record
+    if include_full_record is None:
+        include_full_record = args.names is not None
 
     with RunContext(
         session=args.session,
@@ -762,12 +775,26 @@ def main() -> None:
             sv = upstream.get(chamber, {}).get("surprising_votes")
             surprising = find_legislator_surprising_votes(target.slug, sv)
 
+            # Full voting record (opt-in, auto-enabled with --names)
+            full_record = None
+            if include_full_record:
+                full_record = build_full_voting_record(
+                    target.slug,
+                    chamber_votes,
+                    rollcalls,
+                    target.party,
+                    party_slugs,
+                )
+                if full_record.height > 0:
+                    print(f"    Full record: {full_record.height} votes")
+
             all_data[target.slug] = {
                 "scorecard": scorecard,
                 "breakdown": breakdown,
                 "defections": defections,
                 "neighbors": neighbors,
                 "surprising": surprising,
+                "full_record": full_record,
             }
 
             # ── Plots ─────────────────────────────────────────────────

@@ -3057,7 +3057,9 @@ def main() -> None:
 
             # Save parquets
             ideal_points.write_parquet(ctx.data_dir / f"ideal_points_{chamber.lower()}.parquet")
+            ctx.export_csv(ideal_points, f"ideal_points_{chamber.lower()}.csv", f"IRT ideal point estimates for {chamber} members")
             bill_params.write_parquet(ctx.data_dir / f"bill_params_{chamber.lower()}.parquet")
+            ctx.export_csv(bill_params, f"bill_params_{chamber.lower()}.csv", f"IRT bill parameters (difficulty + discrimination) for {chamber}")
             print(f"  Saved: ideal_points_{chamber.lower()}.parquet")
             print(f"  Saved: bill_params_{chamber.lower()}.parquet")
 
@@ -3191,6 +3193,7 @@ def main() -> None:
             print_header("JOINT MODEL — PHASE J3: SAVE OUTPUTS")
             eq_ip = joint_equating["equated_ideal_points"]
             eq_ip.write_parquet(ctx.data_dir / "ideal_points_joint_equated.parquet")
+            ctx.export_csv(eq_ip, "ideal_points_joint_equated.csv", "Joint-equated ideal points (cross-chamber)")
             print("  Saved: ideal_points_joint_equated.parquet")
 
             results["Joint"] = {

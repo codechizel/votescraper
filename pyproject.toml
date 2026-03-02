@@ -46,6 +46,8 @@ dev = [
     "itables>=2.6",
     "plotly>=6.0",
     "pyvis>=0.3",
+    "folium>=0.18",
+    "geopandas>=1.0",
 ]
 
 [build-system]

@@ -2408,6 +2408,7 @@ def main() -> None:
                         f"({km_df.height}) — skipping 2D cluster column"
                     )
             km_df.write_parquet(ctx.data_dir / f"kmeans_assignments_{chamber.lower()}.parquet")
+            ctx.export_csv(km_df, f"kmeans_assignments_{chamber.lower()}.csv", f"K-means cluster assignments for {chamber} legislators")
             print(f"  Saved: kmeans_assignments_{chamber.lower()}.parquet")
 
             plot_elbow_silhouette(km_results, chamber, ctx.plots_dir)

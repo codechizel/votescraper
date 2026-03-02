@@ -13,10 +13,13 @@ import polars as pl
 import pytest
 from analysis.cross_session_data import (
     SHIFT_THRESHOLD_SD,
+    FreshmenAnalysis,
     align_feature_columns,
     align_irt_scales,
+    analyze_freshmen_cohort,
     classify_turnover,
     compare_feature_importance,
+    compute_bloc_stability,
     compute_icc,
     compute_ideology_shift,
     compute_metric_stability,
@@ -1434,3 +1437,252 @@ class TestStabilityInterpretation:
             "stability_interpretation",
         }
         assert set(df.columns) == expected_cols
+
+
+# ── Tests: Analyze Freshmen Cohort ───────────────────────────────────────
+
+
+class TestAnalyzeFreshmenCohort:
+    """Tests for analyze_freshmen_cohort() function."""
+
+    @pytest.fixture
+    def freshmen_fixture(self):
+        """Create turnover, leg_df_b, and irt_b for freshmen cohort tests."""
+        # Session B legislators: 4 returning, 4 new
+        leg_df_b = pl.DataFrame(
+            {
+                "legislator_slug": [
+                    "rep_a", "rep_b", "rep_c", "rep_d",  # returning
+                    "rep_e", "rep_f", "rep_g", "rep_h",  # new
+                ],
+                "full_name": [
+                    "Alice A", "Bob B", "Carol C", "Dave D",
+                    "Eve E", "Frank F", "Grace G", "Hank H",
+                ],
+                "party": ["Republican"] * 4 + ["Democrat"] * 2 + ["Republican"] * 2,
+                "chamber": ["house"] * 8,
+                "unity_score": [0.95, 0.90, 0.88, 0.85, 0.80, 0.75, 0.70, 0.65],
+                "maverick_rate": [0.05, 0.10, 0.12, 0.15, 0.20, 0.25, 0.30, 0.35],
+            }
+        )
+        irt_b = pl.DataFrame(
+            {
+                "legislator_slug": leg_df_b["legislator_slug"],
+                "xi_mean": [2.0, 1.5, 1.0, 0.5, -1.0, -2.0, 0.8, 0.3],
+            }
+        )
+        turnover = {
+            "returning": pl.DataFrame(
+                {
+                    "slug_a": ["rep_a_old", "rep_b_old", "rep_c_old", "rep_d_old"],
+                    "slug_b": ["rep_a", "rep_b", "rep_c", "rep_d"],
+                }
+            ),
+            "new": pl.DataFrame(
+                {"legislator_slug": ["rep_e", "rep_f", "rep_g", "rep_h"]}
+            ),
+            "departed": pl.DataFrame(
+                {"legislator_slug": ["rep_x", "rep_y"]}
+            ),
+        }
+        return turnover, leg_df_b, irt_b
+
+    def test_returns_freshmen_analysis(self, freshmen_fixture):
+        turnover, leg_df_b, irt_b = freshmen_fixture
+        result = analyze_freshmen_cohort(turnover, leg_df_b, irt_b)
+        assert result is not None
+        assert isinstance(result, FreshmenAnalysis)
+
+    def test_counts_correct(self, freshmen_fixture):
+        turnover, leg_df_b, irt_b = freshmen_fixture
+        result = analyze_freshmen_cohort(turnover, leg_df_b, irt_b)
+        assert result.n_new == 4
+        assert result.n_returning == 4
+
+    def test_ideology_comparison(self, freshmen_fixture):
+        turnover, leg_df_b, irt_b = freshmen_fixture
+        result = analyze_freshmen_cohort(turnover, leg_df_b, irt_b)
+        assert result.ideology_new_mean is not None
+        assert result.ideology_returning_mean is not None
+        assert result.ideology_ks_stat is not None
+        assert result.ideology_ks_p is not None
+        assert 0.0 <= result.ideology_ks_p <= 1.0
+
+    def test_unity_comparison(self, freshmen_fixture):
+        turnover, leg_df_b, irt_b = freshmen_fixture
+        result = analyze_freshmen_cohort(turnover, leg_df_b, irt_b)
+        assert result.unity_new_mean is not None
+        assert result.unity_returning_mean is not None
+        # New members have lower unity in our fixture
+        assert result.unity_new_mean < result.unity_returning_mean
+
+    def test_maverick_comparison(self, freshmen_fixture):
+        turnover, leg_df_b, irt_b = freshmen_fixture
+        result = analyze_freshmen_cohort(turnover, leg_df_b, irt_b)
+        assert result.maverick_new_mean is not None
+        assert result.maverick_returning_mean is not None
+
+    def test_cohort_df_has_is_new(self, freshmen_fixture):
+        turnover, leg_df_b, irt_b = freshmen_fixture
+        result = analyze_freshmen_cohort(turnover, leg_df_b, irt_b)
+        assert "is_new" in result.cohort_df.columns
+        assert result.cohort_df.filter(pl.col("is_new")).height == 4
+
+    def test_returns_none_for_insufficient_data(self):
+        """Should return None when fewer than 3 new or returning legislators."""
+        turnover = {
+            "returning": pl.DataFrame({"slug_a": ["a"], "slug_b": ["b"]}),
+            "new": pl.DataFrame({"legislator_slug": ["c", "d"]}),
+            "departed": pl.DataFrame({"legislator_slug": []}),
+        }
+        leg_df = pl.DataFrame(
+            {
+                "legislator_slug": ["b", "c", "d"],
+                "full_name": ["B", "C", "D"],
+                "party": ["Republican"] * 3,
+                "chamber": ["house"] * 3,
+            }
+        )
+        irt = pl.DataFrame(
+            {
+                "legislator_slug": ["b", "c", "d"],
+                "xi_mean": [1.0, 0.5, -0.5],
+            }
+        )
+        result = analyze_freshmen_cohort(turnover, leg_df, irt)
+        assert result is None
+
+
+# ── Tests: Compute Bloc Stability ────────────────────────────────────────
+
+
+class TestComputeBlocStability:
+    """Tests for compute_bloc_stability() function."""
+
+    @pytest.fixture
+    def bloc_fixture(self):
+        """Create km_a, km_b, matched for bloc stability tests."""
+        # 8 legislators, 6 stay in same cluster, 2 switch
+        km_a = pl.DataFrame(
+            {
+                "legislator_slug": [f"rep_{i}" for i in range(8)],
+                "cluster": [0, 0, 0, 0, 1, 1, 1, 1],
+            }
+        )
+        km_b = pl.DataFrame(
+            {
+                "legislator_slug": [f"rep_{i}_new" for i in range(8)],
+                "cluster": [0, 0, 0, 1, 1, 1, 1, 0],  # rep_3 and rep_7 switch
+            }
+        )
+        matched = pl.DataFrame(
+            {
+                "slug_a": [f"rep_{i}" for i in range(8)],
+                "slug_b": [f"rep_{i}_new" for i in range(8)],
+            }
+        )
+        return km_a, km_b, matched
+
+    def test_returns_dict(self, bloc_fixture):
+        km_a, km_b, matched = bloc_fixture
+        result = compute_bloc_stability(km_a, km_b, matched)
+        assert result is not None
+        assert isinstance(result, dict)
+        assert "ari" in result
+        assert "n_paired" in result
+        assert "transition_df" in result
+        assert "switchers" in result
+
+    def test_ari_between_0_and_1(self, bloc_fixture):
+        km_a, km_b, matched = bloc_fixture
+        result = compute_bloc_stability(km_a, km_b, matched)
+        assert -1.0 <= result["ari"] <= 1.0
+
+    def test_perfect_stability(self):
+        """ARI should be 1.0 when clusters are identical."""
+        km_a = pl.DataFrame(
+            {
+                "legislator_slug": [f"r{i}" for i in range(6)],
+                "cluster": [0, 0, 0, 1, 1, 1],
+            }
+        )
+        km_b = pl.DataFrame(
+            {
+                "legislator_slug": [f"r{i}_b" for i in range(6)],
+                "cluster": [0, 0, 0, 1, 1, 1],
+            }
+        )
+        matched = pl.DataFrame(
+            {
+                "slug_a": [f"r{i}" for i in range(6)],
+                "slug_b": [f"r{i}_b" for i in range(6)],
+            }
+        )
+        result = compute_bloc_stability(km_a, km_b, matched)
+        assert result["ari"] == pytest.approx(1.0)
+        assert result["switchers"].height == 0
+
+    def test_switchers_detected(self, bloc_fixture):
+        km_a, km_b, matched = bloc_fixture
+        result = compute_bloc_stability(km_a, km_b, matched)
+        # rep_3 (0->1) and rep_7 (1->0) should be switchers
+        assert result["switchers"].height == 2
+
+    def test_transition_df_columns(self, bloc_fixture):
+        km_a, km_b, matched = bloc_fixture
+        result = compute_bloc_stability(km_a, km_b, matched)
+        trans = result["transition_df"]
+        assert "cluster_a" in trans.columns
+        assert "cluster_b" in trans.columns
+        assert "count" in trans.columns
+
+    def test_n_paired_correct(self, bloc_fixture):
+        km_a, km_b, matched = bloc_fixture
+        result = compute_bloc_stability(km_a, km_b, matched)
+        assert result["n_paired"] == 8
+
+    def test_returns_none_for_insufficient_pairs(self):
+        """Should return None when fewer than 5 matched legislators."""
+        km_a = pl.DataFrame(
+            {"legislator_slug": ["a", "b", "c"], "cluster": [0, 0, 1]}
+        )
+        km_b = pl.DataFrame(
+            {"legislator_slug": ["a_b", "b_b", "c_b"], "cluster": [0, 1, 1]}
+        )
+        matched = pl.DataFrame(
+            {"slug_a": ["a", "b", "c"], "slug_b": ["a_b", "b_b", "c_b"]}
+        )
+        result = compute_bloc_stability(km_a, km_b, matched)
+        assert result is None
+
+    def test_with_leg_df_b_adds_names(self, bloc_fixture):
+        km_a, km_b, matched = bloc_fixture
+        leg_df_b = pl.DataFrame(
+            {
+                "legislator_slug": [f"rep_{i}_new" for i in range(8)],
+                "full_name": [f"Name {i}" for i in range(8)],
+                "party": ["Republican"] * 4 + ["Democrat"] * 4,
+            }
+        )
+        result = compute_bloc_stability(km_a, km_b, matched, leg_df_b=leg_df_b)
+        switchers = result["switchers"]
+        assert "full_name" in switchers.columns
+        assert "party" in switchers.columns
+
+    def test_handles_slug_column_name(self):
+        """Should work with 'slug' column (not 'legislator_slug')."""
+        km_a = pl.DataFrame(
+            {"slug": [f"r{i}" for i in range(6)], "cluster": [0, 0, 0, 1, 1, 1]}
+        )
+        km_b = pl.DataFrame(
+            {
+                "legislator_slug": [f"r{i}_b" for i in range(6)],
+                "cluster": [0, 0, 0, 1, 1, 1],
+            }
+        )
+        matched = pl.DataFrame(
+            {"slug_a": [f"r{i}" for i in range(6)], "slug_b": [f"r{i}_b" for i in range(6)]}
+        )
+        result = compute_bloc_stability(km_a, km_b, matched)
+        assert result is not None
+        assert result["ari"] == pytest.approx(1.0)

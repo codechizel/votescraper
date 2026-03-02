@@ -1735,6 +1735,11 @@ def main() -> None:
 
             # Save parquets + NetCDF
             ideal_points.write_parquet(ctx.data_dir / f"hierarchical_ideal_points_{ch}.parquet")
+            ctx.export_csv(
+                ideal_points,
+                f"hierarchical_ideal_points_{ch}.csv",
+                f"Hierarchical IRT ideal points for {ch.title()}",
+            )
             group_params.write_parquet(ctx.data_dir / f"group_params_{ch}.parquet")
             icc_df.write_parquet(ctx.data_dir / f"variance_decomposition_{ch}.parquet")
             idata.to_netcdf(str(ctx.data_dir / f"idata_{ch}.nc"))
@@ -1823,6 +1828,11 @@ def main() -> None:
 
                 # Save
                 joint_ip.write_parquet(ctx.data_dir / "hierarchical_ideal_points_joint.parquet")
+                ctx.export_csv(
+                    joint_ip,
+                    "hierarchical_ideal_points_joint.csv",
+                    "Joint hierarchical ideal points (cross-chamber)",
+                )
                 joint_idata.to_netcdf(str(ctx.data_dir / "idata_joint.nc"))
 
                 # Joint plots
@@ -1935,6 +1945,11 @@ def main() -> None:
 
                 linked_df = pl.DataFrame(linked_rows).sort("xi_linked", descending=True)
                 linked_df.write_parquet(ctx.data_dir / "hierarchical_ideal_points_linked.parquet")
+                ctx.export_csv(
+                    linked_df,
+                    "hierarchical_ideal_points_linked.csv",
+                    "IRT-linked hierarchical ideal points (cross-chamber)",
+                )
                 print("\n  Saved: hierarchical_ideal_points_linked.parquet")
                 print(f"  {linked_df.height} legislators on common scale")
 

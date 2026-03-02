@@ -16,18 +16,22 @@ except ModuleNotFoundError:
 try:
     from analysis.report import (
         FigureSection,
+        InteractiveTableSection,
         KeyFindingsSection,
         TableSection,
         TextSection,
         make_gt,
+        make_interactive_table,
     )
 except ModuleNotFoundError:
     from report import (  # type: ignore[no-redef]
         FigureSection,
+        InteractiveTableSection,
         KeyFindingsSection,
         TableSection,
         TextSection,
         make_gt,
+        make_interactive_table,
     )
 
 
@@ -57,6 +61,7 @@ def build_profiles_report(
         _add_defections_table(report, target, data.get("defections"))
         _add_surprising_votes_table(report, target, data.get("surprising"))
         _add_neighbors_figure(report, target, slug_short, plots_dir)
+        _add_full_voting_record(report, target, data.get("full_record"))
 
     print(f"  Report: {len(report._sections)} sections added")
 
@@ -310,5 +315,62 @@ def _add_neighbors_figure(
                 "different (lowest agreement) by simple vote-matching rate across "
                 "all shared votes. Same-chamber only."
             ),
+        )
+    )
+
+
+def _add_full_voting_record(
+    report: object, target: ProfileTarget, full_record: "pl.DataFrame | None"
+) -> None:
+    """Searchable/sortable full voting record table via ITables."""
+    if full_record is None or full_record.height == 0:
+        return
+
+    slug_short = target.slug.replace("rep_", "").replace("sen_", "")
+
+    display = full_record.with_columns(
+        pl.when(pl.col("with_party"))
+        .then(pl.lit("Yes"))
+        .otherwise(pl.lit("No"))
+        .alias("with_party_str"),
+        pl.when(pl.col("passed").is_null())
+        .then(pl.lit(""))
+        .when(pl.col("passed"))
+        .then(pl.lit("Passed"))
+        .otherwise(pl.lit("Failed"))
+        .alias("outcome"),
+    ).select(
+        "date",
+        "bill_number",
+        "short_title",
+        "motion",
+        "vote",
+        "party_majority",
+        "with_party_str",
+        "outcome",
+    )
+
+    html = make_interactive_table(
+        display,
+        title=f"Complete Voting Record — {target.full_name} ({full_record.height} votes)",
+        column_labels={
+            "date": "Date",
+            "bill_number": "Bill",
+            "short_title": "Title",
+            "motion": "Motion",
+            "vote": "Vote",
+            "party_majority": "Party Majority",
+            "with_party_str": "With Party?",
+            "outcome": "Outcome",
+        },
+        caption="All Yea/Nay votes cast, sorted by date (most recent first). "
+        "Searchable and sortable.",
+    )
+
+    report.add(
+        InteractiveTableSection(
+            id=f"full-record-{slug_short}",
+            title=f"Full Voting Record — {target.full_name}",
+            html=html,
         )
     )

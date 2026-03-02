@@ -1568,6 +1568,11 @@ def main() -> None:
                     ch_l = chamber.lower()
                     rice_ts.write_parquet(ctx.data_dir / f"rice_ts_{ch_l}.parquet")
                     weekly.write_parquet(ctx.data_dir / f"rice_weekly_{ch_l}.parquet")
+                    ctx.export_csv(
+                        weekly,
+                        f"rice_weekly_{ch_l}.csv",
+                        f"Weekly Rice index time series for {ch_l.title()}",
+                    )
 
                     # Per-party changepoints
                     cp_results = {}

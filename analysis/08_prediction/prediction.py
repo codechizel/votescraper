@@ -1740,6 +1740,11 @@ def main() -> None:
             leg_accuracy.write_parquet(
                 ctx.data_dir / f"per_legislator_accuracy_{chamber.lower()}.parquet"
             )
+            ctx.export_csv(
+                leg_accuracy,
+                f"per_legislator_accuracy_{chamber.lower()}.csv",
+                f"Per-legislator prediction accuracy for {chamber}",
+            )
             print(f"  {leg_accuracy.height} legislators evaluated")
             bottom5 = leg_accuracy.sort("accuracy").head(5)
             print("  Bottom 5 accuracy:")
@@ -1766,6 +1771,11 @@ def main() -> None:
                 top_n=TOP_SURPRISING_N,
             )
             surprising.write_parquet(ctx.data_dir / f"surprising_votes_{chamber.lower()}.parquet")
+            ctx.export_csv(
+                surprising,
+                f"surprising_votes_{chamber.lower()}.csv",
+                f"Most surprising votes in {chamber}",
+            )
             print(f"  Top {surprising.height} surprising votes identified (holdout only)")
 
             # ── Phase 9: Plots ──────────────────────────────────────────

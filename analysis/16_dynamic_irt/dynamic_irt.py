@@ -1470,14 +1470,29 @@ def main() -> None:
             print("\n  Extracting dynamic ideal points...")
             trajectories = extract_dynamic_ideal_points(idata, stacked, roster)
             trajectories.write_parquet(ctx.data_dir / f"trajectories_{chamber}.parquet")
+            ctx.export_csv(
+                trajectories,
+                f"trajectories_{chamber}.csv",
+                f"Dynamic ideal point trajectories for {chamber.title()}",
+            )
 
             print("  Decomposing polarization...")
             decomposition = decompose_polarization(trajectories)
             decomposition.write_parquet(ctx.data_dir / f"decomposition_{chamber}.parquet")
+            ctx.export_csv(
+                decomposition,
+                f"decomposition_{chamber}.csv",
+                f"Polarization decomposition for {chamber.title()}",
+            )
 
             print("  Identifying top movers...")
             top_movers = identify_top_movers(trajectories)
             top_movers.write_parquet(ctx.data_dir / f"top_movers_{chamber}.parquet")
+            ctx.export_csv(
+                top_movers,
+                f"top_movers_{chamber}.csv",
+                f"Legislators with largest ideological movement in {chamber.title()}",
+            )
             if top_movers.height > 0:
                 print(
                     f"    Top mover: {top_movers['full_name'][0]} "

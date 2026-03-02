@@ -43,8 +43,10 @@ try:
         SHIFT_THRESHOLD_SD,
         align_feature_columns,
         align_irt_scales,
+        analyze_freshmen_cohort,
         classify_turnover,
         compare_feature_importance,
+        compute_bloc_stability,
         compute_ideology_shift,
         compute_metric_stability,
         compute_turnover_impact,
@@ -58,8 +60,10 @@ except ModuleNotFoundError:
         SHIFT_THRESHOLD_SD,
         align_feature_columns,
         align_irt_scales,
+        analyze_freshmen_cohort,
         classify_turnover,
         compare_feature_importance,
+        compute_bloc_stability,
         compute_ideology_shift,
         compute_metric_stability,
         compute_turnover_impact,
@@ -73,14 +77,26 @@ except ModuleNotFoundError:
     from cross_session_report import build_cross_session_report  # type: ignore[no-redef]
 
 try:
-    from analysis.run_context import RunContext, strip_leadership_suffix
+    from analysis.run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
 except ModuleNotFoundError:
-    from run_context import RunContext, strip_leadership_suffix  # type: ignore[no-redef]
+    from run_context import (  # type: ignore[no-redef]
+        RunContext,
+        resolve_upstream_dir,
+        strip_leadership_suffix,
+    )
 
 try:
-    from analysis.synthesis_data import build_legislator_df, load_all_upstream
+    from analysis.synthesis_data import (
+        _read_parquet_safe,
+        build_legislator_df,
+        load_all_upstream,
+    )
 except ModuleNotFoundError:
-    from synthesis_data import build_legislator_df, load_all_upstream  # type: ignore[no-redef]
+    from synthesis_data import (  # type: ignore[no-redef]
+        _read_parquet_safe,
+        build_legislator_df,
+        load_all_upstream,
+    )
 
 try:
     from analysis.synthesis_detect import (
@@ -513,6 +529,114 @@ def plot_feature_importance_comparison(
     )
 
 
+# ── Freshmen & Bloc Plots ──────────────────────────────────────────────────
+
+
+def _plot_freshmen_density(
+    irt_b: pl.DataFrame,
+    turnover: dict[str, pl.DataFrame],
+    chamber: str,
+    plots_dir: Path,
+) -> None:
+    """Density overlay of IRT ideal points: new vs returning legislators."""
+    new_slugs = set(turnover["new"]["legislator_slug"].to_list())
+    ret_slugs = set(turnover["returning"]["slug_b"].to_list())
+
+    new_xi = irt_b.filter(pl.col("legislator_slug").is_in(new_slugs))["xi_mean"].to_numpy()
+    ret_xi = irt_b.filter(pl.col("legislator_slug").is_in(ret_slugs))["xi_mean"].to_numpy()
+
+    if len(new_xi) < 2 or len(ret_xi) < 2:
+        return
+
+    from scipy.stats import gaussian_kde
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    xi_all = np.concatenate([new_xi, ret_xi])
+    x_range = np.linspace(xi_all.min() - 0.5, xi_all.max() + 0.5, 200)
+
+    kde_ret = gaussian_kde(ret_xi)
+    kde_new = gaussian_kde(new_xi)
+
+    ax.fill_between(x_range, kde_ret(x_range), alpha=0.4, color="#4a90d9", label="Returning")
+    ax.fill_between(x_range, kde_new(x_range), alpha=0.4, color="#e74c3c", label="New Members")
+    ax.plot(x_range, kde_ret(x_range), color="#4a90d9", linewidth=1.5)
+    ax.plot(x_range, kde_new(x_range), color="#e74c3c", linewidth=1.5)
+
+    ax.set_xlabel("IRT Ideology (Liberal ← → Conservative)", fontsize=11)
+    ax.set_ylabel("Density", fontsize=11)
+    ax.set_title(
+        f"{chamber}: Freshmen vs Returning — Ideology Distribution",
+        fontsize=13,
+        fontweight="bold",
+    )
+    ax.legend(fontsize=10)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    save_fig(fig, plots_dir / f"freshmen_ideology_{chamber.lower()}.png")
+
+
+def _plot_bloc_sankey(
+    bloc: dict,
+    chamber: str,
+    plots_dir: Path,
+) -> None:
+    """Generate a Plotly Sankey diagram of cluster transitions."""
+    try:
+        import plotly.graph_objects as go
+    except ImportError:
+        return
+
+    transition_df = bloc.get("transition_df")
+    if transition_df is None or transition_df.height == 0:
+        return
+
+    clusters_a = sorted(set(transition_df["cluster_a"].to_list()))
+    clusters_b = sorted(set(transition_df["cluster_b"].to_list()))
+
+    # Node labels
+    labels = [f"Session A: Cluster {c}" for c in clusters_a] + [
+        f"Session B: Cluster {c}" for c in clusters_b
+    ]
+    a_idx = {c: i for i, c in enumerate(clusters_a)}
+    b_idx = {c: i + len(clusters_a) for i, c in enumerate(clusters_b)}
+
+    sources, targets, values = [], [], []
+    for row in transition_df.iter_rows(named=True):
+        sources.append(a_idx[row["cluster_a"]])
+        targets.append(b_idx[row["cluster_b"]])
+        values.append(row["count"])
+
+    fig = go.Figure(
+        data=[
+            go.Sankey(
+                node={
+                    "pad": 15,
+                    "thickness": 20,
+                    "label": labels,
+                    "color": ["#4a90d9"] * len(clusters_a) + ["#e74c3c"] * len(clusters_b),
+                },
+                link={
+                    "source": sources,
+                    "target": targets,
+                    "value": values,
+                    "color": "rgba(200,200,200,0.4)",
+                },
+            )
+        ]
+    )
+    fig.update_layout(
+        title=f"{chamber}: Voting Bloc Transitions Between Sessions",
+        font={"size": 12},
+        width=700,
+        height=400,
+    )
+    out = plots_dir / f"bloc_sankey_{chamber.lower()}.html"
+    fig.write_html(str(out), include_plotlyjs="cdn")
+    print(f"    Saved {out.name}")
+
+
 # ── Detection Validation ────────────────────────────────────────────────────
 
 
@@ -938,6 +1062,54 @@ def main() -> None:
                 session_b_label,
             )
 
+            # ── Freshmen cohort analysis ──
+            print("  Analyzing freshmen cohort...")
+            freshmen_result = analyze_freshmen_cohort(
+                turnover,
+                leg_df_b,
+                irt_b,
+            )
+            if freshmen_result is not None:
+                print(f"    {freshmen_result.n_new} new, {freshmen_result.n_returning} returning")
+                if freshmen_result.ideology_ks_p is not None:
+                    print(f"    Ideology KS p = {freshmen_result.ideology_ks_p:.3f}")
+                if freshmen_result.unity_t_p is not None:
+                    print(f"    Unity t-test p = {freshmen_result.unity_t_p:.3f}")
+
+                # Freshmen density overlay plot
+                _plot_freshmen_density(
+                    irt_b,
+                    turnover,
+                    chamber_cap,
+                    ctx.plots_dir,
+                )
+            else:
+                print("    Skipped: insufficient data")
+
+            # ── Bloc stability ──
+            print("  Analyzing voting bloc stability...")
+            bloc_result: dict | None = None
+            clust_a = resolve_upstream_dir("05_clustering", ks_a.results_dir, args.run_id)
+            clust_b = resolve_upstream_dir("05_clustering", ks_b.results_dir, args.run_id)
+            km_a = _read_parquet_safe(clust_a / "data" / f"kmeans_assignments_{chamber}.parquet")
+            km_b = _read_parquet_safe(clust_b / "data" / f"kmeans_assignments_{chamber}.parquet")
+            if km_a is not None and km_b is not None:
+                bloc_result = compute_bloc_stability(
+                    km_a,
+                    km_b,
+                    matched,
+                    leg_df_a,
+                    leg_df_b,
+                )
+                if bloc_result is not None:
+                    print(f"    ARI = {bloc_result['ari']:.3f}")
+                    print(f"    {bloc_result['switchers'].height} switchers")
+                    _plot_bloc_sankey(bloc_result, chamber_cap, ctx.plots_dir)
+                else:
+                    print("    Skipped: insufficient paired data")
+            else:
+                print("    Skipped: missing k-means data")
+
             # ── Cross-session prediction ──
             prediction_result: dict | None = None
             if not args.skip_prediction:
@@ -956,8 +1128,18 @@ def main() -> None:
             shifted.write_parquet(
                 ctx.data_dir / f"ideology_shift_{chamber}.parquet",
             )
+            ctx.export_csv(
+                shifted,
+                f"ideology_shift_{chamber}.csv",
+                f"Ideology shift between sessions for {chamber.title()}",
+            )
             stability.write_parquet(
                 ctx.data_dir / f"metric_stability_{chamber}.parquet",
+            )
+            ctx.export_csv(
+                stability,
+                f"metric_stability_{chamber}.csv",
+                f"Metric stability between sessions for {chamber.title()}",
             )
             with open(ctx.data_dir / f"turnover_impact_{chamber}.json", "w") as f:
                 json.dump(turnover_impact, f, indent=2)
@@ -969,6 +1151,8 @@ def main() -> None:
                 "detection": detection,
                 "r_value": r_val,
                 "prediction": prediction_result,
+                "freshmen": freshmen_result,
+                "bloc_stability": bloc_result,
             }
 
         # ── Save detection results ──

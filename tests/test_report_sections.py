@@ -16,10 +16,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from analysis.report import (
+    DownloadSection,
     InteractiveSection,
     InteractiveTableSection,
     KeyFindingsSection,
     ReportBuilder,
+    ScrollySection,
+    ScrollyStep,
     TextSection,
     make_interactive_table,
 )
@@ -253,3 +256,216 @@ class TestReportCSSNewStyles:
         report.add(TextSection(id="s1", title="S", html="<p>Hi</p>"))
         html = report.render()
         assert ".key-findings" in html
+
+
+# ── DownloadSection ──────────────────────────────────────────────────────────
+
+
+class TestDownloadSection:
+    """Downloadable CSV file links."""
+
+    def test_render_basic(self):
+        section = DownloadSection(
+            id="dl1",
+            title="Downloads",
+            files=[("data/scores.csv", "Legislator scores")],
+        )
+        html = section.render()
+        assert '<div class="download-container" id="dl1">' in html
+        assert 'href="data/scores.csv"' in html
+        assert "download" in html
+        assert "scores.csv" in html
+        assert "Legislator scores" in html
+
+    def test_render_multiple_files(self):
+        section = DownloadSection(
+            id="dl2",
+            title="Downloads",
+            files=[
+                ("data/house.csv", "House data"),
+                ("data/senate.csv", "Senate data"),
+            ],
+        )
+        html = section.render()
+        assert "house.csv" in html
+        assert "senate.csv" in html
+        assert "House data" in html
+        assert "Senate data" in html
+
+    def test_render_with_caption(self):
+        section = DownloadSection(
+            id="dl3",
+            title="Downloads",
+            files=[("f.csv", "File")],
+            caption="All files are UTF-8 encoded",
+        )
+        html = section.render()
+        assert '<p class="caption">All files are UTF-8 encoded</p>' in html
+
+    def test_render_without_caption(self):
+        section = DownloadSection(
+            id="dl4", title="Downloads", files=[("f.csv", "File")]
+        )
+        html = section.render()
+        assert "caption" not in html
+
+    def test_frozen(self):
+        section = DownloadSection(id="dl5", title="Downloads", files=[])
+        with pytest.raises(AttributeError):
+            section.id = "dl6"  # type: ignore[misc]
+
+    def test_relative_path_preserved(self):
+        section = DownloadSection(
+            id="dl6",
+            title="Downloads",
+            files=[("data/sub/deep.csv", "Deep file")],
+        )
+        html = section.render()
+        assert 'href="data/sub/deep.csv"' in html
+        # Display shows only filename
+        assert ">deep.csv</a>" in html
+
+
+# ── ScrollySection ──────────────────────────────────────────────────────────
+
+
+class TestScrollyStep:
+    """ScrollyStep frozen dataclass."""
+
+    def test_construction(self):
+        step = ScrollyStep(narrative_html="<p>Hello</p>", visual_id="fig1")
+        assert step.narrative_html == "<p>Hello</p>"
+        assert step.visual_id == "fig1"
+
+    def test_frozen(self):
+        step = ScrollyStep(narrative_html="<p>A</p>", visual_id="v1")
+        with pytest.raises(AttributeError):
+            step.visual_id = "v2"  # type: ignore[misc]
+
+
+class TestScrollySection:
+    """Scrollytelling section with sticky visuals."""
+
+    def test_render_basic(self):
+        section = ScrollySection(
+            id="sc1",
+            title="Chapter 1",
+            steps=[
+                ScrollyStep(narrative_html="<p>Step 1</p>", visual_id="img1"),
+                ScrollyStep(narrative_html="<p>Step 2</p>", visual_id="img2"),
+            ],
+            visuals={"img1": "<img src='a.png'/>", "img2": "<img src='b.png'/>"},
+        )
+        html = section.render()
+        assert '<div class="scrolly-container" id="sc1">' in html
+        assert '<div class="scrolly-visual">' in html
+        assert '<div class="scrolly-narrative">' in html
+        assert "Step 1" in html
+        assert "Step 2" in html
+
+    def test_first_step_active(self):
+        section = ScrollySection(
+            id="sc2",
+            title="Chapter",
+            steps=[
+                ScrollyStep(narrative_html="<p>A</p>", visual_id="v1"),
+                ScrollyStep(narrative_html="<p>B</p>", visual_id="v1"),
+            ],
+            visuals={"v1": "<div>visual</div>"},
+        )
+        html = section.render()
+        assert 'class="scrolly-step is-active"' in html
+        # Second step should not be active
+        lines = html.split("\n")
+        step_lines = [l for l in lines if "scrolly-step" in l and "data-visual" in l]
+        assert len(step_lines) == 2
+        assert "is-active" in step_lines[0]
+        assert "is-active" not in step_lines[1]
+
+    def test_visual_ids_in_output(self):
+        section = ScrollySection(
+            id="sc3",
+            title="Chapter",
+            steps=[ScrollyStep(narrative_html="<p>X</p>", visual_id="chart1")],
+            visuals={"chart1": "<div>chart</div>"},
+        )
+        html = section.render()
+        assert 'id="scrolly-fig-chart1"' in html
+        assert 'data-visual="chart1"' in html
+
+    def test_render_with_caption(self):
+        section = ScrollySection(
+            id="sc4",
+            title="Chapter",
+            steps=[ScrollyStep(narrative_html="<p>X</p>", visual_id="v")],
+            visuals={"v": "<div/>"},
+            caption="Scroll to explore",
+        )
+        html = section.render()
+        assert '<p class="caption">Scroll to explore</p>' in html
+
+    def test_frozen(self):
+        section = ScrollySection(
+            id="sc5",
+            title="Chapter",
+            steps=[],
+            visuals={},
+        )
+        with pytest.raises(AttributeError):
+            section.id = "sc6"  # type: ignore[misc]
+
+
+class TestReportBuilderScrolly:
+    """ScrollySection integration with ReportBuilder."""
+
+    def test_scrolly_in_report(self):
+        report = ReportBuilder(title="Test")
+        report.add(
+            ScrollySection(
+                id="scrolly1",
+                title="Scrolly Chapter",
+                steps=[ScrollyStep(narrative_html="<p>A</p>", visual_id="v1")],
+                visuals={"v1": "<div>visual</div>"},
+            )
+        )
+        html = report.render()
+        assert '<div class="scrolly-container" id="scrolly1">' in html
+        assert '<a href="#scrolly1">' in html
+
+    def test_scrolly_injects_js(self):
+        report = ReportBuilder(title="Test")
+        report.add(
+            ScrollySection(
+                id="scrolly2",
+                title="Scrolly",
+                steps=[ScrollyStep(narrative_html="<p>A</p>", visual_id="v1")],
+                visuals={"v1": "<div/>"},
+            )
+        )
+        html = report.render()
+        assert "IntersectionObserver" in html
+
+    def test_no_scrolly_no_js(self):
+        report = ReportBuilder(title="Test")
+        report.add(TextSection(id="t1", title="Plain", html="<p>No scrolly</p>"))
+        html = report.render()
+        assert "IntersectionObserver" not in html
+
+    def test_scrolly_css_present(self):
+        report = ReportBuilder(title="Test")
+        report.add(TextSection(id="s1", title="S", html="<p>Hi</p>"))
+        html = report.render()
+        assert ".scrolly-container" in html
+        assert ".scrolly-step" in html
+        assert ".scrolly-visual" in html
+
+
+class TestReportCSSDownloadStyles:
+    """Download section CSS classes are present."""
+
+    def test_download_css(self):
+        report = ReportBuilder(title="Test")
+        report.add(TextSection(id="s1", title="S", html="<p>Hi</p>"))
+        html = report.render()
+        assert ".download-container" in html
+        assert ".download-list" in html

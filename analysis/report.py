@@ -3,7 +3,7 @@
 Produces a self-contained HTML file with SPSS/APA-style tables, embedded plots,
 and a navigable table of contents. Each analysis phase adds sections independently.
 
-Six section types:
+Seven section types:
   - TableSection: Pre-rendered HTML (from great_tables). The caller builds the GT
     object via make_gt() and passes the HTML string.
   - FigureSection: Base64-embedded PNG. Classmethods for on-disk and in-memory figures.
@@ -11,6 +11,7 @@ Six section types:
   - InteractiveTableSection: Searchable/sortable table via ITables (offline mode).
   - InteractiveSection: Raw HTML fragment (Plotly/PyVis output).
   - KeyFindingsSection: Bullet-point summary rendered above the TOC.
+  - DownloadSection: List of downloadable CSV files with relative links.
 
 ReportBuilder assembles sections into a single HTML file via a Jinja2 template.
 
@@ -166,8 +167,89 @@ class KeyFindingsSection:
         return f'<div class="key-findings">\n<h2>Key Findings</h2>\n<ul>\n{items}\n</ul>\n</div>'
 
 
+@dataclass(frozen=True)
+class DownloadSection:
+    """A section listing downloadable CSV files alongside the report.
+
+    Each file entry is a (filename, description) tuple. Links use relative paths
+    so they resolve when the HTML report is opened from disk or served.
+    """
+
+    id: str
+    title: str
+    files: list[tuple[str, str]]  # (relative_path, description)
+    caption: str | None = None
+
+    def render(self) -> str:
+        parts = [f'<div class="download-container" id="{self.id}">']
+        parts.append('<ul class="download-list">')
+        for path, desc in self.files:
+            parts.append(
+                f'  <li><a href="{path}" download>{path.split("/")[-1]}</a> &mdash; {desc}</li>'
+            )
+        parts.append("</ul>")
+        if self.caption:
+            parts.append(f'<p class="caption">{self.caption}</p>')
+        parts.append("</div>")
+        return "\n".join(parts)
+
+
+@dataclass(frozen=True)
+class ScrollyStep:
+    """One step in a scrollytelling narrative."""
+
+    narrative_html: str  # text panel (left side)
+    visual_id: str  # ID of the visual to show (sticky right side)
+
+
+@dataclass(frozen=True)
+class ScrollySection:
+    """A scrollytelling chapter with progressive narrative reveal.
+
+    Each step has narrative text (scrolls) and a reference to a visual
+    (stays sticky). Uses Scrollama.js + IntersectionObserver for scroll-driven
+    transitions.
+    """
+
+    id: str
+    title: str
+    steps: list[ScrollyStep]
+    visuals: dict[str, str]  # visual_id -> HTML content
+    caption: str | None = None
+
+    def render(self) -> str:
+        parts = [f'<div class="scrolly-container" id="{self.id}">']
+
+        # Visual panel (sticky)
+        parts.append('<div class="scrolly-visual">')
+        for vid, vhtml in self.visuals.items():
+            parts.append(
+                f'<div class="scrolly-figure" id="scrolly-fig-{vid}" '
+                f'style="display:none;">{vhtml}</div>'
+            )
+        parts.append("</div>")
+
+        # Narrative steps (scroll)
+        parts.append('<div class="scrolly-narrative">')
+        for i, step in enumerate(self.steps):
+            active = ' class="scrolly-step is-active"' if i == 0 else ' class="scrolly-step"'
+            parts.append(f'<div{active} data-visual="{step.visual_id}">{step.narrative_html}</div>')
+        parts.append("</div>")
+
+        parts.append("</div>")
+        if self.caption:
+            parts.append(f'<p class="caption">{self.caption}</p>')
+        return "\n".join(parts)
+
+
 SectionType = (
-    TableSection | FigureSection | TextSection | InteractiveTableSection | InteractiveSection
+    TableSection
+    | FigureSection
+    | TextSection
+    | InteractiveTableSection
+    | InteractiveSection
+    | DownloadSection
+    | ScrollySection
 )
 
 
@@ -322,6 +404,41 @@ def make_interactive_table(
     return "\n".join(html_parts)
 
 
+def _scrolly_init_js() -> str:
+    """Return inline JS for scrollytelling IntersectionObserver."""
+    return """
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.scrolly-container').forEach(function(container) {
+    var steps = container.querySelectorAll('.scrolly-step');
+    var figures = container.querySelectorAll('.scrolly-figure');
+    if (steps.length === 0 || figures.length === 0) return;
+
+    // Show first visual
+    var firstVid = steps[0].getAttribute('data-visual');
+    figures.forEach(function(f) {
+      f.style.display = f.id === 'scrolly-fig-' + firstVid ? 'block' : 'none';
+    });
+
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          steps.forEach(function(s) { s.classList.remove('is-active'); });
+          entry.target.classList.add('is-active');
+          var vid = entry.target.getAttribute('data-visual');
+          figures.forEach(function(f) {
+            f.style.display = f.id === 'scrolly-fig-' + vid ? 'block' : 'none';
+          });
+        }
+      });
+    }, { rootMargin: '-30% 0px -30% 0px', threshold: 0.1 });
+
+    steps.forEach(function(step) { observer.observe(step); });
+  });
+});
+</script>"""
+
+
 def _itables_init_html() -> str:
     """Return ITables offline init HTML for injection into <head>.
 
@@ -381,7 +498,10 @@ class ReportBuilder:
 
         # Inject ITables init JS if any InteractiveTableSection is present
         has_itables = any(isinstance(s, InteractiveTableSection) for _, s in self._sections)
+        has_scrolly = any(isinstance(s, ScrollySection) for _, s in self._sections)
         extra_head = _itables_init_html() if has_itables else ""
+        if has_scrolly:
+            extra_head += _scrolly_init_js()
 
         now = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d %H:%M %Z")
         template = _get_template()
@@ -509,6 +629,57 @@ section.report-section h2 {
   margin-bottom: 4px;
   color: #1a1a1a;
 }
+.scrolly-container {
+  position: relative;
+  display: flex;
+  gap: 24px;
+  margin: 24px 0;
+}
+.scrolly-visual {
+  position: sticky;
+  top: 20px;
+  flex: 1;
+  height: fit-content;
+  max-height: 80vh;
+  overflow: auto;
+}
+.scrolly-figure { transition: opacity 0.4s ease; }
+.scrolly-narrative {
+  flex: 1;
+  padding: 0 12px;
+}
+.scrolly-step {
+  min-height: 60vh;
+  padding: 24px 0;
+  opacity: 0.3;
+  transition: opacity 0.4s ease;
+}
+.scrolly-step.is-active { opacity: 1; }
+.scrolly-step p { font-size: 16px; line-height: 1.7; margin-bottom: 12px; }
+.scrolly-step h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #1a3a5c; }
+@media (max-width: 768px) {
+  .scrolly-container { flex-direction: column; }
+  .scrolly-visual { position: relative; top: 0; }
+  .scrolly-step { min-height: 40vh; }
+}
+.download-container {
+  margin-bottom: 12px;
+}
+.download-list {
+  list-style: none;
+  padding-left: 0;
+}
+.download-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+.download-list a {
+  color: #0066cc;
+  text-decoration: none;
+  font-weight: 600;
+}
+.download-list a:hover { text-decoration: underline; }
 .caption {
   font-size: 12px;
   color: #666;

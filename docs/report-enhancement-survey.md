@@ -2,7 +2,7 @@
 
 A comprehensive review of Tallgrass's current HTML report output, gaps relative to academic standards and general-audience best practices, and opportunities from the open-source ecosystem. Based on a full inventory of all 17 phase reports (~300+ sections), a survey of the open-source legislative analysis landscape, and a review of what academics, newsrooms, and civic tech organizations report.
 
-> **Implementation status (2026-03-01):** R1-R13 (Tier 1 + Tier 2) are all implemented. See ADR-0069 for details. Tier 3 and Tier 4 remain as future backlog.
+> **Implementation status (2026-03-02):** R1-R13 (Tier 1 + Tier 2) implemented — ADR-0069. R14-R20 (Tier 3) implemented — ADR-0071. Tier 4 remains as future backlog.
 
 ## Table of Contents
 
