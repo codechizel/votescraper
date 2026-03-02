@@ -211,6 +211,11 @@ def _add_party_posteriors_figure(
                     "Posterior distributions of party mean ideal points. Separation between "
                     "the curves indicates polarization. The dashed lines mark the posterior means."
                 ),
+                alt_text=(
+                    f"KDE plot of {chamber} posterior distributions for Republican and Democrat "
+                    "party mean ideal points. Separation between curves indicates the degree of "
+                    "partisan polarization."
+                ),
             )
         )
 
@@ -231,6 +236,11 @@ def _add_icc_figure(
                     "The Intraclass Correlation Coefficient (ICC) shows what share of "
                     "ideological variance is explained by party membership vs. individual "
                     "differences. The error bar shows the 95% credible interval."
+                ),
+                alt_text=(
+                    f"Bar chart of the {chamber} Intraclass Correlation Coefficient (ICC) "
+                    "showing the share of ideological variance explained by party membership, "
+                    "with a 95% credible interval error bar."
                 ),
             )
         )
@@ -295,6 +305,11 @@ def _add_dispersion_figure(
                     "shifted to the right means that party's members have more diverse voting "
                     "patterns."
                 ),
+                alt_text=(
+                    f"KDE plot of {chamber} posterior distributions for within-party standard "
+                    "deviation by party. A rightward-shifted curve indicates greater internal "
+                    "ideological disagreement within that party."
+                ),
             )
         )
 
@@ -315,6 +330,11 @@ def _add_shrinkage_scatter_figure(
                     "Each dot is a legislator. The diagonal line marks 'no change.' "
                     "Points pulled off the diagonal moved when the model accounted for party "
                     "structure. The 5 biggest movers are labeled."
+                ),
+                alt_text=(
+                    f"Scatter plot comparing {chamber} flat IRT ideal points (x-axis) to "
+                    "hierarchical ideal points (y-axis). Points off the diagonal indicate "
+                    "shrinkage toward the party mean; the 5 biggest movers are labeled."
                 ),
             )
         )
@@ -407,6 +427,11 @@ def _add_forest_figure(
                     "Every legislator's ideal point estimate with 95% HDI. "
                     "Points are colored by party. The hierarchical model pulls "
                     "uncertain legislators toward their party mean."
+                ),
+                alt_text=(
+                    f"Forest plot of all {chamber} legislators' hierarchical ideal point "
+                    "estimates with 95% HDI error bars, colored by party. Legislators are "
+                    "sorted by ideal point from liberal to conservative."
                 ),
             )
         )
@@ -534,6 +559,11 @@ def _add_joint_model_section(
                     "Solid lines = House, dashed = Senate. Greater separation between "
                     "party curves within a chamber indicates more polarization."
                 ),
+                alt_text=(
+                    "KDE plot of group mean posterior distributions for all four party-chamber "
+                    "combinations. Solid lines represent House, dashed lines represent Senate. "
+                    "Greater separation between party curves indicates more polarization."
+                ),
             )
         )
 
@@ -548,6 +578,11 @@ def _add_joint_model_section(
                 caption=(
                     "All House and Senate legislators placed on the same ideological scale "
                     "by the joint hierarchical model."
+                ),
+                alt_text=(
+                    "Forest plot of all House and Senate legislators on a common ideological "
+                    "scale from the joint hierarchical model, with 95% HDI error bars colored "
+                    "by party."
                 ),
             )
         )

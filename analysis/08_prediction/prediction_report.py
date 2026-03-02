@@ -288,6 +288,10 @@ def _add_roc_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> Non
                 f"roc-{chamber.lower()}",
                 f"{chamber} ROC Curves — Vote Prediction",
                 path,
+                alt_text=(
+                    f"ROC curves comparing Logistic Regression, XGBoost, and Random Forest "
+                    f"for {chamber} vote prediction. All models well above the diagonal baseline."
+                ),
             )
         )
 
@@ -300,6 +304,11 @@ def _add_confusion_matrix_figure(report: ReportBuilder, plots_dir: Path, chamber
                 f"confusion-{chamber.lower()}",
                 f"{chamber} Confusion Matrix — XGBoost",
                 path,
+                alt_text=(
+                    f"Confusion matrix heatmap for {chamber} XGBoost vote predictions. "
+                    f"Shows counts of true positives, false positives, true negatives, "
+                    f"and false negatives."
+                ),
             )
         )
 
@@ -312,6 +321,11 @@ def _add_calibration_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                 f"calibration-{chamber.lower()}",
                 f"{chamber} Calibration Curve — XGBoost",
                 path,
+                alt_text=(
+                    f"Calibration curve for {chamber} XGBoost model. Compares predicted "
+                    f"probabilities to observed frequencies against the perfectly "
+                    f"calibrated diagonal."
+                ),
             )
         )
 
@@ -399,6 +413,11 @@ def _add_shap_beeswarm_figure(report: ReportBuilder, plots_dir: Path, chamber: s
                     "Each dot is one prediction. X-axis = SHAP value "
                     "(positive = pushes toward Yea). Color = feature value."
                 ),
+                alt_text=(
+                    f"Beeswarm plot of SHAP values for {chamber} vote predictions. "
+                    f"Each dot is one prediction colored by feature value, showing how "
+                    f"each feature pushes toward Yea or Nay."
+                ),
             )
         )
 
@@ -414,6 +433,10 @@ def _add_shap_bar_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -
                 caption=(
                     "Mean absolute SHAP value per feature. "
                     "Higher = more influential on predictions."
+                ),
+                alt_text=(
+                    f"Horizontal bar chart of mean absolute SHAP values for {chamber}. "
+                    f"Features ranked by importance, with IRT interaction typically dominant."
                 ),
             )
         )
@@ -435,6 +458,10 @@ def _add_feature_importance_figure(
                     "XGBoost gain-based feature importance. "
                     "Complementary to SHAP (gain = split quality, "
                     "SHAP = prediction impact)."
+                ),
+                alt_text=(
+                    f"Bar chart of XGBoost gain-based feature importance for {chamber}. "
+                    f"Ranks features by how much they improve split quality in the model."
                 ),
             )
         )
@@ -517,6 +544,10 @@ def _add_per_legislator_figure(report: ReportBuilder, plots_dir: Path, chamber: 
                 caption=(
                     "Each dot is one legislator. X = IRT ideal point, Y = prediction accuracy."
                 ),
+                alt_text=(
+                    f"Scatter plot of per-legislator prediction accuracy vs IRT ideal point "
+                    f"for {chamber}. Moderates near the center tend to have lower accuracy."
+                ),
             )
         )
 
@@ -532,6 +563,10 @@ def _add_hardest_to_predict_figure(report: ReportBuilder, plots_dir: Path, chamb
                 caption=(
                     "Legislators the model struggles with most, "
                     "with a plain-English explanation for each."
+                ),
+                alt_text=(
+                    f"Annotated chart spotlighting the hardest-to-predict {chamber} "
+                    f"legislators with explanations for why each is difficult to model."
                 ),
             )
         )
@@ -711,12 +746,8 @@ def _add_surprising_votes_interpretation(
             continue
         if "actual" not in surprising.columns or "predicted" not in surprising.columns:
             continue
-        n_fp = surprising.filter(
-            (pl.col("predicted") == 1) & (pl.col("actual") == 0)
-        ).height
-        n_fn = surprising.filter(
-            (pl.col("predicted") == 0) & (pl.col("actual") == 1)
-        ).height
+        n_fp = surprising.filter((pl.col("predicted") == 1) & (pl.col("actual") == 0)).height
+        n_fn = surprising.filter((pl.col("predicted") == 0) & (pl.col("actual") == 1)).height
         total = surprising.height
         fp_pct = n_fp / total * 100 if total > 0 else 0
         parts.append(
@@ -800,6 +831,10 @@ def _add_passage_roc_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                 f"passage-roc-{chamber.lower()}",
                 f"{chamber} Passage ROC Curves",
                 path,
+                alt_text=(
+                    f"ROC curves for {chamber} bill passage prediction models. "
+                    f"Compares three classifiers against the diagonal chance baseline."
+                ),
             )
         )
 
@@ -938,6 +973,10 @@ def _add_topic_words_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                 f"{chamber} NMF Topic Top Words",
                 path,
                 caption="Top words per NMF topic extracted from bill short_title text.",
+                alt_text=(
+                    f"Bar chart of top words per NMF topic for {chamber} bill titles. "
+                    f"Each topic cluster reveals a policy area such as taxes or elections."
+                ),
             )
         )
 

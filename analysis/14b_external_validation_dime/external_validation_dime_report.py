@@ -291,6 +291,12 @@ def _add_scatter_figure(
                     "Y-axis: DIME static CFscore. Tight clustering along the "
                     "dashed line indicates strong agreement."
                 ),
+                alt_text=(
+                    f"Scatter plot of {model_label} ideal points vs "
+                    f"DIME CFscores for {chamber} ({session}). "
+                    "Points cluster along the diagonal, "
+                    "showing agreement."
+                ),
             )
         )
 
@@ -469,6 +475,10 @@ def _add_pooled_analysis(
                     f"Pooled {chamber} {model_label} vs DIME CFscore",
                     path,
                     caption="Pooled across all overlapping bienniums (unique legislators only).",
+                    alt_text=(
+                        f"Scatter plot of pooled {model_label} ideal points vs DIME CFscores "
+                        f"for {chamber}. Unique legislators across all overlapping bienniums."
+                    ),
                 )
             )
 

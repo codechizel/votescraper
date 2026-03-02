@@ -206,6 +206,11 @@ def _add_dendrogram_figure(report: ReportBuilder, plots_dir: Path, chamber: str)
                     f"Hierarchical clustering dendrogram ({chamber}) using Ward linkage "
                     "on Kappa distance. Leaf labels colored by party."
                 ),
+                alt_text=(
+                    f"Hierarchical clustering dendrogram for the {chamber} using Ward "
+                    f"linkage on Kappa distance. Leaf labels are colored by party, showing "
+                    f"how legislators group by voting similarity."
+                ),
             )
         )
 
@@ -222,6 +227,11 @@ def _add_voting_blocs_figure(report: ReportBuilder, plots_dir: Path, chamber: st
                     f"Legislators ordered by voting similarity ({chamber}), "
                     "colored by party. X-axis = IRT ideal point. Legislators "
                     "near each other vote together most often."
+                ),
+                alt_text=(
+                    f"Strip chart of {chamber} legislators ordered by voting similarity "
+                    f"and colored by party. Legislators positioned close together vote "
+                    f"together most often, with IRT ideal point on the x-axis."
                 ),
             )
         )
@@ -240,6 +250,11 @@ def _add_polar_dendrogram_figure(report: ReportBuilder, plots_dir: Path, chamber
                     "branches connect inward at merge distance. "
                     "Leaf labels colored by party."
                 ),
+                alt_text=(
+                    f"Circular dendrogram for the {chamber} with legislator names around "
+                    f"the perimeter colored by party. Branches connect inward at merge "
+                    f"distances showing hierarchical voting similarity."
+                ),
             )
         )
 
@@ -256,6 +271,11 @@ def _add_icicle_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> 
                     f"Icicle chart ({chamber}): top-down view of the cluster hierarchy. "
                     "Width = number of legislators in each group. Height = merge distance "
                     "(dissimilarity). Color = majority party in each subtree."
+                ),
+                alt_text=(
+                    f"Icicle chart showing top-down hierarchical clustering for the "
+                    f"{chamber}. Width represents group size, height represents merge "
+                    f"distance, and color indicates majority party in each subtree."
                 ),
             )
         )
@@ -277,6 +297,11 @@ def _add_model_selection_figure(
                     f"K-Means model selection ({chamber}): inertia (elbow) and "
                     "silhouette score vs number of clusters."
                 ),
+                alt_text=(
+                    f"Dual-panel plot for {chamber} K-Means model selection. "
+                    f"Left panel shows inertia elbow curve, right panel shows "
+                    f"silhouette score vs number of clusters k."
+                ),
             )
         )
 
@@ -296,6 +321,11 @@ def _add_gmm_model_selection_figure(
                 caption=(
                     f"GMM model selection ({chamber}): BIC and AIC vs number of components. "
                     "Lower BIC = better model."
+                ),
+                alt_text=(
+                    f"Line plot of BIC and AIC information criteria vs number of Gaussian "
+                    f"mixture components for the {chamber}. Lower BIC indicates better "
+                    f"model fit."
                 ),
             )
         )
@@ -381,6 +411,11 @@ def _add_irt_clusters_figure(report: ReportBuilder, plots_dir: Path, chamber: st
                     f"IRT ideal points colored by K-Means cluster ({chamber}). "
                     "Circles = Republican, Squares = Democrat."
                 ),
+                alt_text=(
+                    f"Scatter plot of {chamber} IRT ideal points colored by K-Means "
+                    f"cluster assignment. Circles represent Republicans, squares represent "
+                    f"Democrats, showing how clusters align with party membership."
+                ),
             )
         )
 
@@ -396,6 +431,11 @@ def _add_irt_loyalty_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                 caption=(
                     f"2D view ({chamber}): IRT ideal point (x) vs party loyalty (y). "
                     "Mavericks appear in the low-loyalty region with extreme ideology."
+                ),
+                alt_text=(
+                    f"Scatter plot of {chamber} IRT ideal point vs party loyalty rate. "
+                    f"Legislators with low loyalty and extreme ideology appear as "
+                    f"potential mavericks in the lower corners of the plot."
                 ),
             )
         )
@@ -613,6 +653,11 @@ def _add_cluster_box_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                 caption=(
                     f"Distribution of IRT ideal points per cluster ({chamber}). "
                     "Box = IQR, whiskers = 1.5x IQR, dots = outliers."
+                ),
+                alt_text=(
+                    f"Box plot showing the distribution of IRT ideal points per cluster "
+                    f"for the {chamber}. Each box shows the interquartile range with "
+                    f"whiskers extending to 1.5 times IQR and individual outlier dots."
                 ),
             )
         )
@@ -917,6 +962,11 @@ def _add_within_party_model_selection_figure(
                     f"and 2D (IRT + loyalty) vs k. Dashed line = 0.50 good-structure "
                     f"threshold."
                 ),
+                alt_text=(
+                    f"Line plot of within-{party_label} silhouette scores for the "
+                    f"{chamber} in 1D and 2D feature spaces vs number of clusters k. "
+                    f"Dashed horizontal line marks the good-structure threshold at 0.50."
+                ),
             )
         )
 
@@ -940,6 +990,11 @@ def _add_within_party_clusters_figure(
                     f"Within-{party_label} clustering ({chamber}): IRT ideal point (x) "
                     f"vs party loyalty (y), colored by within-party cluster. A red "
                     f"banner indicates no discrete subclusters were found."
+                ),
+                alt_text=(
+                    f"Scatter plot of within-{party_label} clustering for the {chamber}, "
+                    f"showing IRT ideal point vs party loyalty colored by within-party "
+                    f"cluster assignment."
                 ),
             )
         )

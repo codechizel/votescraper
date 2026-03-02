@@ -279,6 +279,10 @@ def _add_scatter_figure(report: ReportBuilder, plots_dir: Path, chamber: str) ->
                     "(contrarianism). Red = Republican, Blue = Democrat. "
                     "Key legislators annotated."
                 ),
+                alt_text=(
+                    f"Scatter plot of 2D IRT ideal points for {chamber}. "
+                    "Dim 1 separates parties; Dim 2 captures contrarian voting patterns."
+                ),
             )
         )
 
@@ -294,6 +298,11 @@ def _add_dim1_vs_pc1_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                 caption=(
                     f"2D IRT Dimension 1 vs PCA PC1 ({chamber}). "
                     "High correlation (r > 0.90) confirms Dim 1 captures ideology."
+                ),
+                alt_text=(
+                    f"Scatter plot comparing 2D IRT Dim 1 and PCA PC1 for {chamber}. "
+                    "Strong linear relationship confirms both capture the "
+                    "same ideological dimension."
                 ),
             )
         )
@@ -311,6 +320,10 @@ def _add_dim2_vs_pc2_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                     f"2D IRT Dimension 2 vs PCA PC2 ({chamber}). "
                     "Positive correlation confirms Dim 2 captures the "
                     "secondary PCA pattern."
+                ),
+                alt_text=(
+                    f"Scatter plot comparing 2D IRT Dim 2 and PCA PC2 for {chamber}. "
+                    "Positive correlation confirms the secondary dimension aligns across methods."
                 ),
             )
         )

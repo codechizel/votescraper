@@ -129,6 +129,10 @@ def _add_landscape_figure(report: ReportBuilder, plots_dir: Path, chamber: str) 
                     "relative positions and distances matter. Cross-party outliers "
                     "(if any) are labeled with imputation artifact warnings."
                 ),
+                alt_text=(
+                    f"Scatter plot showing UMAP embedding of legislators for {chamber}. "
+                    "Red Republican and blue Democrat clusters are spatially separated."
+                ),
             )
         )
 
@@ -147,6 +151,10 @@ def _add_pc1_gradient_figure(report: ReportBuilder, plots_dir: Path, chamber: st
                     "red-to-blue gradient validates that UMAP preserves the same "
                     "ideological dimension identified by PCA."
                 ),
+                alt_text=(
+                    f"UMAP scatter plot colored by PCA PC1 gradient for {chamber}. "
+                    "Smooth color transition confirms UMAP preserves the ideological dimension."
+                ),
             )
         )
 
@@ -163,6 +171,10 @@ def _add_irt_gradient_figure(report: ReportBuilder, plots_dir: Path, chamber: st
                 caption=(
                     f"UMAP embedding colored by Bayesian IRT ideal point ({chamber}). "
                     "Smooth gradient confirms UMAP aligns with the nonlinear IRT model."
+                ),
+                alt_text=(
+                    f"UMAP scatter plot colored by IRT ideal point gradient for {chamber}. "
+                    "Smooth color transition confirms alignment with the Bayesian IRT model."
                 ),
             )
         )
@@ -288,6 +300,11 @@ def _add_sensitivity_figure(
                     f"UMAP embeddings at n_neighbors = 5, 15, 30, 50 ({chamber}). "
                     "Consistent party separation across settings indicates robust "
                     "results. Structure that appears only at one setting is an artifact."
+                ),
+                alt_text=(
+                    "Four-panel grid of UMAP embeddings at different "
+                    f"n_neighbors values for {chamber}. "
+                    "Party separation is consistent across all settings."
                 ),
             )
         )

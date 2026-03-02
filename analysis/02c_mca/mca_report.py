@@ -131,6 +131,10 @@ def _add_inertia_figure(report: ReportBuilder, plots_dir: Path, chamber: str) ->
                     f"Individual and cumulative inertia for {chamber}. "
                     "Sharp drop after Dim1 indicates a one-dimensional legislature."
                 ),
+                alt_text=(
+                    f"Bar-and-line chart showing MCA inertia by dimension for {chamber}. "
+                    "First dimension captures most inertia with a sharp drop-off."
+                ),
             )
         )
 
@@ -152,6 +156,10 @@ def _add_ideological_map_figure(
                     "Blue = Democrat. Dim1 positive = conservative direction. "
                     "Unlike PCA, this map uses chi-square distance on categorical votes."
                 ),
+                alt_text=(
+                    f"Scatter plot of legislators in MCA Dim1-Dim2 space for {chamber}. "
+                    "Red Republican and blue Democrat clusters separate along Dim1."
+                ),
             )
         )
 
@@ -169,6 +177,10 @@ def _add_biplot_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> 
                     f"({chamber}). Green × = Yea, Red × = Nay, Gray × = Absent. "
                     "Top-contributing categories are larger. Categories near a legislator "
                     "indicate that legislator frequently chose that response."
+                ),
+                alt_text=(
+                    f"Biplot showing legislators and vote categories in MCA space for {chamber}. "
+                    "Yea, Nay, and Absent categories positioned relative to legislator clusters."
                 ),
             )
         )
@@ -189,6 +201,10 @@ def _add_dim1_distribution_figure(
                 caption=(
                     f"Kernel density estimate of MCA Dim1 scores by party ({chamber}). "
                     "Comparable to PCA PC1 distribution."
+                ),
+                alt_text=(
+                    f"Density plot of MCA Dim1 scores by party for {chamber}. "
+                    "Party distributions show clear separation with some overlap in the center."
                 ),
             )
         )
@@ -285,6 +301,10 @@ def _add_absence_map_figure(
                     "MCA's advantage over PCA: absences are positioned in the ideological "
                     "space rather than imputed away. If high-absence legislators cluster "
                     "near one party, absence patterns are partisan."
+                ),
+                alt_text=(
+                    f"Scatter plot of legislators colored by absence rate for {chamber}. "
+                    "Color gradient shows whether high-absence legislators cluster by party."
                 ),
             )
         )
@@ -387,6 +407,10 @@ def _add_pca_correlation_figure(
                 caption=(
                     f"MCA Dim1 vs PCA PC1 for {chamber}. Points near the trend line "
                     "indicate MCA and PCA agree on the ideological ordering."
+                ),
+                alt_text=(
+                    f"Scatter plot comparing MCA Dim1 and PCA PC1 scores for {chamber}. "
+                    "Tight clustering along the trend line shows strong agreement."
                 ),
             )
         )

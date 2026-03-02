@@ -211,6 +211,12 @@ def _add_shrinkage_arrows_figure(
                     "experience the most shrinkage — their estimates move furthest toward the "
                     "party mean."
                 ),
+                alt_text=(
+                    "Arrow plot showing Bayesian shrinkage for "
+                    f"{chamber} legislators. Arrows point from raw loyalty "
+                    "to Bayesian estimate; longer arrows indicate "
+                    "more shrinkage."
+                ),
             )
         )
 
@@ -231,6 +237,10 @@ def _add_credible_intervals_figure(
                     f"Each horizontal bar shows the {CI_LEVEL * 100:.0f}% credible interval for a "
                     "legislator's true loyalty. Wider bars mean less certainty. The dot marks "
                     "the posterior mean (best estimate)."
+                ),
+                alt_text=(
+                    f"Forest plot of 95% credible intervals for party loyalty in {chamber}. "
+                    "Each bar represents one legislator; wider bars indicate greater uncertainty."
                 ),
             )
         )
@@ -254,6 +264,11 @@ def _add_posterior_distributions_figure(
                     "represent more certainty (more data). Wide, flat curves represent "
                     "high uncertainty (fewer votes)."
                 ),
+                alt_text=(
+                    "Density curves of posterior Beta distributions for "
+                    f"three {chamber} legislators. Narrow curves indicate "
+                    "high certainty; wide curves indicate fewer votes."
+                ),
             )
         )
 
@@ -274,6 +289,12 @@ def _add_raw_vs_bayesian_figure(
                     "Each dot is a legislator. The diagonal line marks 'no change' — points "
                     "on the line were not affected by shrinkage. Points pulled toward the "
                     "center (party mean) experienced shrinkage. Larger dots = more party votes."
+                ),
+                alt_text=(
+                    "Scatter plot comparing raw and Bayesian loyalty "
+                    f"estimates for {chamber}. Points near the diagonal "
+                    "were minimally shrunk; displaced points show "
+                    "shrinkage effect."
                 ),
             )
         )

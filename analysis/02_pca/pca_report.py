@@ -251,6 +251,10 @@ def _add_scree_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> N
                     f"Individual and cumulative explained variance for {chamber}. "
                     "Sharp elbow after PC1 indicates a one-dimensional legislature."
                 ),
+                alt_text=(
+                    f"Bar-and-line chart showing PCA eigenvalues for {chamber}. "
+                    "First component explains most variance with a sharp elbow."
+                ),
             )
         )
 
@@ -271,6 +275,10 @@ def _add_ideological_map_figure(
                     f"Legislators in PC1-PC2 space ({chamber}). Red = Republican, "
                     "Blue = Democrat. PC1 positive = conservative direction."
                 ),
+                alt_text=(
+                    f"Scatter plot of legislators in PC1-PC2 space for {chamber}. "
+                    "Red Republican and blue Democrat clusters separate along PC1."
+                ),
             )
         )
 
@@ -290,6 +298,10 @@ def _add_pc1_distribution_figure(
                 caption=(
                     f"Kernel density estimate of PC1 scores by party ({chamber}). "
                     "Overlap region shows moderate/swing legislators."
+                ),
+                alt_text=(
+                    f"Density plot of PC1 scores by party for {chamber}. "
+                    "Republican and Democrat distributions overlap in the moderate center."
                 ),
             )
         )
@@ -454,6 +466,10 @@ def _add_sensitivity_figure(
                 caption=(
                     f"Default vs. sensitivity PC1 scores ({chamber}). "
                     "Points near the identity line indicate stable results."
+                ),
+                alt_text=(
+                    f"Scatter plot comparing default and sensitivity PC1 scores for {chamber}. "
+                    "Points cluster tightly along the identity line, indicating stable results."
                 ),
             )
         )

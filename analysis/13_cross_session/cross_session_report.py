@@ -192,6 +192,11 @@ def _add_ideology_scatter(report: ReportBuilder, plots_dir: Path, chamber: str) 
                     "legislators above the line moved rightward (more conservative), below moved "
                     "leftward (more liberal). Labeled names are the biggest movers."
                 ),
+                alt_text=(
+                    f"Scatter plot of previous vs current IRT ideal points for returning "
+                    f"{chamber} legislators. Points off the diagonal indicate ideological "
+                    f"shifts between sessions."
+                ),
             )
         )
 
@@ -208,6 +213,10 @@ def _add_biggest_movers_figure(report: ReportBuilder, plots_dir: Path, chamber: 
                     "Horizontal bars show the magnitude and direction of ideology shift. "
                     "Red bars = moved rightward (more conservative). Blue bars = moved leftward "
                     "(more liberal). Only the top movers are shown."
+                ),
+                alt_text=(
+                    f"Horizontal bar chart of biggest ideological movers in the {chamber}. "
+                    f"Red bars indicate rightward shifts, blue bars leftward shifts."
                 ),
             )
         )
@@ -281,6 +290,11 @@ def _add_shift_distribution(report: ReportBuilder, plots_dir: Path, chamber: str
                     "mark the 'significant mover' threshold (1 SD). Most legislators cluster near "
                     "zero (no change); outliers are the movers highlighted above."
                 ),
+                alt_text=(
+                    f"Histogram of ideology shift magnitudes for returning {chamber} "
+                    f"legislators. Most cluster near zero with dashed threshold lines "
+                    f"marking significant movers."
+                ),
             )
         )
 
@@ -297,6 +311,11 @@ def _add_turnover_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -
                     "Ideology distributions of departing, returning, and new legislators. "
                     "If new legislators are further right (or left) than departing ones, "
                     "the chamber's overall composition has shifted."
+                ),
+                alt_text=(
+                    f"Density plot comparing ideology distributions of departing, returning, "
+                    f"and new {chamber} legislators. Shows whether turnover shifted the "
+                    f"chamber's ideological center."
                 ),
             )
         )
@@ -448,6 +467,11 @@ def _add_prediction_comparison_figure(
                     "other). A small drop is expected; a large drop "
                     "indicates session-specific patterns."
                 ),
+                alt_text=(
+                    f"Grouped bar chart comparing within-session and cross-session "
+                    f"AUC-ROC for {chamber}. Cross-session bars are typically lower, "
+                    f"showing the generalization gap."
+                ),
             )
         )
 
@@ -469,6 +493,11 @@ def _add_feature_importance_figure(
                     "session. Stable rankings indicate the model captures "
                     "generalizable patterns rather than session-specific "
                     "quirks."
+                ),
+                alt_text=(
+                    f"Side-by-side bar chart of SHAP feature importance for {chamber} "
+                    f"across two sessions. Consistent rankings suggest generalizable "
+                    f"predictive patterns."
                 ),
             )
         )
@@ -635,6 +664,11 @@ def _add_freshmen_cohort(
                     "Ideology density overlay: new members vs returning incumbents. "
                     "KS test assesses whether the distributions differ significantly."
                 ),
+                alt_text=(
+                    f"Overlapping density plot of ideology for freshmen vs returning "
+                    f"{chamber_cap} legislators. Shows whether new members differ "
+                    f"ideologically from incumbents."
+                ),
             )
         )
 
@@ -689,6 +723,10 @@ def _add_bloc_stability(
                 title=f"Bloc Transition Flow — {chamber_cap}",
                 html=sankey_path.read_text(encoding="utf-8"),
                 caption="Sankey diagram showing how legislators moved between clusters.",
+                aria_label=(
+                    f"Interactive Sankey diagram showing {chamber_cap} legislator flow "
+                    f"between voting bloc clusters across sessions."
+                ),
             )
         )
 

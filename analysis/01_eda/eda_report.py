@@ -100,6 +100,10 @@ def build_eda_report(
                         "Use layer control to toggle between party and ideology views. "
                         "Hover for district details."
                     ),
+                    aria_label=(
+                        f"Interactive choropleth map of {chamber_label} legislative districts "
+                        f"with toggleable party affiliation and ideology layers."
+                    ),
                 )
             )
     _add_integrity_results(report, integrity_findings)
@@ -242,6 +246,11 @@ def _add_vote_type_figure(report: ReportBuilder, plots_dir: Path) -> None:
                 "Vote Type Distribution",
                 path,
                 caption="Horizontal bar chart of roll call vote types.",
+                alt_text=(
+                    "Horizontal bar chart showing the count of each roll call vote type "
+                    "(e.g., Emergency Final Action, Final Action, veto overrides). "
+                    "Bars are ordered by frequency."
+                ),
             )
         )
 
@@ -287,6 +296,12 @@ def _add_margin_figure(report: ReportBuilder, plots_dir: Path) -> None:
                 caption=(
                     "Histogram of Yea % per roll call. Dashed lines at 50% "
                     "(simple majority) and 66.7% (veto override threshold)."
+                ),
+                alt_text=(
+                    "Histogram of Yea percentage across all roll calls with dashed "
+                    "reference lines at 50% simple majority and 66.7% veto override "
+                    "threshold. Most votes cluster near 100%, reflecting a Republican "
+                    "supermajority."
                 ),
             )
         )
@@ -451,6 +466,10 @@ def _add_temporal_figure(report: ReportBuilder, plots_dir: Path) -> None:
                 path,
                 caption="Monthly roll call counts by chamber. "
                 "Expect bursts near session deadlines.",
+                alt_text=(
+                    "Line chart showing monthly roll call counts by chamber across "
+                    "the session. Activity typically spikes near session deadlines."
+                ),
             )
         )
 
@@ -465,6 +484,10 @@ def _add_party_breakdown_figure(report: ReportBuilder, plots_dir: Path) -> None:
                 "Party Vote Breakdown",
                 path,
                 caption="Vote category breakdown (Yea/Nay/Absent) by party.",
+                alt_text=(
+                    "Stacked bar chart showing Yea, Nay, and Absent vote proportions "
+                    "for each party. Compares voting patterns between Republicans and Democrats."
+                ),
             )
         )
 
@@ -530,6 +553,11 @@ def _add_participation_figure(report: ReportBuilder, plots_dir: Path, chamber: s
                 f"{chamber} Participation Rates",
                 path,
                 caption=f"Per-legislator participation rates for the {chamber}, colored by party.",
+                alt_text=(
+                    f"Horizontal bar chart of per-legislator participation rates in the "
+                    f"{chamber}, colored by party. Each bar shows the fraction of chamber "
+                    f"roll calls where the legislator cast a substantive vote."
+                ),
             )
         )
 
@@ -657,6 +685,12 @@ def _add_heatmap_figure(report: ReportBuilder, plots_dir: Path, chamber: str) ->
                 caption=(
                     f"Pairwise raw agreement among {chamber} legislators on contested votes. "
                     "Ward linkage clustering. Red sidebar = Republican, Blue = Democrat."
+                ),
+                alt_text=(
+                    f"Clustered heatmap of pairwise voting agreement among {chamber} "
+                    f"legislators on contested votes. Ward linkage clustering groups "
+                    f"similar voters together. Party sidebar shows red for Republican "
+                    f"and blue for Democrat."
                 ),
             )
         )

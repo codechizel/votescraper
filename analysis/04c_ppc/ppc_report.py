@@ -185,6 +185,10 @@ def _add_calibration_plot(
                 path,
                 caption="Histograms show the distribution of replicated Yea rates (500 draws). "
                 "Red line = observed rate. p-value shown in title.",
+                alt_text=(
+                    f"Histogram of replicated Yea rates from 500 posterior draws for {chamber}. "
+                    "Red vertical line marks the observed rate for calibration comparison."
+                ),
             )
         )
 
@@ -208,6 +212,10 @@ def _add_item_fit(
                 path,
                 caption="Each point is one roll call. Diagonal = perfect prediction. "
                 "Red X marks misfitting items (observed outside 95% replicated interval).",
+                alt_text=(
+                    f"Scatter plot of observed vs predicted item endorsement rates for {chamber}. "
+                    "Most points fall near the diagonal; red X marks flag misfitting items."
+                ),
             )
         )
 
@@ -259,6 +267,10 @@ def _add_person_fit(
                     "Red X marks misfitting legislators "
                     "(observed outside 95% replicated interval)."
                 ),
+                alt_text=(
+                    f"Scatter plot of observed vs predicted person total scores for {chamber}. "
+                    "Most points fall near the diagonal; red X marks flag misfitting legislators."
+                ),
             )
         )
 
@@ -302,6 +314,11 @@ def _add_margins(
                 f"{chamber} — Vote Margin Distributions",
                 path,
                 caption="Gray = observed margins. Colored = replicated mean margins per model.",
+                alt_text=(
+                    f"Overlaid histograms of vote margin distributions for {chamber}. "
+                    "Gray shows observed margins; colored overlays show "
+                    "replicated margins per model."
+                ),
             )
         )
 
@@ -402,6 +419,10 @@ def _add_loo_comparison(
                     path,
                     caption="ELPD differences with standard errors. "
                     "Higher ELPD = better out-of-sample prediction.",
+                    alt_text=(
+                        f"Forest plot comparing LOO-CV ELPD across models for {ch_name}. "
+                        "Error bars show standard errors; higher ELPD indicates better prediction."
+                    ),
                 )
             )
 
@@ -423,6 +444,10 @@ def _add_pareto_k(
                     caption="Each point is one observation. Colors: green (<0.5 good), "
                     "yellow (0.5-0.7 ok), orange (0.7-1.0 bad), red (>1.0 very bad). "
                     "Observations with k > 0.7 have unreliable LOO estimates.",
+                    alt_text=(
+                        f"Scatter plot of Pareto k diagnostic values for {ch_name}. "
+                        "Points colored green, yellow, orange, or red by reliability threshold."
+                    ),
                 )
             )
 

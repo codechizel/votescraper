@@ -262,6 +262,10 @@ def _add_irt_vs_wnom_scatter(
                     "Y-axis: W-NOMINATE dimension 1. Tight clustering along the "
                     "dashed line indicates strong agreement between methods."
                 ),
+                alt_text=(
+                    f"Scatter plot of IRT ideal points vs W-NOMINATE dimension 1 for {chamber}. "
+                    "Tight clustering along the diagonal confirms strong agreement."
+                ),
             )
         )
 
@@ -280,6 +284,12 @@ def _add_irt_vs_oc_scatter(
                     "Each dot is a legislator. X-axis: our IRT ideal point. "
                     "Y-axis: OC dimension 1. OC is nonparametric, so slightly "
                     "lower correlation than W-NOMINATE is normal."
+                ),
+                alt_text=(
+                    "Scatter plot of IRT ideal points vs Optimal "
+                    f"Classification dimension 1 for {chamber}. Points "
+                    "cluster along the diagonal with slightly more "
+                    "spread than W-NOMINATE."
                 ),
             )
         )
@@ -301,6 +311,10 @@ def _add_wnom_2d(
                     "Dimension 2 (y-axis) captures residual structure beyond "
                     "the main ideological divide."
                 ),
+                alt_text=(
+                    f"Scatter plot of legislators in W-NOMINATE 2D space for {chamber}. "
+                    "Points within a unit circle; dimension 1 separates parties left to right."
+                ),
             )
         )
 
@@ -317,6 +331,10 @@ def _add_scree(report: ReportBuilder, plots_dir: Path, ch: str, chamber: str, se
                     "Eigenvalue scree plot. A sharp drop after dimension 1 confirms "
                     "that Kansas voting is primarily unidimensional (left-right), "
                     "supporting our 1D IRT model as the right default."
+                ),
+                alt_text=(
+                    f"Scree plot of W-NOMINATE eigenvalues for {chamber}. "
+                    "Sharp drop after dimension 1 confirms unidimensional voting structure."
                 ),
             )
         )

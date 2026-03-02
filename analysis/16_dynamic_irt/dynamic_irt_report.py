@@ -157,6 +157,10 @@ def _add_bridge_coverage(
                     "Number of legislators serving in both bienniums. The Markov chain "
                     "of bridges requires sufficient overlap between consecutive periods."
                 ),
+                alt_text=(
+                    f"Heatmap of {chamber_cap} bridge legislator counts between all pairs of "
+                    "bienniums. Brighter cells indicate more shared legislators linking periods."
+                ),
             )
         )
 
@@ -307,6 +311,11 @@ def _add_polarization_trend(
                     "Party mean ideal points across bienniums with 95% bands. "
                     "Increasing distance between party means indicates growing polarization."
                 ),
+                alt_text=(
+                    f"Line chart of {chamber_cap} party mean ideal points across bienniums with "
+                    "95% credible interval bands. Growing separation between party lines indicates "
+                    "increasing polarization."
+                ),
             )
         )
 
@@ -328,6 +337,11 @@ def _add_trajectories(
                 caption=(
                     "Spaghetti plot of individual trajectories. Top movers by total "
                     "ideological shift are highlighted with labels."
+                ),
+                alt_text=(
+                    f"Spaghetti plot of {chamber_cap} individual ideal point "
+                    "trajectories across bienniums. Top movers with the largest "
+                    "total ideological shift are highlighted and labeled."
                 ),
             )
         )
@@ -378,6 +392,11 @@ def _add_tau_posterior(
                 f"{chamber_cap} — tau Posterior Distribution",
                 path,
                 caption="Larger tau indicates more ideological movement between bienniums.",
+                alt_text=(
+                    f"KDE plot of the {chamber_cap} evolution variance (tau) "
+                    "posterior distribution by party. Larger tau values indicate "
+                    "more ideological movement between bienniums."
+                ),
             )
         )
 
@@ -445,6 +464,11 @@ def _add_top_movers_bar(
                 f"{chamber_cap} — Top Movers Net Shift",
                 path,
                 caption="Red = rightward shift, blue = leftward shift.",
+                alt_text=(
+                    f"Horizontal bar chart of {chamber_cap} top movers ranked by "
+                    "net ideological shift. Red bars indicate rightward movement; "
+                    "blue bars indicate leftward movement."
+                ),
             )
         )
 
@@ -507,6 +531,12 @@ def _add_conversion_replacement_plot(
                     "Stacked bars: conversion = shift in returning members' positions, "
                     "replacement = effect of turnover (new members replacing departing)."
                 ),
+                alt_text=(
+                    f"Stacked bar chart of {chamber_cap} polarization decomposition "
+                    "per transition. Each bar splits total shift into conversion "
+                    "(returning members' movement) and replacement "
+                    "(effect of member turnover)."
+                ),
             )
         )
 
@@ -557,6 +587,11 @@ def _add_static_correlation(
                 f"{chamber_cap} — Static IRT Correlation",
                 path,
                 caption="Per-biennium correlation between dynamic and static IRT ideal points.",
+                alt_text=(
+                    f"Bar chart or scatter of {chamber_cap} per-biennium Pearson "
+                    "correlation between dynamic and static IRT ideal points, "
+                    "validating cross-method consistency."
+                ),
             )
         )
 

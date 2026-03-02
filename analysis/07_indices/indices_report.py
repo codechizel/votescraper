@@ -318,6 +318,10 @@ def _add_rice_distribution_figure(
                     "Distribution of Rice Index per party. Higher = more unified. "
                     "Dashed line = party mean."
                 ),
+                alt_text=(
+                    f"Histogram of Rice Index values by party for {chamber}. "
+                    f"Most votes cluster near 1.0, indicating high party cohesion."
+                ),
             )
         )
 
@@ -338,6 +342,10 @@ def _add_rice_over_time_figure(
                     f"Rolling {ROLLING_WINDOW}-vote average of Rice Index through the session. "
                     "Drops indicate periods when a party was internally divided."
                 ),
+                alt_text=(
+                    f"Line chart of rolling {ROLLING_WINDOW}-vote Rice Index over the "
+                    f"{chamber} session. Dips reveal periods of intra-party division."
+                ),
             )
         )
 
@@ -355,6 +363,10 @@ def _add_rice_by_vote_type_figure(
                 f"{chamber} Rice by Vote Type",
                 path,
                 caption="Mean Rice Index by motion type and party.",
+                alt_text=(
+                    f"Grouped bar chart of mean Rice Index by motion type and party "
+                    f"for {chamber}. Shows which types of votes produce the most party splits."
+                ),
             )
         )
 
@@ -530,6 +542,10 @@ def _add_unity_ranking_figure(
                     "All legislators ranked by party unity score. Red = Republican, "
                     "Blue = Democrat. Lower scores = more independent from party."
                 ),
+                alt_text=(
+                    f"Horizontal bar chart ranking all {chamber} legislators by party unity "
+                    f"score. Color-coded by party with low-unity legislators at the top."
+                ),
             )
         )
 
@@ -662,6 +678,11 @@ def _add_enp_distribution_figure(
                     "Distribution of per-vote ENP. Votes to the right of the red line "
                     "show multiparty-like behavior (one party is splitting)."
                 ),
+                alt_text=(
+                    f"Histogram of per-vote Effective Number of Parties for {chamber}. "
+                    f"A red threshold line marks multiparty-like behavior "
+                    f"above {ENP_MULTIPARTY_THRESHOLD}."
+                ),
             )
         )
 
@@ -681,6 +702,10 @@ def _add_enp_over_time_figure(
                 caption=(
                     f"Rolling {ROLLING_WINDOW}-vote average of ENP through the session. "
                     "Rises indicate periods when parties were splitting internally."
+                ),
+                alt_text=(
+                    f"Line chart of rolling {ROLLING_WINDOW}-vote ENP over the {chamber} "
+                    f"session. Spikes indicate votes where party blocs fragmented."
                 ),
             )
         )
@@ -788,6 +813,11 @@ def _add_maverick_landscape_figure(
                     "Unweighted (x) vs weighted (y) maverick rate. Above the "
                     "diagonal = strategic; below = performative."
                 ),
+                alt_text=(
+                    f"Scatter plot of unweighted vs weighted maverick rate for {chamber} "
+                    f"legislators. Points above the diagonal are strategic defectors; "
+                    f"below are performative."
+                ),
             )
         )
 
@@ -859,6 +889,11 @@ def _add_co_defection_figure(
                     f"Number of shared defections among top majority-party defectors. "
                     f"Minimum {CO_DEFECTION_MIN} shared defections to appear. "
                     "High counts suggest informal alliances."
+                ),
+                alt_text=(
+                    f"Heatmap of shared defections among top {chamber} majority-party "
+                    f"defectors. Darker cells indicate legislators who frequently break "
+                    f"ranks together."
                 ),
             )
         )
@@ -963,6 +998,10 @@ def _add_unity_vs_irt_figure(
                     "Party unity (CQ standard) vs IRT ideal point. Centrist legislators "
                     "tend to have lower unity because they are cross-pressured."
                 ),
+                alt_text=(
+                    f"Scatter plot of party unity vs IRT ideal point for {chamber}. "
+                    f"Centrist legislators near zero tend to have lower unity scores."
+                ),
             )
         )
 
@@ -979,6 +1018,10 @@ def _add_unity_vs_irt_interactive(report: ReportBuilder, plots_dir: Path, chambe
             title=f"{chamber} Unity vs IRT (Interactive)",
             html=html,
             caption="Hover over points to see legislator details.",
+            aria_label=(
+                f"Interactive scatter plot of party unity vs IRT ideal point for "
+                f"{chamber} legislators. Hover over points to see individual details."
+            ),
         )
     )
 
@@ -1162,6 +1205,11 @@ def _add_bipartisanship_vs_maverick_figure(
                 "Points above the diagonal vote with the opposing party more than they "
                 "vote against their own."
             ),
+            alt_text=(
+                f"Scatter plot comparing Bipartisanship Index to maverick rate for "
+                f"{chamber}. Most points cluster along the diagonal, indicating the "
+                f"two metrics are highly correlated."
+            ),
         )
     )
 
@@ -1207,6 +1255,11 @@ def _add_plus_minus_figure(report: ReportBuilder, plots_dir: Path, chamber: str)
                 f"Dumbbell chart showing actual unity (colored dot) vs party mean "
                 f"unity (gray mark) for {chamber} legislators. Distance right of "
                 "the gray mark = more partisan than average; left = less partisan."
+            ),
+            alt_text=(
+                f"Dumbbell chart of plus-minus scores for {chamber} legislators. "
+                f"Each row shows actual unity vs party mean, revealing who is more "
+                f"or less partisan than their party average."
             ),
         )
     )

@@ -149,6 +149,10 @@ def _add_bic_elbow_figure(report: ReportBuilder, plots_dir: Path, chamber: str) 
                     "Red dashed line marks BIC minimum. Green line shows entropy "
                     "(classification certainty, right axis)."
                 ),
+                alt_text=(
+                    f"Line chart showing BIC and AIC by number of latent classes for {chamber}. "
+                    "BIC minimum identifies the optimal class count."
+                ),
             )
         )
 
@@ -318,6 +322,11 @@ def _add_profile_heatmap_figure(report: ReportBuilder, plots_dir: Path, chamber:
                     "Red = high probability of voting Yea, blue = low. Bills with the "
                     "largest range across classes are shown."
                 ),
+                alt_text=(
+                    f"Heatmap of class response profiles for {chamber}. "
+                    "Rows are discriminating votes; columns are latent classes. "
+                    "Color intensity shows probability of voting Yea."
+                ),
             )
         )
 
@@ -334,6 +343,11 @@ def _add_membership_figure(report: ReportBuilder, plots_dir: Path, chamber: str)
                     f"Distribution of maximum class membership probabilities ({chamber}). "
                     "Legislators with max P < 0.7 are 'straddlers' — uncertain class "
                     "assignment, potentially cross-cutting voters."
+                ),
+                alt_text=(
+                    "Histogram of maximum class membership probabilities "
+                    f"for {chamber}. Most legislators have near-certain "
+                    "assignments; low values indicate straddlers."
                 ),
             )
         )
@@ -406,6 +420,10 @@ def _add_irt_boxplot_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                     "Points colored by party. If classes are monotonically ordered "
                     "in IRT space, LCA is recovering the same one-dimensional structure."
                 ),
+                alt_text=(
+                    f"Box plot of IRT ideal points grouped by LCA class for {chamber}. "
+                    "Points colored by party show whether classes align with ideology."
+                ),
             )
         )
 
@@ -460,6 +478,12 @@ def _add_salsa_matrix_figure(report: ReportBuilder, plots_dir: Path, chamber: st
                     f"Pairwise Spearman correlations between class P(Yea) profiles "
                     f"({chamber}). Values > 0.80 indicate Salsa effect (quantitative "
                     "grading, not qualitative distinction)."
+                ),
+                alt_text=(
+                    "Heatmap of pairwise Spearman correlations between "
+                    f"class profiles for {chamber}. "
+                    "High correlations indicate classes differ in degree, "
+                    "not kind."
                 ),
             )
         )

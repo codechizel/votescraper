@@ -240,6 +240,10 @@ def _add_pipeline_figure(report: object, plots_dir: Path) -> None:
                     "that party is the dominant grouping, and show that a model using these "
                     "patterns predicts individual votes with near-perfect accuracy."
                 ),
+                alt_text=(
+                    "Flowchart showing the analysis pipeline from raw roll call data through "
+                    "filtering, dimensionality reduction, clustering, and prediction stages."
+                ),
             )
         )
 
@@ -301,6 +305,11 @@ def _add_network_figure(report: object, upstream_plots: dict, chamber: str) -> N
                     "directly on the plot. Notice the complete separation: no edges cross "
                     "the party divide."
                 ),
+                alt_text=(
+                    f"Network graph of {chamber_title} co-voting relationships. Nodes are "
+                    f"legislators colored by detected community. Edges connect members who "
+                    f"vote similarly. Two distinct clusters correspond to party affiliation."
+                ),
             )
         )
 
@@ -321,6 +330,11 @@ def _add_dashboard_figure(report: object, plots_dir: Path, chamber: str) -> None
                     "unity (how often they vote with their party on contested votes). Larger "
                     "circles indicate more frequent maverick behavior. Red = Republican, "
                     "Blue = Democrat."
+                ),
+                alt_text=(
+                    f"Scatter plot of every {chamber_title} member. X-axis is ideology "
+                    f"(liberal to conservative), Y-axis is party unity. Dot size encodes "
+                    f"maverick frequency. Red dots are Republicans, blue are Democrats."
                 ),
             )
         )
@@ -477,6 +491,11 @@ def _add_profile_figure(
                     "Influence are percentiles within the chamber. Party Unity, Clustering "
                     "Loyalty, Maverick Rate, and Prediction Accuracy are raw scores."
                 ),
+                alt_text=(
+                    "Radar chart showing six normalized metrics for a notable legislator: "
+                    "ideological rank, network influence, party unity, clustering loyalty, "
+                    "maverick rate, and prediction accuracy."
+                ),
             )
         )
 
@@ -520,6 +539,11 @@ def _add_forest_figure(report: object, upstream_plots: dict, chamber: str, notab
                     "liberal, positive = more conservative. Red = Republican, Blue = Democrat."
                     + callout_text
                 ),
+                alt_text=(
+                    f"Forest plot of Bayesian IRT ideal point estimates for every "
+                    f"{chamber_title} member with 95% credible intervals. Legislators "
+                    f"ordered by ideology from liberal to conservative."
+                ),
             )
         )
 
@@ -541,6 +565,11 @@ def _add_maverick_landscape(report: object, upstream_plots: dict, chamber: str) 
                     "portion of their party's cluster defect more often. Those near the "
                     "center may be genuinely moderate; those at the extremes may defect in "
                     "the opposite direction from what you'd expect."
+                ),
+                alt_text=(
+                    f"Scatter plot of {chamber_title} members with ideology on the X-axis "
+                    f"and party unity on the Y-axis. Identifies strategic versus performative "
+                    f"independence patterns by party."
                 ),
             )
         )
@@ -624,6 +653,11 @@ def _add_paradox_figure(report: object, plots_dir: Path, notables: dict) -> None
                     "as least loyal. CQ party unity (party-vs-party votes only) puts them "
                     "in the upper ranks. The metrics disagree because they measure different "
                     "subsets of votes."
+                ),
+                alt_text=(
+                    "Comparison chart showing one legislator ranked by three different "
+                    "metrics that give contradictory results, illustrating how vote subset "
+                    "selection changes ideological rankings."
                 ),
             )
         )
@@ -753,6 +787,11 @@ def _add_accuracy_figure(report: object, upstream_plots: dict, chamber: str) -> 
                     "Callout boxes highlight the bottom five — the mavericks and moderates "
                     "whose votes carry the most information about what's actually happening "
                     "in the legislature."
+                ),
+                alt_text=(
+                    f"Bar chart of per-legislator prediction accuracy for {chamber_title} "
+                    f"members on the holdout set. Most bars near 95%; callout boxes highlight "
+                    f"the five hardest-to-predict legislators."
                 ),
             )
         )
@@ -929,6 +968,11 @@ def _add_clusters_figure(report: object, upstream_plots: dict) -> None:
                     "This is visual proof that party is the dominant structure in Kansas "
                     "legislative voting."
                 ),
+                alt_text=(
+                    "Scatter plot of House legislators on the IRT ideology axis colored by "
+                    "cluster assignment from three algorithms. All three independently "
+                    "recover the two-party structure."
+                ),
             )
         )
 
@@ -951,6 +995,11 @@ def _add_umap_landscape(report: object, upstream_plots: dict, chamber: str) -> N
                 "Blue = Democrat. Cross-party outliers (if any) are labeled "
                 "with imputation artifact warnings."
             ),
+            alt_text=(
+                f"UMAP 2D scatter plot of {chamber.title()} legislators based on voting "
+                f"similarity. Nearby dots indicate similar voting patterns. Red dots are "
+                f"Republicans, blue are Democrats."
+            ),
         )
     )
 
@@ -971,6 +1020,11 @@ def _add_agreement_figure(report: object, upstream_plots: dict, chamber: str) ->
                     "Bright cells indicate legislators who almost always vote the same way; "
                     "dark cells indicate frequent disagreement. The two bright blocks along "
                     "the diagonal are the two parties — internally cohesive, externally opposed."
+                ),
+                alt_text=(
+                    f"Heatmap of pairwise voting agreement among {chamber_title} members. "
+                    f"Two bright diagonal blocks show intra-party cohesion; dark off-diagonal "
+                    f"regions show inter-party disagreement."
                 ),
             )
         )
@@ -994,6 +1048,11 @@ def _add_shap_figure(report: object, upstream_plots: dict, chamber: str) -> None
                     "Party label matters less than you might expect — because ideology "
                     "already captures most of what party tells you."
                 ),
+                alt_text=(
+                    f"SHAP bar chart for {chamber_title} vote prediction model. Bars show "
+                    f"mean absolute SHAP values per feature. Ideology and bill discrimination "
+                    f"are the strongest predictors."
+                ),
             )
         )
 
@@ -1016,6 +1075,11 @@ def _add_calibration_figure(report: object, upstream_plots: dict, chamber: str) 
                     "follows the diagonal, the more trustworthy the model's confidence "
                     "scores are."
                 ),
+                alt_text=(
+                    f"Calibration curve for {chamber_title} vote prediction model. "
+                    f"Predicted probability on X-axis versus observed frequency on Y-axis. "
+                    f"Curve closely follows the diagonal, indicating good calibration."
+                ),
             )
         )
 
@@ -1036,6 +1100,11 @@ def _add_convergence_figure(report: object, upstream_plots: dict, chamber: str) 
                     "all arrive at similar answers, we can trust the results. This figure "
                     "shows that the chains converged — the ideology estimates are stable "
                     "and reproducible, not artifacts of randomness."
+                ),
+                alt_text=(
+                    f"MCMC convergence diagnostic for {chamber_title} IRT model showing "
+                    f"R-hat values and effective sample sizes. All parameters within "
+                    f"acceptable convergence thresholds."
                 ),
             )
         )
@@ -1058,6 +1127,11 @@ def _add_discrimination_figure(report: object, upstream_plots: dict, chamber: st
                     "bills are the ones where ideology matters most: knowing where a "
                     "legislator sits on the spectrum tells you almost exactly how they voted. "
                     "Low-discrimination bills cut across ideological lines."
+                ),
+                alt_text=(
+                    f"Histogram of bill discrimination parameters for {chamber_title} "
+                    f"bills. Higher values indicate bills that sharply divide legislators "
+                    f"along ideological lines."
                 ),
             )
         )

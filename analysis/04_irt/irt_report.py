@@ -305,6 +305,11 @@ def _add_forest_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> 
                     "Flagged legislators detected automatically based on "
                     "statistical outlier criteria."
                 ),
+                alt_text=(
+                    f"Forest plot of Bayesian IRT ideal points with 95% credible intervals "
+                    f"for {chamber} legislators. Republicans cluster on the positive "
+                    f"(conservative) side, Democrats on the negative (liberal) side."
+                ),
             )
         )
 
@@ -322,6 +327,11 @@ def _add_party_density_figure(report: ReportBuilder, plots_dir: Path, chamber: s
                     f"Overlapping KDE density curves of ideal points by party ({chamber}). "
                     "Dashed lines = party means. Overlap region indicates cross-pressured "
                     "legislators whose positions cannot be distinguished by party alone."
+                ),
+                alt_text=(
+                    f"Density plot of IRT ideal points by party for the {chamber}. "
+                    f"Republican and Democrat distributions are shown as overlapping curves "
+                    f"with dashed lines marking party means."
                 ),
             )
         )
@@ -341,6 +351,11 @@ def _add_icc_curves_figure(report: ReportBuilder, plots_dir: Path, chamber: str)
                     "Red = conservative-Yea (beta > 0), Blue = liberal-Yea (beta < 0). "
                     "Steeper curves = stronger party separation. The crossing point "
                     "(P = 0.5) is the bill's cutting point on the ideology scale."
+                ),
+                alt_text=(
+                    f"Item characteristic curves showing probability of Yea vote as a "
+                    f"function of ideal point for the most discriminating {chamber} bills. "
+                    f"Steeper sigmoid curves indicate stronger ideological separation."
                 ),
             )
         )
@@ -377,6 +392,11 @@ def _add_paradox_spotlight_figure(
                 f"(vs. the party average of {party_low_pct}). "
                 f"({paradox['n_high_disc']} partisan bills, "
                 f"{paradox['n_low_disc']} routine bills.)"
+            ),
+            alt_text=(
+                f"Scatter plot spotlighting {name} in the {chamber}, showing "
+                f"the paradox between extreme IRT ideal point and low Yea rate "
+                f"on routine bills compared to party average."
             ),
         )
     )
@@ -451,6 +471,11 @@ def _add_discrimination_figure(
                     "Positive beta = conservatives favor Yea. "
                     "Negative beta = liberals favor Yea. "
                     "Higher |beta| = more ideologically discriminating."
+                ),
+                alt_text=(
+                    f"Histogram of bill discrimination parameters (beta) for the {chamber}. "
+                    f"Distribution centered near zero with tails indicating highly "
+                    f"partisan bills in both conservative and liberal directions."
                 ),
             )
         )
@@ -529,6 +554,10 @@ def _add_trace_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> N
                     f"Trace plots for selected ideal points ({chamber}). "
                     "Good mixing = fuzzy caterpillars with no trends."
                 ),
+                alt_text=(
+                    f"MCMC trace plots for selected {chamber} ideal point parameters. "
+                    f"Multiple chains shown as overlapping time series to assess convergence."
+                ),
             )
         )
 
@@ -544,6 +573,11 @@ def _add_ppc_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> Non
                 caption=(
                     f"Posterior predictive check ({chamber}): replicated vs observed Yea rate. "
                     "Red line = observed. Bayesian p-value in [0.1, 0.9] = well-calibrated."
+                ),
+                alt_text=(
+                    f"Histogram of replicated Yea rates from posterior predictive simulation "
+                    f"for the {chamber}. Vertical red line marks the observed Yea rate "
+                    f"for model calibration assessment."
                 ),
             )
         )
@@ -565,6 +599,11 @@ def _add_pca_comparison_figure(
                     f"IRT ideal points vs PCA PC1 scores ({chamber}). "
                     "High correlation (r > 0.95) confirms consistent ideological estimates."
                 ),
+                alt_text=(
+                    f"Scatter plot comparing IRT ideal points to PCA first principal component "
+                    f"scores for {chamber} legislators. Points fall along a strong linear "
+                    f"trend, confirming consistency between the two methods."
+                ),
             )
         )
 
@@ -581,6 +620,10 @@ def _add_ideal_points_interactive(report: ReportBuilder, plots_dir: Path, chambe
             title=f"{chamber} Ideal Points (Interactive)",
             html=html,
             caption="Hover over points to see legislator details, ideal point, and HDI.",
+            aria_label=(
+                f"Interactive scatter plot of {chamber} legislator ideal points. "
+                f"Hover over points for legislator name, party, ideal point, and credible interval."
+            ),
         )
     )
 
@@ -597,6 +640,10 @@ def _add_irt_vs_pca_interactive(report: ReportBuilder, plots_dir: Path, chamber:
             title=f"{chamber} IRT vs PCA (Interactive)",
             html=html,
             caption="Hover over points to see both IRT and PCA scores.",
+            aria_label=(
+                f"Interactive scatter plot comparing IRT ideal points to PCA scores "
+                f"for {chamber} legislators. Hover for both scores per legislator."
+            ),
         )
     )
 
@@ -816,6 +863,11 @@ def _add_sensitivity_figure(
                     f"Default vs. sensitivity ideal points ({chamber}). "
                     "Points near the identity line indicate stable results."
                 ),
+                alt_text=(
+                    f"Scatter plot of default vs sensitivity-analysis ideal points "
+                    f"for the {chamber}. Points near the diagonal identity line "
+                    f"indicate robust estimates under alternative filter settings."
+                ),
             )
         )
 
@@ -832,10 +884,14 @@ def _add_sensitivity_interpretation(report: ReportBuilder, findings: dict) -> No
         raw_r = data.get("raw_pearson_r", r)
         sign_flipped = raw_r < 0 if raw_r is not None else False
         status = "ROBUST" if abs(r) > 0.95 else "SENSITIVE"
-        style = "color: green; font-weight: bold" if status == "ROBUST" else "color: orange; font-weight: bold"
+        style = (
+            "color: green; font-weight: bold"
+            if status == "ROBUST"
+            else "color: orange; font-weight: bold"
+        )
 
         part = (
-            f"<li><strong>{chamber}:</strong> <span style=\"{style}\">{status}</span> "
+            f'<li><strong>{chamber}:</strong> <span style="{style}">{status}</span> '
             f"(|r| = {abs(r):.4f})"
         )
         if sign_flipped:
@@ -978,6 +1034,11 @@ def _add_cutting_lines_figure(report: ReportBuilder, plots_dir: Path, chamber: s
                 "Each panel shows legislator ideal points along a horizontal axis. "
                 "Green triangles = Yea, red triangles = Nay. The dashed vertical "
                 "line is the cutting point where P(Yea) = 0.5."
+            ),
+            alt_text=(
+                f"Multi-panel cutting line plot for the most discriminating {chamber} "
+                f"bills. Each panel shows legislator positions on the ideology axis with "
+                f"Yea and Nay votes marked, and a dashed line at the 50% probability point."
             ),
         )
     )
@@ -1184,6 +1245,11 @@ def _add_joint_comparison_figure(report: ReportBuilder, plots_dir: Path) -> None
                     "House legislators are unchanged (identity line). Senate "
                     "legislators show the linear transformation. "
                     "Bridging legislators are highlighted with diamond markers."
+                ),
+                alt_text=(
+                    "Scatter plot comparing equated cross-chamber ideal points to "
+                    "per-chamber ideal points. House legislators follow the identity line; "
+                    "Senate legislators show the Stocking-Lord linear transformation."
                 ),
             )
         )

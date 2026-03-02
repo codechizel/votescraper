@@ -246,6 +246,11 @@ def _add_edge_weight_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                     "Blue dashed line marks the default threshold. "
                     "Arrow annotation shows the strongest cross-party connection."
                 ),
+                alt_text=(
+                    f"Histogram of Kappa edge weights for the {chamber} separated by "
+                    f"within-party and cross-party pairs. Blue dashed line marks the "
+                    f"threshold, with an arrow highlighting the strongest cross-party edge."
+                ),
             )
         )
 
@@ -262,6 +267,11 @@ def _add_network_party_figure(report: ReportBuilder, plots_dir: Path, chamber: s
                     f"Spring layout of {chamber} co-voting network. Node color = party. "
                     "Node size proportional to degree. Red-ringed nodes = top 3 bridge "
                     "legislators (highest betweenness centrality)."
+                ),
+                alt_text=(
+                    f"Network graph of {chamber} co-voting patterns with spring layout. "
+                    f"Nodes colored by party with size proportional to degree. "
+                    f"Red-ringed nodes highlight top bridge legislators."
                 ),
             )
         )
@@ -282,6 +292,10 @@ def _add_network_interactive(report: ReportBuilder, plots_dir: Path, chamber: st
                     "Drag nodes to rearrange, scroll to zoom, hover for details. "
                     "Node color = party, node size proportional to degree."
                 ),
+                aria_label=(
+                    f"Interactive network graph of {chamber} co-voting patterns. "
+                    f"Drag nodes to rearrange, scroll to zoom, hover for legislator details."
+                ),
             )
         )
 
@@ -297,6 +311,10 @@ def _add_network_irt_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                 caption=(
                     "Same layout as party plot, but node color = IRT ideal point "
                     "(blue = liberal, red = conservative)."
+                ),
+                alt_text=(
+                    f"Network graph of {chamber} co-voting patterns with nodes colored by "
+                    f"IRT ideal point on a blue-to-red gradient from liberal to conservative."
                 ),
             )
         )
@@ -469,6 +487,10 @@ def _add_centrality_scatter_figure(
                 f"{chamber} Centrality Scatter",
                 path,
                 caption=f"Betweenness vs eigenvector centrality for {chamber}.",
+                alt_text=(
+                    f"Scatter plot of betweenness centrality vs eigenvector centrality "
+                    f"for {chamber} legislators, identifying structurally important members."
+                ),
             )
         )
 
@@ -492,6 +514,11 @@ def _add_centrality_vs_irt_figure(
                 f"{chamber} Centrality vs IRT",
                 path,
                 caption=f"IRT ideal point vs betweenness centrality for {chamber}. {qualifier}",
+                alt_text=(
+                    f"Scatter plot of IRT ideal point vs betweenness centrality for "
+                    f"{chamber} legislators, showing how ideological position relates "
+                    f"to structural importance in the co-voting network."
+                ),
             )
         )
 
@@ -512,6 +539,11 @@ def _add_centrality_ranking_figure(
                     f"All {chamber} legislators ranked by betweenness centrality. "
                     "Higher betweenness = more influence as a connector between "
                     "otherwise-separate voting blocs."
+                ),
+                alt_text=(
+                    f"Horizontal bar chart ranking all {chamber} legislators by "
+                    f"betweenness centrality. Higher values indicate legislators who "
+                    f"serve as connectors between voting blocs."
                 ),
             )
         )
@@ -604,6 +636,10 @@ def _add_multi_resolution_figure(
                 path,
                 caption=(
                     f"Number of communities and modularity vs Leiden resolution for {chamber}."
+                ),
+                alt_text=(
+                    f"Dual-axis line plot showing number of Leiden communities and "
+                    f"modularity score vs resolution parameter for the {chamber}."
                 ),
             )
         )
@@ -737,6 +773,11 @@ def _add_community_network_figure(
                     f"(right) for {chamber}. Community labels show party composition "
                     "(e.g., Mostly Republican, Mostly Democrat, or Mixed)."
                 ),
+                alt_text=(
+                    f"Side-by-side network graphs for the {chamber}. Left panel shows "
+                    f"nodes colored by party, right panel shows nodes colored by Leiden "
+                    f"community assignment with composition labels."
+                ),
             )
         )
 
@@ -792,6 +833,11 @@ def _add_cross_party_bridge_figure(
                 f"at the low Kappa threshold; {effect}. "
                 "Left panel shows the full network with cross-party edges highlighted in gold. "
                 "Right panel shows the network with this bridge legislator removed."
+            ),
+            alt_text=(
+                f"Dual-panel network graph for the {chamber}. Left panel highlights "
+                f"cross-party edges in gold around bridge legislator {name}. "
+                f"Right panel shows the network after removing this bridge legislator."
             ),
         )
     )
@@ -918,6 +964,11 @@ def _add_threshold_sweep_figure(
                     "Blue dashed line = default threshold; red dashed line = party split point. "
                     "Green shading = range where the number of groups stays constant."
                 ),
+                alt_text=(
+                    f"Multi-panel line plot showing {chamber} network statistics across "
+                    f"Kappa thresholds. Dashed lines mark the default threshold and party "
+                    f"split point, with green shading indicating stable group counts."
+                ),
             )
         )
 
@@ -967,6 +1018,11 @@ def _add_high_disc_figure(
                 path,
                 caption=(
                     f"Network built from high-discrimination bills (|beta| > 1.5) for {chamber}."
+                ),
+                alt_text=(
+                    f"Network graph of {chamber} co-voting on highly discriminating bills "
+                    f"only (|beta| > 1.5), showing partisan structure on the most "
+                    f"ideologically divisive votes."
                 ),
             )
         )
@@ -1020,6 +1076,11 @@ def _add_cross_chamber_figure(report: ReportBuilder, plots_dir: Path) -> None:
                 caption=(
                     "Combined House and Senate network positioned by equated IRT ideal points. "
                     "Circles = House, squares = Senate. No cross-chamber edges."
+                ),
+                alt_text=(
+                    "Network graph combining House and Senate legislators positioned by "
+                    "equated IRT ideal points. Circles represent House members, squares "
+                    "represent Senators, with no cross-chamber edges."
                 ),
             )
         )

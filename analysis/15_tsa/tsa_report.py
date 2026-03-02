@@ -168,6 +168,11 @@ def _add_drift_figures(
                     "Party mean PC1 scores across rolling PCA windows. "
                     "Shaded area = polarization gap between parties."
                 ),
+                alt_text=(
+                    f"Line chart of {chamber} party mean PC1 scores across rolling "
+                    "PCA windows. Shaded region between Republican and Democrat lines "
+                    "shows the polarization gap over time."
+                ),
             )
         )
 
@@ -179,6 +184,11 @@ def _add_drift_figures(
                 f"{chamber} Polarization Gap",
                 path,
                 caption="Absolute difference between Republican and Democrat mean PC1 over time.",
+                alt_text=(
+                    f"Line chart of the {chamber} polarization gap over time, "
+                    "showing the absolute difference between Republican and Democrat "
+                    "mean PC1 scores across rolling windows."
+                ),
             )
         )
 
@@ -193,6 +203,10 @@ def _add_drift_figures(
                     f"PC1 trajectories for the {TOP_MOVERS_N} legislators with the largest "
                     "position change between early and late session."
                 ),
+                alt_text=(
+                    f"Spaghetti plot of PC1 trajectories for the {TOP_MOVERS_N} {chamber} "
+                    "legislators with the largest ideological drift between early and late session."
+                ),
             )
         )
 
@@ -206,6 +220,11 @@ def _add_drift_figures(
                 caption=(
                     "Each point is one legislator. Diagonal = no change. "
                     "Distance from diagonal = magnitude of drift."
+                ),
+                alt_text=(
+                    f"Scatter plot comparing each {chamber} legislator's early-session "
+                    "PC1 score to their late-session score. Points off the diagonal "
+                    "indicate ideological drift."
                 ),
             )
         )
@@ -344,6 +363,10 @@ def _add_changepoint_figures(
                         f"Weekly mean Rice Index for {party_label}s with PELT-detected "
                         "structural breaks (red dashed lines)."
                     ),
+                    alt_text=(
+                        f"Time series of weekly Rice Index for {chamber} {party_label}s "
+                        "with red dashed vertical lines marking PELT-detected changepoints."
+                    ),
                 )
             )
 
@@ -358,6 +381,11 @@ def _add_changepoint_figures(
                     "Both parties' Rice with jointly detected breaks. "
                     "These are shifts affecting both parties simultaneously."
                 ),
+                alt_text=(
+                    f"Time series of weekly Rice Index for both {chamber} parties "
+                    "with jointly detected structural breaks marking shifts "
+                    "affecting both parties simultaneously."
+                ),
             )
         )
 
@@ -371,6 +399,11 @@ def _add_changepoint_figures(
                 caption=(
                     "Number of detected changepoints vs PELT penalty. "
                     "Flat regions = robust changepoints. Steep drops = sensitive to tuning."
+                ),
+                alt_text=(
+                    f"Step chart of {chamber} changepoint count versus PELT penalty "
+                    "value. Flat regions indicate robust changepoints; steep drops "
+                    "indicate sensitivity to tuning."
                 ),
             )
         )
@@ -469,6 +502,11 @@ def _add_crops_figures(
                         f"for {party_label}s. Each step = one fewer changepoint. Diamond = "
                         f"elbow (penalty of diminishing returns)."
                     ),
+                    alt_text=(
+                        f"Step function of {chamber} {party_label} CROPS solution path showing "
+                        "changepoint count versus exact penalty thresholds. Diamond marks the "
+                        "elbow where diminishing returns begin."
+                    ),
                 )
             )
 
@@ -554,6 +592,11 @@ def _add_bai_perron_figures(
                     caption=(
                         f"Weekly Rice Index for {party_label}s with Bai-Perron structural "
                         f"breaks (red dashed lines) and 95% confidence intervals (shaded bands)."
+                    ),
+                    alt_text=(
+                        f"Time series of weekly Rice Index for {chamber} "
+                        f"{party_label}s with Bai-Perron structural break lines "
+                        "and shaded 95% confidence interval bands."
                     ),
                 )
             )

@@ -184,6 +184,11 @@ def _add_degree_dist_figure(
                     "Left: how many bills each legislator voted Yea on. "
                     "Right: how many Yea votes each bill received."
                 ),
+                alt_text=(
+                    f"Side-by-side histograms of {chamber} bipartite degree "
+                    "distributions. Left panel shows legislator Yea-vote counts; "
+                    "right panel shows bill Yea-vote counts."
+                ),
             )
         )
 
@@ -263,6 +268,11 @@ def _add_polarization_figure(
                 caption=(
                     "0 = both parties vote identically, 1 = perfect party-line vote. "
                     "Bills above 0.8 are highly partisan."
+                ),
+                alt_text=(
+                    f"Histogram of {chamber} bill polarization scores ranging from 0 (bipartisan) "
+                    "to 1 (perfect party-line). Distribution shape reveals the prevalence of "
+                    "partisan versus bipartisan legislation."
                 ),
             )
         )
@@ -346,6 +356,11 @@ def _add_bridge_vs_beta_figure(
                     "Bridge bills should cluster in the upper-left: high betweenness "
                     "(connecting blocs) + low |β| (not discriminating along the "
                     "ideological dimension)."
+                ),
+                alt_text=(
+                    f"Scatter plot of {chamber} bills with bipartite betweenness on the y-axis "
+                    "and IRT discrimination (|beta|) on the x-axis. Bridge bills cluster in the "
+                    "upper-left with high betweenness and low discrimination."
                 ),
             )
         )
@@ -455,6 +470,11 @@ def _add_bill_cluster_heatmap_figure(
                     "Each row is a bill community. Colors show mean %Yea by party. "
                     "Divergent rows indicate communities with different partisan support."
                 ),
+                alt_text=(
+                    f"Heatmap of {chamber} bill communities showing mean percent Yea by party "
+                    "per community. Divergent color patterns across rows reveal communities with "
+                    "different partisan support profiles."
+                ),
             )
         )
 
@@ -554,6 +574,11 @@ def _add_backbone_layout_figure(
                     "Spring layout of the BiCM-validated legislator network. "
                     "Only statistically significant co-voting edges are shown."
                 ),
+                alt_text=(
+                    f"Network graph of {chamber} legislators using spring layout with only "
+                    "BiCM-validated co-voting edges. Nodes are colored by party; clusters "
+                    "reveal partisan voting blocs."
+                ),
             )
         )
 
@@ -606,6 +631,11 @@ def _add_backbone_comparison(
                 title=f"{chamber} — Backbone Comparison Layout",
                 path=path,
                 caption="Side-by-side: BiCM backbone (left) vs Kappa + disparity backbone (right).",
+                alt_text=(
+                    f"Side-by-side network layouts comparing {chamber} BiCM backbone (left) with "
+                    "Phase 6 Kappa + disparity filter backbone (right). Shared and method-specific "
+                    "edges are visually distinguishable."
+                ),
             )
         )
 
@@ -719,6 +749,11 @@ def _add_bipartite_layout_figure(
                 caption=(
                     "Two-column layout: legislators (left, colored by party) connected "
                     "to top bridge bills (right, gold squares) via Yea votes."
+                ),
+                alt_text=(
+                    f"Two-column bipartite network layout for {chamber} with legislators on the "
+                    "left colored by party and top bridge bills on the right as gold squares, "
+                    "connected by Yea-vote edges."
                 ),
             )
         )

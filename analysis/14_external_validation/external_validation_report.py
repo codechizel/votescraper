@@ -273,6 +273,12 @@ def _add_scatter_figure(
                     "Y-axis: Shor-McCarty score. Tight clustering along the "
                     "dashed line indicates strong agreement."
                 ),
+                alt_text=(
+                    f"Scatter plot of {model_label} ideal points vs "
+                    f"Shor-McCarty scores for {chamber} ({session}). "
+                    "Points cluster along the diagonal, "
+                    "showing agreement."
+                ),
             )
         )
 
@@ -400,6 +406,10 @@ def _add_pooled_analysis(
                     f"Pooled {chamber} {model_label} vs Shor-McCarty",
                     path,
                     caption="Pooled across all overlapping bienniums (unique legislators only).",
+                    alt_text=(
+                        f"Scatter plot of pooled {model_label} ideal points vs Shor-McCarty scores "
+                        f"for {chamber}. Unique legislators across all overlapping bienniums."
+                    ),
                 )
             )
 

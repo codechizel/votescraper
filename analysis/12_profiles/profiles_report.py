@@ -135,6 +135,11 @@ def _add_scorecard_figure(
                 "IRT ideology, party unity, loyalty, maverick rate, network centrality, "
                 "and prediction accuracy."
             ),
+            alt_text=(
+                f"Horizontal bar chart comparing {target.full_name}'s key metrics "
+                f"(ideology, party unity, loyalty, maverick rate, centrality, accuracy) "
+                f"to their party average shown as a dashed reference line."
+            ),
         )
     )
 
@@ -157,6 +162,10 @@ def _add_bill_type_figure(
                 "legislator and their party average on partisan bills reveals how "
                 "much they break ranks on the votes that matter most."
             ),
+            alt_text=(
+                f"Grouped bar chart comparing {target.full_name}'s Yea rates on "
+                f"partisan versus routine bills against their party average."
+            ),
         )
     )
 
@@ -178,6 +187,11 @@ def _add_position_figure(
                 "chamber. The profiled legislator is highlighted with a diamond "
                 "marker and yellow background. Horizontal lines show 95% credible "
                 "intervals (uncertainty)."
+            ),
+            alt_text=(
+                f"Forest plot of IRT ideal points for all {target.party} members in "
+                f"the {target.chamber}. {target.full_name} is highlighted with a "
+                f"diamond marker. Horizontal lines show 95% credible intervals."
             ),
         )
     )
@@ -314,6 +328,11 @@ def _add_neighbors_figure(
                 "Top 5 most similar legislators (highest agreement) and top 5 most "
                 "different (lowest agreement) by simple vote-matching rate across "
                 "all shared votes. Same-chamber only."
+            ),
+            alt_text=(
+                f"Horizontal bar chart showing {target.full_name}'s top 5 voting "
+                f"allies (highest agreement) and top 5 opponents (lowest agreement) "
+                f"by vote-matching rate."
             ),
         )
     )

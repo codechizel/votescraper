@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-02 (A6-A18 audit findings resolved — ADR-0076)
+**Last updated:** 2026-03-02 (M3 accessibility — WCAG 2.1 AA alt-text rollout)
 
 ---
 
@@ -405,7 +405,7 @@ All Tier 4 items plus remaining code audit items have detailed implementation do
 | R22 | **Sankey diagrams** for bill flow | [M5](milestones/m5-bill-lifecycle.md) | Scraper captures KLISS HISTORY + EDA Sankey |
 | R23 | **Ridgeline plots** for ideology | [M6](milestones/m6-ridgeline-plots.md) | matplotlib KDE in dynamic IRT report |
 | R24 | **Animated scatter** (Gapminder) | [M7](milestones/m7-animated-scatter.md) | Plotly `animation_frame` in dynamic IRT report |
-| R25 | **Descriptive alt text** | [M3](milestones/m3-accessibility-alt-text.md) | WCAG 2.1 AA — 162 FigureSections across 24 files |
+| R25 | **Descriptive alt text** | [M3](milestones/m3-accessibility-alt-text.md) | **Done.** WCAG 2.1 AA — alt_text on all FigureSections + aria_label on InteractiveSections across 23 report files |
 | R26 | **Prediction enhancement** | [M8](milestones/m8-prediction-enhancement.md) | Sponsor party, SHAP passage, stratified accuracy |
 
 Additional milestones from code audit:
