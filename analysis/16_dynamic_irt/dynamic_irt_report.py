@@ -45,6 +45,7 @@ def build_dynamic_irt_report(
         cr = results[chamber]
 
         _add_bridge_coverage(report, cr, plots_dir, chamber)
+        _add_sign_corrections(report, cr, chamber)
         _add_global_roster(report, cr, chamber)
         _add_polarization_trend(report, plots_dir, chamber)
         _add_trajectories(report, plots_dir, chamber)
@@ -60,6 +61,7 @@ def build_dynamic_irt_report(
 
         _add_convergence(report, cr, chamber)
 
+    _add_model_priors(report, results)
     _add_methodology(report)
 
 
@@ -171,6 +173,71 @@ def _add_bridge_coverage(
                 ),
             )
         )
+
+
+def _add_sign_corrections(
+    report: ReportBuilder,
+    cr: dict,
+    chamber: str,
+) -> None:
+    """Sign correction transparency section."""
+    chamber_cap = chamber.capitalize()
+    corrections = cr.get("sign_corrections", [])
+
+    if not corrections:
+        report.add(
+            TextSection(
+                id=f"sign-corrections-{chamber}",
+                title=f"{chamber_cap} — Sign Corrections",
+                html=(
+                    "<p>No sign corrections were required. All periods had positive "
+                    "Pearson r with static IRT (Phase 04).</p>"
+                ),
+            )
+        )
+        return
+
+    lines = [
+        "<p>The following periods had their ideal point signs corrected based on "
+        "correlation with static IRT (Phase 04). A negative Pearson r indicates "
+        "the dynamic model found a sign-flipped mode — positive beta alone is "
+        "insufficient for sign identification when the random walk chain is broken "
+        "(e.g., missing biennium data creating 0 bridge legislators).</p>",
+        "<table style='border-collapse: collapse; margin: 1em 0;'>",
+        "<tr>"
+        "<th style='padding: 4px 12px; text-align: left;'>Biennium</th>"
+        "<th style='padding: 4px 12px;'>r (before)</th>"
+        "<th style='padding: 4px 12px;'>r (after)</th>"
+        "<th style='padding: 4px 12px;'>N Matched</th>"
+        "</tr>",
+    ]
+
+    for c in corrections:
+        lines.append(
+            f"<tr>"
+            f"<td style='padding: 4px 12px;'>{c['label']}</td>"
+            f"<td style='padding: 4px 12px; text-align: right;'>{c['r_before']:.3f}</td>"
+            f"<td style='padding: 4px 12px; text-align: right;'>{c['r_after']:.3f}</td>"
+            f"<td style='padding: 4px 12px; text-align: right;'>{c['n_matched']}</td>"
+            f"</tr>"
+        )
+    lines.append("</table>")
+
+    # Reference legislators for each corrected period
+    for c in corrections:
+        lines.append(f"<p><strong>{c['label']} reference legislators:</strong></p>")
+        lines.append("<ul>")
+        for name, dyn_xi, static_xi in c["reference_legs"]:
+            lines.append(f"<li>{name}: dynamic = {dyn_xi:+.2f}, static = {static_xi:+.2f}</li>")
+        lines.append("</ul>")
+
+    report.add(
+        TextSection(
+            id=f"sign-corrections-{chamber}",
+            title=f"{chamber_cap} — Sign Corrections",
+            html="\n".join(lines),
+        )
+    )
 
 
 def _add_global_roster(
@@ -443,6 +510,16 @@ def _add_static_correlation(
     if correlation is None or correlation.height == 0:
         return
 
+    # Build column labels dynamically based on available columns
+    col_labels: dict[str, str] = {
+        "biennium": "Biennium",
+        "n_matched": "N Matched",
+        "pearson_r": "Pearson r",
+        "spearman_rho": "Spearman ρ",
+    }
+    if "sign_corrected" in correlation.columns:
+        col_labels["sign_corrected"] = "Sign Corrected"
+
     report.add(
         TableSection(
             id=f"static-corr-{chamber}",
@@ -450,12 +527,7 @@ def _add_static_correlation(
             html=make_gt(
                 correlation,
                 title=f"{chamber_cap} Correlation with Per-Biennium Static IRT",
-                column_labels={
-                    "biennium": "Biennium",
-                    "n_matched": "N Matched",
-                    "pearson_r": "Pearson r",
-                    "spearman_rho": "Spearman ρ",
-                },
+                column_labels=col_labels,
                 number_formats={
                     "pearson_r": ".3f",
                     "spearman_rho": ".3f",
@@ -544,6 +616,102 @@ def _add_convergence(
     )
 
 
+def _add_model_priors(report: ReportBuilder, results: dict) -> None:
+    """Model priors and tuning parameters transparency section."""
+    lines = [
+        "<h3>Prior Distributions</h3>",
+        "<table style='border-collapse: collapse; margin: 1em 0;'>",
+        "<tr>"
+        "<th style='padding: 4px 12px; text-align: left;'>Parameter</th>"
+        "<th style='padding: 4px 12px; text-align: left;'>Prior</th>"
+        "<th style='padding: 4px 12px; text-align: left;'>Purpose</th>"
+        "</tr>",
+        "<tr><td style='padding: 4px 12px;'>tau</td>"
+        "<td style='padding: 4px 12px;'>HalfNormal(0.5), per party</td>"
+        "<td style='padding: 4px 12px;'>Evolution SD (ideal point drift)</td></tr>",
+        "<tr><td style='padding: 4px 12px;'>xi_init</td>"
+        "<td style='padding: 4px 12px;'>Normal(0, 1)</td>"
+        "<td style='padding: 4px 12px;'>Initial ideal points (PCA-initialized)</td></tr>",
+        "<tr><td style='padding: 4px 12px;'>xi_innovations</td>"
+        "<td style='padding: 4px 12px;'>Normal(0, 1)</td>"
+        "<td style='padding: 4px 12px;'>Non-centered random walk steps</td></tr>",
+        "<tr><td style='padding: 4px 12px;'>alpha</td>"
+        "<td style='padding: 4px 12px;'>Normal(0, 5), per bill</td>"
+        "<td style='padding: 4px 12px;'>Bill difficulty</td></tr>",
+        "<tr><td style='padding: 4px 12px;'>beta</td>"
+        "<td style='padding: 4px 12px;'>HalfNormal(2.5), per bill</td>"
+        "<td style='padding: 4px 12px;'>Bill discrimination (positive for sign ID)</td></tr>",
+        "</table>",
+    ]
+
+    # MCMC settings from first available chamber
+    chambers = results.get("chambers", [])
+    for chamber in sorted(chambers):
+        if chamber in results and "mcmc_params" in results[chamber]:
+            params = results[chamber]["mcmc_params"]
+            pca_range = results[chamber].get("pca_init_range")
+            lines.append("<h3>MCMC Settings</h3>")
+            lines.append("<table style='border-collapse: collapse; margin: 1em 0;'>")
+            lines.append(
+                f"<tr><td style='padding: 4px 12px;'>Samples</td>"
+                f"<td style='padding: 4px 12px;'>{params['n_samples']}</td></tr>"
+            )
+            lines.append(
+                f"<tr><td style='padding: 4px 12px;'>Tuning</td>"
+                f"<td style='padding: 4px 12px;'>{params['n_tune']}</td></tr>"
+            )
+            lines.append(
+                f"<tr><td style='padding: 4px 12px;'>Chains</td>"
+                f"<td style='padding: 4px 12px;'>{params['n_chains']}</td></tr>"
+            )
+            lines.append(
+                f"<tr><td style='padding: 4px 12px;'>Seed</td>"
+                f"<td style='padding: 4px 12px;'>{params['seed']}</td></tr>"
+            )
+            lines.append(
+                "<tr><td style='padding: 4px 12px;'>Sampler</td>"
+                "<td style='padding: 4px 12px;'>nutpie (Rust NUTS)</td></tr>"
+            )
+            if pca_range:
+                lines.append(
+                    f"<tr><td style='padding: 4px 12px;'>PCA init range</td>"
+                    f"<td style='padding: 4px 12px;'>"
+                    f"[{pca_range[0]:.2f}, {pca_range[1]:.2f}]</td></tr>"
+                )
+            lines.append("</table>")
+
+            lines.append("<h3>Convergence Thresholds</h3>")
+            lines.append("<table style='border-collapse: collapse; margin: 1em 0;'>")
+            lines.append(
+                f"<tr><td style='padding: 4px 12px;'>R-hat</td>"
+                f"<td style='padding: 4px 12px;'>{RHAT_THRESHOLD}</td></tr>"
+            )
+            lines.append(
+                f"<tr><td style='padding: 4px 12px;'>ESS min</td>"
+                f"<td style='padding: 4px 12px;'>{ESS_THRESHOLD}</td></tr>"
+            )
+            lines.append(
+                f"<tr><td style='padding: 4px 12px;'>Max divergences</td>"
+                f"<td style='padding: 4px 12px;'>{MAX_DIVERGENCES}</td></tr>"
+            )
+            lines.append("</table>")
+
+            lines.append(
+                "<p><strong>Sign correction:</strong> If a period's dynamic xi correlates "
+                "negatively with static IRT (Phase 04), xi is negated for that period. "
+                "Corrected periods are documented in the Sign Corrections section above.</p>"
+            )
+            break  # only need settings once
+
+    report.add(
+        TextSection(
+            id="model-priors",
+            title="Model Priors & Tuning Parameters",
+            html="\n".join(lines),
+        )
+    )
+
+
 def _add_methodology(report: ReportBuilder) -> None:
     """Methodology section describing the model."""
     html = """
@@ -565,6 +733,14 @@ obs ~ Bernoulli(logit(beta * xi - alpha))
     constraints. Cross-period scale linking is achieved through bridge legislators
     (those serving multiple bienniums), which anchor the random walk across time.</p>
 
+    <h3>Identification Caveat</h3>
+    <p>Positive beta alone is insufficient when the random walk chain is broken —
+    for example, when a biennium's data is missing, creating 0 bridge legislators
+    on both sides of the gap. In such cases, a post-hoc sign correction step
+    (ADR-0068) validates each period against static IRT and negates xi if the
+    correlation is negative. The Senate is less susceptible due to higher
+    legislator continuity from 4-year staggered terms.</p>
+
     <h3>Decomposition</h3>
     <p>For each adjacent biennium pair, per party:</p>
     <ul>
@@ -581,8 +757,10 @@ obs ~ Bernoulli(logit(beta * xi - alpha))
     report.add(TextSection(id="methodology", title="Methodology", html=html))
 
 
-# Import MAX_DIVERGENCES from the main module for the convergence section
+# Import constants from the main module for report sections
 try:
-    from analysis.dynamic_irt import MAX_DIVERGENCES
-except ModuleNotFoundError, ImportError:
+    from analysis.dynamic_irt import ESS_THRESHOLD, MAX_DIVERGENCES, RHAT_THRESHOLD
+except ModuleNotFoundError, ImportError:  # fmt: skip
     MAX_DIVERGENCES = 50  # type: ignore[assignment]
+    RHAT_THRESHOLD = 1.05  # type: ignore[assignment]
+    ESS_THRESHOLD = 400  # type: ignore[assignment]

@@ -573,6 +573,15 @@ XGBoost adds almost nothing over logistic regression on xi x beta. The IRT ideal
 - **Impact:** Low — 1 incorrect match in 112 House legislators. The correlation (r=0.975) is minimally affected.
 - **Downstream:** Implement district-based disambiguation when multiple candidates share a last name. See roadmap backlog item #1.
 
+### 87th House Sign Flip in Dynamic IRT (Phase 16, Run 260301.1)
+
+- **Phase:** Dynamic IRT
+- **Observation:** 87th biennium (2013-14) House ideal points were inverted: r = -0.937 with static IRT. Democrats showed positive xi, Republicans negative. The Senate was unaffected.
+- **Root cause:** The 88th biennium (2019-20) data was unavailable at runtime, creating a gap with 0 bridge legislators on both sides of period 4. This severed the Markov chain, allowing the sampler to find a sign-flipped mode for the 87th. Positive beta prior (`HalfNormal(2.5)`) alone is insufficient for sign identification with a broken chain. The Senate's 4-year staggered terms provide higher continuity, maintaining sufficient bridges.
+- **Downstream consequences:** The sign flip inflated House random walk tau (D=1.46, R=0.81) to absorb artificial ±3-unit jumps at the 87th boundary, producing scale drift (dynamic/static range ratio: 0.66x at 84th, 1.51x at 91st).
+- **Fix:** Post-hoc per-period sign correction added (ADR-0068). Compares each period's dynamic xi with static IRT; negates xi if r < 0. All corrections are transparently documented in the HTML report with named reference legislators.
+- **Re-run expectation:** With 88th biennium data available, the sign flip should not occur, making the correction a no-op.
+
 ## Template
 
 ```

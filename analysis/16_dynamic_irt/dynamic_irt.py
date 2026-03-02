@@ -321,6 +321,123 @@ def sample_dynamic_irt(
     return idata, sampling_time
 
 
+# ── Sign Correction ──────────────────────────────────────────────────────────
+
+
+def fix_period_sign_flips(
+    idata: az.InferenceData,
+    data: dict,
+    all_static_irt: dict[int, pl.DataFrame],
+    roster: pl.DataFrame,
+) -> tuple[az.InferenceData, list[dict]]:
+    """Detect and correct per-period sign flips using static IRT as reference.
+
+    Positive beta alone is insufficient for sign identification when the random
+    walk chain is broken (e.g., missing biennium data creating 0 bridge
+    legislators).  This post-hoc step compares each period's dynamic xi with
+    the corresponding static IRT and negates xi if r < 0.
+
+    Pattern follows ``fix_joint_sign_convention()`` in hierarchical IRT
+    (ADR-0042).
+
+    Returns:
+        (corrected idata, list of correction records).
+        Each record: ``{label, time_idx, r_before, r_after, n_matched,
+        reference_legs}`` where ``reference_legs`` is a list of
+        ``(name, dynamic_xi, static_xi)`` for the 3 strongest matches.
+    """
+    xi_post = idata.posterior["xi"].values  # (chain, draw, time, legislator)
+    n_time = xi_post.shape[2]
+    leg_names = data["leg_names"]
+    leg_periods = data["leg_periods"]
+    labels = BIENNIUM_LABELS[:n_time]
+    corrections: list[dict] = []
+
+    for t in range(n_time):
+        if t not in all_static_irt:
+            continue
+
+        static = all_static_irt[t]
+        if static is None or static.height == 0:
+            continue
+
+        # Build name_norm on static if needed
+        xi_col = "xi_mean" if "xi_mean" in static.columns else "mean"
+        if "name_norm" not in static.columns:
+            if "full_name" not in static.columns:
+                continue
+            static = static.with_columns(
+                pl.col("full_name")
+                .map_elements(normalize_name, return_dtype=pl.Utf8)
+                .alias("name_norm")
+            )
+
+        static_map = dict(zip(static["name_norm"].to_list(), static[xi_col].to_list()))
+
+        # Collect matched pairs (dynamic mean vs static) for served legislators
+        dyn_vals: list[float] = []
+        stat_vals: list[float] = []
+        match_names: list[str] = []
+        for gidx, nn in enumerate(leg_names):
+            if t not in leg_periods[gidx]:
+                continue
+            if nn not in static_map:
+                continue
+            dyn_mean = float(np.mean(xi_post[:, :, t, gidx]))
+            dyn_vals.append(dyn_mean)
+            stat_vals.append(static_map[nn])
+            match_names.append(nn)
+
+        if len(dyn_vals) < 5:
+            continue
+
+        r_before, _ = stats.pearsonr(dyn_vals, stat_vals)
+
+        if r_before < 0:
+            # Negate xi for this period across all chains and draws
+            xi_post[:, :, t, :] *= -1
+
+            r_after, _ = stats.pearsonr([-v for v in dyn_vals], stat_vals)
+
+            # Pick 3 highest-|xi| reference legislators for transparency
+            abs_xi = [abs(d) for d in dyn_vals]
+            top_idxs = sorted(range(len(abs_xi)), key=lambda i: abs_xi[i], reverse=True)[:3]
+
+            # Look up full names from roster
+            ref_legs = []
+            for idx in top_idxs:
+                nn = match_names[idx]
+                roster_row = roster.filter(pl.col("name_norm") == nn)
+                full = roster_row["full_name"][0] if roster_row.height > 0 else nn
+                ref_legs.append((full, dyn_vals[idx], stat_vals[idx]))
+
+            corrections.append(
+                {
+                    "label": labels[t],
+                    "time_idx": t,
+                    "r_before": r_before,
+                    "r_after": r_after,
+                    "n_matched": len(dyn_vals),
+                    "reference_legs": ref_legs,
+                }
+            )
+
+            print(
+                f"    SIGN FLIP CORRECTED: {labels[t]} "
+                f"(r={r_before:.3f} -> {r_after:.3f}, n={len(dyn_vals)})"
+            )
+            for full, dyn, stat in ref_legs:
+                print(f"      {full}: dynamic={dyn:+.2f}, static={stat:+.2f}")
+
+    # Write corrected posterior back
+    idata.posterior["xi"].values[:] = xi_post
+
+    if not corrections:
+        print("    No sign corrections needed.")
+
+    return idata, corrections
+
+
 # ── Post-Processing ──────────────────────────────────────────────────────────
 
 
@@ -1231,9 +1348,6 @@ def main() -> None:
                 xi_init_values=xi_init_values,
             )
 
-            # Save InferenceData
-            idata.to_netcdf(ctx.data_dir / f"dynamic_irt_{chamber}.nc")
-
             # ── Step 9: Convergence ──
             print("\n  Checking convergence...")
             convergence = check_convergence(idata)
@@ -1244,7 +1358,35 @@ def main() -> None:
             print(f"    Divergences: {convergence['n_divergences']}")
             print(f"    PASSED: {convergence['passed']}")
 
-            # ── Step 10: Post-processing ──
+            # ── Step 10: Load static IRT for sign correction ──
+            print("\n  Loading static IRT data...")
+            all_static_irt: dict[int, pl.DataFrame] = {}
+            for t, session_str in enumerate(session_list):
+                try:
+                    ks_t = KSSession.from_session_string(session_str)
+                    irt_dir = resolve_upstream_dir("04_irt", ks_t.results_dir, args.run_id)
+                    irt_path = irt_dir / "data" / f"ideal_points_{chamber}.parquet"
+                    if irt_path.exists():
+                        static_df = pl.read_parquet(irt_path)
+                        if "full_name" in static_df.columns:
+                            static_df = static_df.with_columns(
+                                pl.col("full_name")
+                                .map_elements(normalize_name, return_dtype=pl.Utf8)
+                                .alias("name_norm")
+                            )
+                        all_static_irt[t] = static_df
+                except FileNotFoundError, OSError:  # fmt: skip
+                    pass
+            print(f"    Loaded static IRT for {len(all_static_irt)} bienniums")
+
+            # ── Step 11: Sign correction ──
+            print("\n  Checking for per-period sign flips...")
+            idata, sign_corrections = fix_period_sign_flips(idata, stacked, all_static_irt, roster)
+
+            # Save InferenceData (after correction)
+            idata.to_netcdf(ctx.data_dir / f"dynamic_irt_{chamber}.nc")
+
+            # ── Step 12: Post-processing ──
             print("\n  Extracting dynamic ideal points...")
             trajectories = extract_dynamic_ideal_points(idata, stacked, roster)
             trajectories.write_parquet(ctx.data_dir / f"trajectories_{chamber}.parquet")
@@ -1271,36 +1413,26 @@ def main() -> None:
                     f"[{row['tau_hdi_2.5']:.4f}, {row['tau_hdi_97.5']:.4f}]"
                 )
 
-            # ── Step 11: Correlation with static IRT ──
+            # ── Step 13: Correlation with static IRT ──
             print("\n  Correlating with static IRT...")
-            all_static_irt: dict[int, pl.DataFrame] = {}
-            for t, session_str in enumerate(session_list):
-                try:
-                    ks_t = KSSession.from_session_string(session_str)
-                    irt_dir = resolve_upstream_dir("04_irt", ks_t.results_dir, args.run_id)
-                    irt_path = irt_dir / "data" / f"ideal_points_{chamber}.parquet"
-                    if irt_path.exists():
-                        static_df = pl.read_parquet(irt_path)
-                        if "full_name" in static_df.columns:
-                            static_df = static_df.with_columns(
-                                pl.col("full_name")
-                                .map_elements(normalize_name, return_dtype=pl.Utf8)
-                                .alias("name_norm")
-                            )
-                        all_static_irt[t] = static_df
-                except FileNotFoundError, OSError:
-                    pass
-
             correlation_df = correlate_with_static(trajectories, all_static_irt)
             if correlation_df.height > 0:
+                # Add sign_corrected column
+                corrected_labels = {c["label"] for c in sign_corrections}
+                correlation_df = correlation_df.with_columns(
+                    pl.col("biennium")
+                    .map_elements(lambda b: b in corrected_labels, return_dtype=pl.Boolean)
+                    .alias("sign_corrected")
+                )
                 correlation_df.write_parquet(ctx.data_dir / f"static_correlation_{chamber}.parquet")
                 for row in correlation_df.iter_rows(named=True):
+                    flag = " [corrected]" if row.get("sign_corrected") else ""
                     print(
                         f"    {row['biennium']}: r = {row['pearson_r']:.3f}, "
-                        f"rho = {row['spearman_rho']:.3f}"
+                        f"rho = {row['spearman_rho']:.3f}{flag}"
                     )
 
-            # ── Step 12: Plots ──
+            # ── Step 14: Plots ──
             print("\n  Generating plots...")
             plot_polarization_trend(
                 trajectories, ctx.plots_dir / f"polarization_trend_{chamber}.png"
@@ -1326,6 +1458,11 @@ def main() -> None:
             plot_bridge_coverage(bridge_full, ctx.plots_dir / f"bridge_coverage_{chamber}.png")
 
             # Collect results for report
+            pca_init_range = (
+                (float(np.min(xi_init_values)), float(np.max(xi_init_values)))
+                if xi_init_values is not None
+                else None
+            )
             all_results[chamber] = {
                 "stacked": stacked,
                 "roster": roster,
@@ -1340,6 +1477,14 @@ def main() -> None:
                 "emirt_results": emirt_results,
                 "sampling_time": sampling_time,
                 "idata": idata,
+                "sign_corrections": sign_corrections,
+                "pca_init_range": pca_init_range,
+                "mcmc_params": {
+                    "n_samples": args.n_samples,
+                    "n_tune": args.n_tune,
+                    "n_chains": args.n_chains,
+                    "seed": RANDOM_SEED,
+                },
             }
 
         # ── Step 13: Build HTML report ──

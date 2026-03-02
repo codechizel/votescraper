@@ -758,6 +758,147 @@ class TestIdentifyTopMovers:
         assert movers["net_movement"][0] == 2.0
 
 
+class TestFixPeriodSignFlips:
+    """Tests for post-hoc per-period sign correction."""
+
+    @staticmethod
+    def _make_fake_idata(n_time: int, n_leg: int, xi_values: np.ndarray):
+        """Build a minimal InferenceData with xi posterior.
+
+        Args:
+            n_time: Number of time periods.
+            n_leg: Number of legislators.
+            xi_values: Array of shape (n_time, n_leg) — broadcast to (1, 1, T, L).
+        """
+        import arviz as az
+        import xarray as xr
+
+        xi_4d = xi_values[np.newaxis, np.newaxis, :, :]  # (1, 1, T, L)
+        ds = xr.Dataset({"xi": (["chain", "draw", "xi_dim_0", "xi_dim_1"], xi_4d)})
+        return az.InferenceData(posterior=ds)
+
+    @staticmethod
+    def _make_data(n_time: int, n_leg: int, leg_names: list[str]) -> dict:
+        """Build a minimal stacked data dict."""
+        return {
+            "leg_names": leg_names,
+            "leg_periods": [[t for t in range(n_time)] for _ in range(n_leg)],
+            "party_idx": np.zeros(n_leg, dtype=int),
+            "party_names": ["Republican"],
+        }
+
+    @staticmethod
+    def _make_roster(leg_names: list[str]) -> pl.DataFrame:
+        """Build a minimal roster."""
+        return pl.DataFrame(
+            {
+                "global_idx": list(range(len(leg_names))),
+                "name_norm": leg_names,
+                "full_name": [n.title() for n in leg_names],
+                "parties": ["Republican"] * len(leg_names),
+                "first_period": [0] * len(leg_names),
+                "last_period": [0] * len(leg_names),
+                "n_periods": [1] * len(leg_names),
+            }
+        )
+
+    def test_no_flip_needed(self) -> None:
+        """Positive correlations should return empty corrections list."""
+        from analysis.dynamic_irt import fix_period_sign_flips
+
+        names = [f"leg_{i}" for i in range(10)]
+        xi = np.array([[float(i) for i in range(10)]])  # (1, 10) — one period
+        idata = self._make_fake_idata(1, 10, xi)
+        data = self._make_data(1, 10, names)
+        roster = self._make_roster(names)
+
+        static = {0: pl.DataFrame({"name_norm": names, "xi_mean": [float(i) for i in range(10)]})}
+
+        result_idata, corrections = fix_period_sign_flips(idata, data, static, roster)
+        assert corrections == []
+        # xi should be unchanged
+        np.testing.assert_array_equal(result_idata.posterior["xi"].values[0, 0, 0], xi[0])
+
+    def test_single_period_flip(self) -> None:
+        """Negative r should negate xi for that period and record correction."""
+        from analysis.dynamic_irt import fix_period_sign_flips
+
+        names = [f"leg_{i}" for i in range(10)]
+        # Dynamic xi is negative of static (flipped)
+        xi = np.array([[-float(i) for i in range(10)]])  # (1, 10)
+        idata = self._make_fake_idata(1, 10, xi)
+        data = self._make_data(1, 10, names)
+        roster = self._make_roster(names)
+
+        static = {0: pl.DataFrame({"name_norm": names, "xi_mean": [float(i) for i in range(10)]})}
+
+        result_idata, corrections = fix_period_sign_flips(idata, data, static, roster)
+        assert len(corrections) == 1
+        assert corrections[0]["label"] == "84th"
+        assert corrections[0]["r_before"] < 0
+        assert corrections[0]["r_after"] > 0
+        assert corrections[0]["n_matched"] == 10
+        assert len(corrections[0]["reference_legs"]) == 3
+
+        # xi should now be positive (negated)
+        corrected_xi = result_idata.posterior["xi"].values[0, 0, 0]
+        np.testing.assert_array_almost_equal(corrected_xi, [float(i) for i in range(10)])
+
+    def test_multiple_flips(self) -> None:
+        """Multiple periods with negative r should all be corrected."""
+        from analysis.dynamic_irt import fix_period_sign_flips
+
+        names = [f"leg_{i}" for i in range(10)]
+        # Both periods flipped
+        xi = np.array(
+            [
+                [-float(i) for i in range(10)],
+                [-float(i) * 2 for i in range(10)],
+            ]
+        )  # (2, 10)
+        idata = self._make_fake_idata(2, 10, xi)
+        data = self._make_data(2, 10, names)
+        roster = self._make_roster(names)
+
+        static = {
+            0: pl.DataFrame({"name_norm": names, "xi_mean": [float(i) for i in range(10)]}),
+            1: pl.DataFrame({"name_norm": names, "xi_mean": [float(i) * 2 for i in range(10)]}),
+        }
+
+        _, corrections = fix_period_sign_flips(idata, data, static, roster)
+        assert len(corrections) == 2
+        assert corrections[0]["label"] == "84th"
+        assert corrections[1]["label"] == "85th"
+
+    def test_insufficient_matches_skipped(self) -> None:
+        """Fewer than 5 matched legislators should be skipped."""
+        from analysis.dynamic_irt import fix_period_sign_flips
+
+        names = [f"leg_{i}" for i in range(4)]
+        xi = np.array([[-float(i) for i in range(4)]])  # (1, 4) — flipped
+        idata = self._make_fake_idata(1, 4, xi)
+        data = self._make_data(1, 4, names)
+        roster = self._make_roster(names)
+
+        static = {0: pl.DataFrame({"name_norm": names, "xi_mean": [float(i) for i in range(4)]})}
+
+        _, corrections = fix_period_sign_flips(idata, data, static, roster)
+        assert corrections == []  # too few matches, skip
+
+    def test_no_static_data(self) -> None:
+        """Empty static dict should be a graceful no-op."""
+        from analysis.dynamic_irt import fix_period_sign_flips
+
+        names = [f"leg_{i}" for i in range(10)]
+        xi = np.array([[-float(i) for i in range(10)]])
+        idata = self._make_fake_idata(1, 10, xi)
+        data = self._make_data(1, 10, names)
+        roster = self._make_roster(names)
+
+        _, corrections = fix_period_sign_flips(idata, data, {}, roster)
+        assert corrections == []
+
+
 class TestCorrelateWithStatic:
     """Tests for static IRT correlation."""
 

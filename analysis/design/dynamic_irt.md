@@ -14,7 +14,7 @@
 
 4. **Bridge legislators anchor cross-biennium scale**: legislators serving multiple bienniums connect the ideal point scales across time. No explicit anchor constraints needed — the random walk prior + shared likelihood provides identification.
 
-5. **Positive beta provides sign identification**: with `HalfNormal(2.5)` on discrimination, all beta > 0, fixing the direction of the latent scale. Higher xi = more conservative.
+5. **Positive beta provides sign identification**: with `HalfNormal(2.5)` on discrimination, all beta > 0, fixing the direction of the latent scale. Higher xi = more conservative. **Caveat:** positive beta alone is insufficient when the random walk chain is broken (e.g., missing biennium data creating 0 bridge legislators). A post-hoc sign correction step (ADR-0068) validates each period against static IRT and negates xi if the correlation is negative.
 
 6. **Absent periods are interpolated, not estimated**: for legislators not serving in a biennium, the random walk prior carries their ideal point forward. The posterior is wide (prior-dominated) — this is correct behavior, not a bug.
 
@@ -70,6 +70,20 @@ The random walk is implemented manually rather than using `GaussianRandomWalk`:
 
 First biennium's PCA PC1 scores initialize `xi_init`. Standardized and oriented so Republicans are positive. All other variables jittered (including `xi_innovations`, `tau`, `alpha`, `beta`). Critical: do NOT set `jitter_rvs=set()` — HalfNormal variables need jitter to avoid support boundary (`log(0) = -inf`).
 
+## Post-Hoc Sign Correction
+
+After sampling, each period's dynamic xi is correlated with the corresponding static IRT (Phase 04). If the Pearson r is negative, xi for that period is negated across all chains and draws.
+
+**When it triggers:** r < 0 with static IRT for a given period. This indicates the sampler found a sign-flipped mode.
+
+**Root cause:** Positive beta is insufficient for sign identification when the random walk chain is broken — e.g., missing biennium data creates 0 bridge legislators on both sides of a gap, severing the Markov chain. The Senate is less susceptible due to 4-year staggered terms providing higher continuity.
+
+**What it does:** `xi_post[:, :, t, :] *= -1` for the affected period. The corrected InferenceData is saved to NetCDF before any post-processing, so all downstream quantities (trajectories, decomposition, movers, tau extraction, correlation tables) use the corrected posterior.
+
+**Transparency:** Every correction is documented in the HTML report with named reference legislators (the 3 highest-|xi| matches showing dynamic vs static values). A dedicated Model Priors section displays all priors and tuning parameters.
+
+**Precedent:** Mirrors `fix_joint_sign_convention()` in hierarchical IRT (ADR-0042). Documented case: 87th House sign flip in run 260301.1 (r = -0.937 with static IRT) caused by missing 88th biennium data.
+
 ## Post-Processing
 
 ### Polarization Decomposition
@@ -108,8 +122,10 @@ Total captures oscillation; net captures directional drift.
 6. **Bridge coverage**: count shared legislators between adjacent periods
 7. **Build model**: state-space 2PL IRT graph
 8. **Sample**: nutpie Rust NUTS, PCA-informed init
-9. **Post-process**: trajectories, decomposition, top movers, static correlation
-10. **Report**: 14-section HTML report
+9. **Load static IRT**: per-biennium ideal points from Phase 04
+10. **Sign correction**: compare dynamic xi with static IRT, negate if r < 0 (ADR-0068)
+11. **Post-process**: trajectories, decomposition, top movers, static correlation
+12. **Report**: ~16-section HTML report (includes sign corrections and model priors)
 
 ## Comparison with Phase 04 (Static IRT)
 
@@ -117,6 +133,7 @@ Total captures oscillation; net captures directional drift.
 |---------|-------------------|---------------------|
 | Scope | Single biennium | All 8 bienniums jointly |
 | Identification | Anchor constraints (±1 on PCA extremes) | Positive beta (HalfNormal) |
+| Sign correction | Anchors fix sign at model level | Post-hoc correlation check (ADR-0068) |
 | Temporal | None | Random walk across bienniums |
 | Scale linking | Not needed | Bridge legislators |
 | Runtime | ~10 min/chamber | ~1–3 hours/chamber |
@@ -132,3 +149,5 @@ Optional: `emIRT::dynIRT` in R provides fast EM point estimates. Used purely for
 2. **84th→85th bridge weakness**: post-2012 redistricting reduced legislator overlap.
 3. **Independent party**: excluded from party-level tau. Their evolution uses a default party assignment. With ≤2 Independents in any biennium, this has minimal impact.
 4. **Absent periods**: random walk interpolation produces uncertain but not absent estimates. Report clearly marks which periods each legislator actually served.
+5. **Sign flip with broken chain**: When biennium data is missing, 0 bridge legislators sever the Markov chain, enabling sign flips in isolated periods. Documented case: 87th House in run 260301.1 (r = -0.937). Post-hoc correction (ADR-0068) handles this, but the root fix is ensuring all biennium data is available before running.
+6. **Scale drift from sign flip**: A sign flip inflates tau to absorb artificial ±3-unit jumps at the boundary, causing the dynamic/static range ratio to grow (e.g., 0.66x at 84th to 1.51x at 91st). Re-running with complete data should eliminate both the flip and the drift.

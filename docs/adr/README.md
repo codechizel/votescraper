@@ -65,6 +65,7 @@ What are the trade-offs?
 | [0053](0053-nutpie-all-models.md) | nutpie Rust NUTS for all MCMC models |
 | [0054](0054-2d-irt-pipeline-integration.md) | 2D IRT pipeline integration (experimental phase 04b) |
 | [0055](0055-reparameterized-beta-and-irt-linking.md) | Reparameterized LogNormal beta and IRT scale linking |
+| [0068](0068-dynamic-irt-sign-correction.md) | Dynamic IRT post-hoc sign correction |
 
 ### Classical Analysis
 
@@ -199,6 +200,7 @@ What are the trade-offs?
 | [0065](0065-bipartite-network-phase.md) | Bipartite Bill-Legislator Network (Phase 6b) | Accepted | 2026-02-28 |
 | [0066](0066-84th-pipeline-stress-test-fixes.md) | 84th pipeline stress test fixes (8 bugs, 1 enhancement) | Accepted | 2026-03-01 |
 | [0067](0067-open-source-readiness.md) | Open-source readiness polish (LICENSE, README, 9 bug fixes, 16 tests, CI expansion) | Accepted | 2026-03-01 |
+| [0068](0068-dynamic-irt-sign-correction.md) | Dynamic IRT post-hoc sign correction (per-period xi negation, static IRT reference) | Accepted | 2026-03-01 |
 
 ## Creating a New ADR
 

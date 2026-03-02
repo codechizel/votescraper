@@ -777,7 +777,7 @@ def aggregate_weekly(rice_ts: pl.DataFrame) -> pl.DataFrame:
             }
         )
 
-    ts = rice_ts.with_columns(
+    ts = rice_ts.filter(pl.col(date_col).is_not_null()).with_columns(
         pl.col(date_col).cast(pl.Utf8).str.slice(0, 10).str.to_date("%Y-%m-%d").alias("date")
     )
 

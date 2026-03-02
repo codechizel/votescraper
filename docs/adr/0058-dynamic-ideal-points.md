@@ -49,7 +49,7 @@ For cross-period models, anchor-based identification is more complex than single
 - Anchors must persist across all bienniums (few legislators serve 8 terms).
 - Anchor selection interacts with the random walk — fixing xi at multiple time points constrains the walk.
 
-Instead, `HalfNormal(2.5)` on beta (bill discrimination) provides sign identification by forcing all discriminations positive. This matches the hierarchical model's approach and the 2D IRT design (ADR-0054).
+Instead, `HalfNormal(2.5)` on beta (bill discrimination) provides sign identification by forcing all discriminations positive. This matches the hierarchical model's approach and the 2D IRT design (ADR-0054). **Note:** Positive beta alone is insufficient when the random walk chain is broken (e.g., missing biennium data). A post-hoc sign correction step (ADR-0068) addresses this.
 
 ### Cross-session flat mode
 

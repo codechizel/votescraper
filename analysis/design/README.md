@@ -29,7 +29,7 @@ Read these sequentially. Each phase inherits data from the previous one, so assu
 | 10. External Validation | [external_validation.md](external_validation.md) | SM name matching, correlation methodology, career-fixed vs session-specific, outlier z-scores |
 | 10b. DIME External Validation | [external_validation_dime.md](external_validation_dime.md) | DIME/CFscore matching, min-givers filter, incumbent-only, cycle-to-biennium mapping |
 | 11. TSA | [tsa.md](tsa.md) | Rolling PCA drift, PELT changepoint detection, weekly Rice aggregation, penalty sensitivity |
-| 12. Dynamic IRT | [dynamic_irt.md](dynamic_irt.md) | State-space IRT, random walk evolution, per-party tau, polarization decomposition, bridge coverage |
+| 12. Dynamic IRT | [dynamic_irt.md](dynamic_irt.md) | State-space IRT, random walk evolution, per-party tau, polarization decomposition, bridge coverage, post-hoc sign correction (ADR-0068) |
 | 13. W-NOMINATE + OC | [wnominate.md](wnominate.md) | Validation-only; R subprocess, polarity via PCA, sign alignment, 3×3 correlation matrix |
 | 14. PPC + LOO-CV | [ppc.md](ppc.md) | Validation-only; manual log-likelihood, Q3 local dependence, PSIS-LOO model comparison, graceful degradation |
 

@@ -9,7 +9,7 @@ paths:
 
 EDA -> PCA -> MCA -> IRT -> 2D IRT (experimental) -> UMAP -> Clustering -> Network -> Bipartite Network -> Prediction -> Indices -> Beta-Binomial -> Hierarchical IRT -> Synthesis -> Profiles -> TSA
 
-Phase 04b (2D IRT) is experimental with relaxed convergence thresholds (ADR-0054). Cross-session validation compares across bienniums (separate from the per-session pipeline). External validation compares IRT ideal points against Shor-McCarty scores (84th-88th bienniums only). Phase 14b (DIME/CFscores) validates against campaign-finance ideology (84th-89th bienniums, ADR-0062). Dynamic IRT (Phase 16) is a cross-session phase using Martin-Quinn state-space IRT across all 8 bienniums (ADR-0058). PPC + LOO-CV (Phase 4c) is a standalone validation phase running posterior predictive checks and model comparison across all three IRT variants (ADR-0063). W-NOMINATE + OC (Phase 17) is a standalone validation phase comparing IRT to field-standard legislative scaling methods via R subprocess (ADR-0059).
+Phase 04b (2D IRT) is experimental with relaxed convergence thresholds (ADR-0054). Cross-session validation compares across bienniums (separate from the per-session pipeline). External validation compares IRT ideal points against Shor-McCarty scores (84th-88th bienniums only). Phase 14b (DIME/CFscores) validates against campaign-finance ideology (84th-89th bienniums, ADR-0062). Dynamic IRT (Phase 16) is a cross-session phase using Martin-Quinn state-space IRT across all 8 bienniums (ADR-0058; post-hoc sign correction via static IRT correlation — ADR-0068). PPC + LOO-CV (Phase 4c) is a standalone validation phase running posterior predictive checks and model comparison across all three IRT variants (ADR-0063). W-NOMINATE + OC (Phase 17) is a standalone validation phase comparing IRT to field-standard legislative scaling methods via R subprocess (ADR-0059).
 
 ## Technology Preferences
 
@@ -55,7 +55,7 @@ Each phase has a design doc in `analysis/design/` — **read before interpreting
 - `external_validation.md` — SM name matching, correlation methodology, career-fixed vs session-specific
 - `external_validation_dime.md` — DIME/CFscore matching, min-givers filter, incumbent-only, cycle-to-biennium mapping
 - `tsa.md` — Rolling PCA drift, PELT changepoint detection, weekly Rice aggregation, CROPS penalty selection + Bai-Perron CIs (R enrichment). Deep dive: `docs/tsa-deep-dive.md`
-- `dynamic_irt.md` — State-space IRT, random walk evolution, polarization decomposition, bridge coverage. Deep dive: `docs/dynamic-ideal-points-deep-dive.md`
+- `dynamic_irt.md` — State-space IRT, random walk evolution, polarization decomposition, bridge coverage, post-hoc sign correction (ADR-0068). Deep dive: `docs/dynamic-ideal-points-deep-dive.md`
 - `ppc.md` — PPC + LOO-CV model comparison, manual log-likelihood, Q3 local dependence, graceful degradation (ADR-0063)
 - `bipartite.md` — BiCM backbone extraction, bill-side metrics, Newman projection, Leiden bill communities, Phase 6 comparison. Deep dive: `docs/bipartite-network-deep-dive.md`
 - `wnominate.md` — Field-standard comparison (W-NOMINATE, Optimal Classification), R subprocess, validation-only design. Deep dive: `docs/w-nominate-deep-dive.md`
