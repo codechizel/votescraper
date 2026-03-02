@@ -28,7 +28,7 @@ Add three backwards-compatible extensions to the scraper:
 - `VoteLink.is_odt` flag routes links to the appropriate parser in `parse_vote_pages()`
 
 ### Pre-2015 Party Detection
-- Fallback in `enrich_legislators()`: when `<h2>District N - Party</h2>` yields no party, scan `<h3>` tags for `"Party: Republican"` / `"Party: Democrat"`
+- Fallback in `_extract_party_and_district()` (called by `enrich_legislators()`): when `<h2>District N - Party</h2>` yields no party, scan `<h3>` tags for `"Party: Republican"` / `"Party: Democrat"`
 
 ### Binary Support in FetchResult
 - `FetchResult.content_bytes` field for binary downloads (ODT files)

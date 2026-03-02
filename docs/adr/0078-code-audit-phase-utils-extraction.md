@@ -67,10 +67,10 @@ Extracted `_parse_js_array()` static method shared by `_parse_js_bill_data()` an
 
 ### Deferred Items
 
-- **R6:** Test helper consolidation (`_make_legislators` in 5 files, `_make_votes` in 3 files) — deferred to separate pass.
-- **R8:** Split `_parse_vote_page()` (191 lines) — deferred, function is well-structured internally.
-- **R9:** Extract `_extract_party_and_district()` from `enrich_legislators()` — deferred.
-- **T1:** Mark long-running tests with `@pytest.mark.slow` — deferred.
+- **R6:** Test helper consolidation (`_make_legislators` in 5 files, `_make_votes` in 3 files) — deferred to [M1](../milestones/m1-test-infrastructure.md).
+- ~~**R8:** Split `_parse_vote_page()` (191 lines)~~ — **Done** in [M2](../milestones/m2-scraper-refactoring.md). Extracted `_extract_bill_title()`, `_extract_chamber_motion_date()`, `_parse_vote_categories()` as static methods.
+- ~~**R9:** Extract `_extract_party_and_district()` from `enrich_legislators()`~~ — **Done** in [M2](../milestones/m2-scraper-refactoring.md).
+- **T1:** Mark long-running tests with `@pytest.mark.slow` — deferred to [M1](../milestones/m1-test-infrastructure.md).
 
 ## Consequences
 

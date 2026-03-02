@@ -1,10 +1,10 @@
-# M2: Scraper Function Splits
+# M2: Scraper Function Splits — COMPLETE
 
-Extract helper methods from `_parse_vote_page()` (193 lines) and `enrich_legislators()` (64 lines) to improve readability and testability.
+Extracted helper methods from `_parse_vote_page()` (193 lines) and `enrich_legislators()` (64 lines) to improve readability and testability.
 
 **Roadmap items:** R8 (`_parse_vote_page` split), R9 (`enrich_legislators` split)
-**Estimated effort:** 1 session
-**Safety net:** 264 scraper tests, HTML parsing pitfalls #1-#10 in CLAUDE.md
+**Completed:** 2026-03-02 (1 session)
+**Result:** 265 scraper tests pass (264 existing + 1 new). Net -80 lines (219 added, 299 removed).
 
 ---
 
@@ -197,11 +197,11 @@ This makes tests faster (no scraper instantiation) and more focused (test one fu
 
 These documented bugs (CLAUDE.md) **must not regress**:
 
-- [ ] Pitfall #1: Tag hierarchy — `<h2>` = bill number, `<h4>` = bill title, `<h3>` = chamber/date/motion + vote category headings
-- [ ] Pitfall #2: Party from `<h2>` District line, not full page text
-- [ ] Pitfall #2b: Name from second `<h1>` (Senator/Representative prefix), not nav heading
-- [ ] Pitfall #3: Vote categories from both `<h2>` and `<h3>` (`find_all(["h2", "h3", "a"])`)
-- [ ] Pitfall #5: `_clean_text()` preserves spaces around inline `<a>` tags
+- [x] Pitfall #1: Tag hierarchy — `<h2>` = bill number, `<h4>` = bill title, `<h3>` = chamber/date/motion + vote category headings
+- [x] Pitfall #2: Party from `<h2>` District line, not full page text
+- [x] Pitfall #2b: Name from second `<h1>` (Senator/Representative prefix), not nav heading
+- [x] Pitfall #3: Vote categories from both `<h2>` and `<h3>` (`find_all(["h2", "h3", "a"])`)
+- [x] Pitfall #5: `_clean_text()` preserves spaces around inline `<a>` tags
 
 ---
 

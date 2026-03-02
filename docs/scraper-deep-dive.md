@@ -152,9 +152,14 @@ The pipeline review found two issues in `run_context.py` (shared infrastructure,
 
 ### Refactoring Opportunities
 
-**None that would justify the risk.** The scraper code is stable, well-tested for its parsing logic, and handles 15 years of format variations. The main risk of refactoring (extracting a Page class hierarchy, splitting `_parse_vote_page()` into smaller functions, etc.) is introducing regressions in edge cases that took months to discover and fix.
+**Completed (M2).** Four static methods were extracted from the two largest scraper functions without behavior changes:
 
-The 10 documented HTML parsing pitfalls in CLAUDE.md represent hard-won knowledge. The code that handles them is necessarily complex because the source data is complex. Simplifying it would mean losing coverage of real edge cases.
+- `_extract_bill_title(soup)` — 3-tier `<h4>` fallback (from `_parse_vote_page()`)
+- `_extract_chamber_motion_date(soup)` — 2-tier `<h3>` fallback (from `_parse_vote_page()`)
+- `_parse_vote_categories(soup)` — returns `(categories, new_legislators)` instead of mutating `self.legislators` (from `_parse_vote_page()`)
+- `_extract_party_and_district(soup)` — post-2015/pre-2015 party detection (from `enrich_legislators()`)
+
+All 10 HTML parsing pitfalls are preserved — each static method's docstring explicitly references the pitfalls it handles. Tests were updated to call the static methods directly (265 scraper tests pass). No further structural refactoring is recommended — the remaining coordinator logic in `_parse_vote_page()` and `enrich_legislators()` is straightforward glue code.
 
 ## Data Quality Review
 
@@ -246,7 +251,7 @@ The HTTP and orchestration layers have no direct test coverage:
 | `get_bill_urls()` — bill discovery | ~40 | 0 | Medium — HTML + JS fallback flow |
 | `get_vote_links()` — vote link scanning | ~55 | 0 | Low — tested via HTML parsing tests |
 | `_load_member_directory()` — member lookup | ~65 | 0 | Medium — JS fallback, ambiguity handling |
-| `enrich_legislators()` — party/district fetch | ~65 | 0 | Low — tested via HTML parsing tests |
+| `enrich_legislators()` — party/district fetch | ~35 | 0 | Low — parsing tested directly via `_extract_party_and_district()` static method (M2) |
 | `run()` — pipeline orchestration | ~95 | 0 | Low — glue code |
 | Failure reporting (`failure_manifest.json`, `missing_votes.md`) | ~85 | 0 | Low — output formatting |
 
@@ -284,7 +289,7 @@ In priority order by risk of silent data loss:
 
 2. **Don't switch to lxml.** BeautifulSoup's lenient parsing is a feature for the KS Legislature's malformed HTML.
 
-3. **Don't refactor `_parse_vote_page()` into smaller functions.** The function is long (~180 lines) but handles 10 documented edge cases. Splitting it would scatter context that needs to stay together.
+3. ~~**Don't refactor `_parse_vote_page()` into smaller functions.**~~ **Done (M2).** Extracted 4 static methods successfully — each method's docstring references the pitfalls it handles, preserving context. All 265 scraper tests pass. No further splitting recommended.
 
 4. **Don't normalize chamber/party upstream in the scraper.** The current hybrid approach (mechanical cleanup at scrape time, semantic normalization at analysis time) matches ecosystem best practice and ADR-0021.
 

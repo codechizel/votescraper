@@ -344,6 +344,6 @@ Additionally, duplicate last names (Joseph Claeys / J.R. Claeys in the Senate; t
 
 **Root cause:** Pre-2015 legislator pages display party as `<h3>Party: Republican</h3>` instead of encoding it in the `<h2>District N - Republican</h2>` format used by 2015+ pages. The existing parser only checks `<h2>`.
 
-**Fix:** Added fallback in `enrich_legislators()`: when `<h2>` yields no party, scan `<h3>` tags for `"Party: Republican"` or `"Party: Democrat"`.
+**Fix:** Added fallback in `_extract_party_and_district()` (static method called by `enrich_legislators()`): when `<h2>` yields no party, scan `<h3>` tags for `"Party: Republican"` or `"Party: Democrat"`.
 
 **Lesson:** When a parser works for recent data but fails on historical data, check whether the HTML structure changed between sessions. Government website redesigns happen regularly and usually aren't documented.

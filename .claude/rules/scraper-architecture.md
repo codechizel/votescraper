@@ -31,6 +31,21 @@ Two-phase: concurrent fetch via ThreadPoolExecutor (MAX_WORKERS=5), then sequent
 - `VoteLink` — frozen dataclass for vote page links; `is_odt=True` routes to ODT parser
 - Module constants: `_BILL_URL_RE` (compiled regex), `VOTE_CATEGORIES` (5-tuple), `_normalize_bill_code()`
 
+## Static Parsing Helpers
+
+All `@staticmethod` on `KSVoteScraper` — callable without a scraper instance, tested directly:
+
+| Method | Extracts | Pitfalls |
+|--------|----------|----------|
+| `_extract_bill_number(soup, bill_path)` | Bill number from `<h2>` or URL | — |
+| `_extract_sponsor(soup)` | Sponsor from portlet structure | — |
+| `_extract_bill_title(soup)` | Title from `<h4>` (3-tier fallback) | #1 |
+| `_extract_chamber_motion_date(soup)` | Chamber, motion, date from `<h3>` (2-tier) | #1, #5 |
+| `_parse_vote_categories(soup)` | Vote categories + new legislators | #3 |
+| `_extract_party_and_district(soup)` | Name, party, district from legislator page | #2, #2b, #5 |
+
+`_parse_vote_page()` is a thin coordinator that calls these helpers and builds `RollCall`/`IndividualVote` records. `enrich_legislators()` calls `_extract_party_and_district()` in its parse loop.
+
 ## Retry Strategy
 
 `_get()` returns `FetchResult` and classifies errors:

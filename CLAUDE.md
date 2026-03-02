@@ -69,14 +69,16 @@ just wt-done                                 # same, but auto-detects (from insi
 src/tallgrass/
   config.py     - Constants (BASE_URL, delays, workers, user agent)
   session.py    - KSSession: biennium URL resolution, STATE_DIR, data_dir/results_dir
-  models.py     - IndividualVote + RollCall dataclasses
+  models.py     - IndividualVote + RollCall + BillAction dataclasses
   scraper.py    - KSVoteScraper: 4-step pipeline (bill URLs -> API filter -> vote parse -> enrich)
   odt_parser.py - ODT vote file parser (2011-2014): pure functions, no I/O
-  output.py     - CSV export (3 files: votes, rollcalls, legislators)
+  output.py     - CSV export (4 files: votes, rollcalls, legislators, bill_actions)
   cli.py        - argparse CLI entry point
 ```
 
 Pipeline: `get_bill_urls()` -> `_filter_bills_with_votes()` -> `get_vote_links()` -> `parse_vote_pages()` -> `enrich_legislators()` -> `save_csvs()`
+
+Static parsing helpers (all `@staticmethod` on `KSVoteScraper`): `_extract_bill_title()`, `_extract_chamber_motion_date()`, `_parse_vote_categories()`, `_extract_party_and_district()`. Each docstring references the HTML pitfalls it handles. Tests call these directly.
 
 See `.claude/rules/scraper-architecture.md` for session coverage table, retry strategy, concurrency details, and ODT parsing.
 
@@ -126,13 +128,15 @@ These are real bugs that were found and fixed. Do NOT regress on them:
 - Legislator slugs: `sen_` = Senate, `rep_` = House
 - Column naming: scraper CSVs use `slug` and `vote`; analysis phases rename to `legislator_slug` and expect `vote` (not `vote_category`). Each phase handles the rename at load time (ADR-0066).
 - Independent party handling: scraper outputs empty string; all analysis fills to "Independent" at load time (ADR-0021)
+- `BillAction`: KLISS API HISTORY data — `action_code`, `chamber`, `committee_names` (tuple, semicolon-joined in CSV), `occurred_datetime`, `session_date`, `status`, `journal_page_number`. Available for sessions with KLISS API (89th+); pre-KLISS sessions (84th-88th) may have limited or no HISTORY data.
 
 ## Output
 
-Three CSVs in `data/kansas/{legislature}_{start}-{end}/`:
+Four CSVs in `data/kansas/{legislature}_{start}-{end}/`:
 - `{name}_votes.csv` — one per legislator per roll call (deduped by `legislator_slug` + `vote_id`)
 - `{name}_rollcalls.csv` — one per roll call
 - `{name}_legislators.csv` — one per legislator
+- `{name}_bill_actions.csv` — one per bill lifecycle action (KLISS API HISTORY; all bills, not just those with votes)
 
 Directory naming: `(start_year - 1879) // 2 + 18` -> legislature number. Special sessions: `{year}s`.
 Cache: `data/kansas/{name}/.cache/`. Failed fetches -> `failure_manifest.json` + `missing_votes.md`.

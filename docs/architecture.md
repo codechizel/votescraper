@@ -68,7 +68,15 @@ Historical session extensions:
 - JS bill discovery fallback (`_get_bill_urls_from_js`, `_parse_js_bill_data`) for pre-2021 sessions
 - Member directory (`_load_member_directory`) for ODT name resolution
 - ODT vote parsing integration (`_parse_odt_vote_pages`) routes ODT links to the dedicated parser
-- Pre-2015 party detection (h3 "Party:" fallback in `enrich_legislators`)
+- Pre-2015 party detection (h3 "Party:" fallback in `_extract_party_and_district()`)
+
+Static parsing helpers (all `@staticmethod`, callable without scraper instance):
+- `_extract_bill_number()` — bill number from `<h2>` or URL path
+- `_extract_sponsor()` — sponsor from portlet structure
+- `_extract_bill_title()` — 3-tier `<h4>` fallback (Pitfall #1)
+- `_extract_chamber_motion_date()` — 2-tier `<h3>` fallback (Pitfalls #1, #5)
+- `_parse_vote_categories()` — categories + new legislators from `<h2>`/`<h3>`/`<a>` scan (Pitfall #3)
+- `_extract_party_and_district()` — name/party/district from legislator page (Pitfalls #2, #2b, #5)
 
 ### odt_parser.py
 Pure-function module for parsing ODT (OpenDocument Text) vote files from 2011-2014 sessions. No I/O, no HTTP — takes bytes and context, returns `RollCall`/`IndividualVote` instances.

@@ -38,7 +38,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/conftest.py` — shared KSSession fixtures (current, historical, special)
 - `tests/test_session.py` — session URL resolution, biennium logic, uses_odt, js_data_paths (~40 tests)
 - `tests/test_scraper_pure.py` — pure functions: bill codes, datetime parsing, result derivation, JS parsing (~45 tests)
-- `tests/test_scraper_html.py` — HTML parsing with inline fixtures, pre-2015 party detection, odt_view links (~35 tests)
+- `tests/test_scraper_html.py` — HTML parsing via static methods (`_extract_bill_title`, `_extract_chamber_motion_date`, `_parse_vote_categories`, `_extract_party_and_district`), pre-2015 party detection, odt_view links (~32 tests)
 - `tests/test_models.py` — dataclass construction and immutability, VoteLink.is_odt (~8 tests)
 - `tests/test_odt_parser.py` — ODT vote parsing: XML, metadata, body text, name resolution (~47 tests)
 - `tests/test_scraper_http.py` — HTTP layer: _get() retries, error classification, cache, _fetch_many() waves, rate limiting, KLISS API (~44 tests)
