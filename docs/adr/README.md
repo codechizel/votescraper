@@ -138,6 +138,7 @@ What are the trade-offs?
 | [0072](0072-pipeline-audit-fixes.md) | Full pipeline audit — 8-biennium review and fixes |
 | [0077](0077-worktree-cwd-death-prevention.md) | Worktree CWD death prevention |
 | [0078](0078-code-audit-phase-utils-extraction.md) | Code audit — phase_utils extraction, bug fixes, efficiency |
+| [0079](0079-wcag-accessibility-alt-text.md) | WCAG 2.1 AA accessibility — alt-text and ARIA labels |
 
 ## Chronological Index
 
@@ -221,6 +222,7 @@ What are the trade-offs?
 | [0076](0076-audit-findings-resolution.md) | Audit findings resolution (A6-A18: bridge-builder, surprising votes, sensitivity, small-group, BiCM, annotations) | Accepted | 2026-03-02 |
 | [0077](0077-worktree-cwd-death-prevention.md) | Worktree CWD death prevention (update-ref, named wt-done, forwarder pattern) | Accepted | 2026-03-02 |
 | [0078](0078-code-audit-phase-utils-extraction.md) | Code audit — phase_utils extraction, bug fixes, efficiency improvements | Accepted | 2026-03-02 |
+| [0079](0079-wcag-accessibility-alt-text.md) | WCAG 2.1 AA accessibility — alt-text and ARIA labels (132 figures, 8 interactive sections, 23 report builders) | Accepted | 2026-03-02 |
 
 ## Creating a New ADR
 

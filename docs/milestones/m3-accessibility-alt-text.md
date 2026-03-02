@@ -1,9 +1,11 @@
 # M3: Accessibility — Descriptive Alt-Text
 
+**Status:** Complete (2026-03-02, ADR-0079)
+
 Add descriptive alt-text to all figure and interactive sections across the report system, targeting WCAG 2.1 AA compliance.
 
 **Roadmap item:** R25 (descriptive alt-text for all figures)
-**Estimated effort:** Phase A = 1 session, Phase B = 3-5 sessions
+**Actual effort:** 1 session (Phase A + Phase B combined)
 
 ---
 

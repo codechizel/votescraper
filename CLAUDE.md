@@ -165,7 +165,7 @@ See `.claude/rules/analysis-framework.md` for the full pipeline, report system a
 
 Key references:
 - Design docs: `analysis/design/README.md`
-- ADRs: `docs/adr/README.md` (78 decisions)
+- ADRs: `docs/adr/README.md` (79 decisions)
 - Analysis primer: `docs/analysis-primer.md` (plain-English guide)
 - How IRT works: `docs/how-irt-works.md` (general-audience explanation of anchors, identification, and MCMC divergences)
 - External validation: `docs/external-validation-results.md` (5-biennium results, all 20 correlations "strong")
@@ -214,6 +214,7 @@ Key references:
 - Report enhancement survey: `docs/report-enhancement-survey.md` (current report inventory, gap analysis, open-source tools, 26 prioritized recommendations — R1-R13 implemented ADR-0069, R14-R20 implemented ADR-0071)
 - Pipeline audit: ADR-0072 (8-biennium review, 18 findings, 6 fixes — except syntax, prediction leakage, sample threshold, logging)
 - Code audit: ADR-0078 (phase_utils extraction, 3 bug fixes, vectorized bipartite, dead code removal, ~400 lines deduped)
+- WCAG accessibility: ADR-0079 (alt-text on 132 figures, aria-labels on 8 interactive sections, 23 report builders)
 - W-NOMINATE all-biennium run: ADR-0073 (6 R compatibility bugs fixed, all 8 bienniums validated, PPC expanded to 6/8)
 - Convergence resolution: ADR-0074 (joint model off by default, 2D IRT dropped from pipeline, dynamic IRT prior fixed)
 - Name matcher district tiebreaker: ADR-0075 (Phase 14 + 14b district disambiguation, shrinkage null investigation)

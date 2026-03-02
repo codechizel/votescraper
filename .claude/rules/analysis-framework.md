@@ -25,7 +25,7 @@ Phases live in numbered subdirectories (`analysis/01_eda/`, `analysis/07_indices
 
 Each phase produces a self-contained HTML report with SPSS/APA-style tables and embedded plots:
 
-- `analysis/report.py` — Generic: `TableSection`, `FigureSection`, `TextSection`, `KeyFindingsSection`, `InteractiveTableSection`, `InteractiveSection`, `DownloadSection`, `ScrollySection`/`ScrollyStep`, `ReportBuilder`, `make_gt()`, `make_interactive_table()`, Jinja2 template + CSS (ADR-0069, ADR-0071)
+- `analysis/report.py` — Generic: `TableSection`, `FigureSection` (with `alt_text`), `TextSection`, `KeyFindingsSection`, `InteractiveTableSection`, `InteractiveSection` (with `aria_label`), `DownloadSection`, `ScrollySection`/`ScrollyStep`, `ReportBuilder`, `make_gt()`, `make_interactive_table()`, Jinja2 template + CSS (ADR-0069, ADR-0071, ADR-0079)
 - `analysis/run_context.py` — `RunContext` context manager: structured output, elapsed timing, auto-primers, `export_csv()`, `strip_leadership_suffix()` utility, `generate_run_id()`, `resolve_upstream_dir()` (ADR-0052)
 - `analysis/dashboard.py` — Pipeline dashboard index generator: sidebar nav + iframe embedding, elapsed time aggregation (ADR-0071)
 - Phase-specific report builders: `*_report.py` in each subdirectory (e.g., `analysis/01_eda/eda_report.py`)

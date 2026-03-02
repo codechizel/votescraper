@@ -408,7 +408,7 @@ Substantial new features or infrastructure.
 | 22 | **Sankey diagrams** for bill flow | Requires bill lifecycle data beyond roll calls |
 | 23 | **Ridgeline plots** for temporal ideology distributions | Alternative to existing density plots |
 | 24 | **Animated scatter** (Gapminder-style) for dynamic IRT | Engaging but complex |
-| 25 | **Descriptive alt text** for all figures | Accessibility improvement |
+| 25 | **Descriptive alt text** for all figures | **Done** — WCAG 2.1 AA: 132 alt-text + 8 aria-labels across 23 report builders (ADR-0079) |
 | 26 | **Bill outcome prediction model** | Requires bill-level features beyond roll calls |
 
 ---
