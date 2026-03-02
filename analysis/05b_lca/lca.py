@@ -59,14 +59,19 @@ if not hasattr(StepMix, "_validate_data"):
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 try:
-    from analysis.run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from analysis.run_context import RunContext, resolve_upstream_dir
 except ModuleNotFoundError:
-    from run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from run_context import RunContext, resolve_upstream_dir
 
 try:
     from analysis.lca_report import build_lca_report
 except ModuleNotFoundError:
     from lca_report import build_lca_report  # type: ignore[no-redef]
+
+try:
+    from analysis.phase_utils import load_legislators, print_header, save_fig
+except ImportError:
+    from phase_utils import load_legislators, print_header, save_fig
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -258,19 +263,6 @@ def parse_args() -> argparse.Namespace:
 # ── Utilities ────────────────────────────────────────────────────────────────
 
 
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
-
-
 def save_filtering_manifest(manifest: dict, out_dir: Path) -> None:
     path = out_dir / "filtering_manifest.json"
     with open(path, "w") as f:
@@ -318,19 +310,6 @@ def load_clustering_labels(clustering_dir: Path, chamber: str) -> dict[str, np.n
                 labels[method] = df[cluster_cols[0]].to_numpy()
 
     return labels if labels else None
-
-
-def load_metadata(data_dir: Path) -> pl.DataFrame:
-    """Load legislator CSV for party/name metadata."""
-    prefix = data_dir.name
-    legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
-    legislators = legislators.rename({"slug": "legislator_slug"}).with_columns(
-        pl.col("full_name")
-        .map_elements(strip_leadership_suffix, return_dtype=pl.Utf8)
-        .alias("full_name"),
-        pl.col("party").fill_null("Independent").replace("", "Independent").alias("party"),
-    )
-    return legislators
 
 
 # ── Phase 2: Vote Matrix Construction ────────────────────────────────────────
@@ -1124,7 +1103,7 @@ def main() -> None:
         print_header("PHASE 1: LOADING DATA")
         vm_house, vm_senate = load_vote_matrices(eda_dir)
         irt_house, irt_senate = load_irt_ideal_points(irt_dir)
-        legislators = load_metadata(data_dir)
+        legislators = load_legislators(data_dir)
 
         print(f"  Vote matrix House:  {vm_house.height} x {len(vm_house.columns) - 1}")
         print(f"  Vote matrix Senate: {vm_senate.height} x {len(vm_senate.columns) - 1}")

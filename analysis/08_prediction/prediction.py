@@ -75,6 +75,11 @@ except ModuleNotFoundError:
         plot_topic_words,
     )
 
+try:
+    from analysis.phase_utils import print_header, save_fig
+except ImportError:
+    from phase_utils import print_header, save_fig  # type: ignore[no-redef]
+
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -205,19 +210,6 @@ def parse_args() -> argparse.Namespace:
         help="Skip bill passage prediction (vote prediction only)",
     )
     return parser.parse_args()
-
-
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
 
 
 # ── Phase 1: Load Data ──────────────────────────────────────────────────────

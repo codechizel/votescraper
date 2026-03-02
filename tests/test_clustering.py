@@ -819,6 +819,7 @@ class TestCharacterizeClusters:
         summary = characterize_clusters(ip, labels, loyalty, 2, "Senate")
         for row in summary.iter_rows(named=True):
             assert row["avg_loyalty"] is not None
+            assert 0.0 <= row["avg_loyalty"] <= 1.0
 
     def test_heuristic_label_assigned(self) -> None:
         """Clusters should get heuristic labels based on composition."""

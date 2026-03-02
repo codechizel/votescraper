@@ -204,6 +204,128 @@ Full-pipeline review across all 8 bienniums (84th-91st), 17 phases each, plus cr
 
 ---
 
+## Code Audit Findings (2026-03-02)
+
+Full-codebase audit: scraper, analysis infrastructure, all 17 phases, tests, config. Prioritized by value.
+
+### Bugs
+
+#### ~~B1. Dead if/else in retry wave logic~~ — Done
+
+**Fixed.** Collapsed identical if/else branches to single `results[url] = future.result()`.
+
+#### ~~B2. Division-by-zero in IRT linking~~ — Done
+
+**Fixed.** Added `ValueError` guards in `link_mean_mean()` and `link_mean_sigma()` when denominators are zero.
+
+#### ~~B3. Duplicate `_parse_vote_tally()` call~~ — Done
+
+**Fixed.** Stored tally in sort tuple `(margin, failure, tally)` to avoid redundant re-parse.
+
+### Dead Code
+
+#### ~~D1. `_itables_init_html()` always returns empty string~~ — Done
+
+**Fixed.** Removed dead function and call site.
+
+#### ~~D2. Empty `NICKNAME_MAP` never populated~~ — Done
+
+**Fixed.** Removed constant and dead conditional block.
+
+### Refactoring: Cross-File Duplication
+
+#### ~~R1. `print_header()` + `save_fig()` duplicated in 21 phase scripts~~ — Done
+
+**Fixed.** Created `analysis/phase_utils.py` with canonical implementations. Replaced local definitions in all 21 files.
+
+#### ~~R2. `load_metadata()` duplicated in 8 phases~~ — Done
+
+**Fixed.** `load_metadata()` (tuple) and `load_legislators()` (single) in `phase_utils.py`. Replaced in pca, clustering, network, bipartite, umap, lca, irt, wnominate.
+
+#### ~~R3. `normalize_name()` duplicated in 2 phases~~ — Done
+
+**Fixed.** `normalize_name()` and `_LEADERSHIP_SUFFIX_RE` in `phase_utils.py`. Replaced in `cross_session_data.py` and `dynamic_irt_data.py`.
+
+#### ~~R4. JS key unquoting duplicated in scraper~~ — Done
+
+**Fixed.** Extracted `_parse_js_array()` static method, shared by `_parse_js_bill_data()` and `_parse_js_member_data()`.
+
+#### R5. Chamber-from-slug extraction in 3 locations — Skipped
+
+Only 2 occurrences in same file (`scraper.py`) with different case conventions. Not worth extracting.
+
+#### R6. Test helpers duplicated across test files
+
+`_make_legislators` (5 files), `_make_votes` (3 files), `_make_rollcalls` (2 files), `_make_matched` (2 files). Consolidate into `conftest.py`.
+
+#### R7. `dict(zip(col.to_list(), col.to_list()))` pattern (14+ occurrences)
+
+Clustering, bipartite, network, profiles all build lookup dicts the same way. Idiomatic enough to leave as-is.
+
+### Refactoring: Large Functions
+
+#### R8. `_parse_vote_page()` — 191 lines
+
+`scraper.py:917-1108` — Does title extraction, header parsing, vote category parsing, and record creation in one function. Split into helpers.
+
+#### R9. `enrich_legislators()` — 64 lines with 4 party-detection fallbacks
+
+`scraper.py:1172-1235` — Extract `_extract_party_and_district()`.
+
+### Efficiency
+
+#### ~~E1. O(n²) bill polarization loop in bipartite~~ — Done
+
+**Fixed.** Vectorized with numpy integer masks and dot products. Inner loop eliminated entirely.
+
+#### ~~E2. Repeated `.to_list()` on same columns~~ — Done
+
+**Fixed.** Cached `legislator_slug` list once, reused for 3 dict constructions in `plot_voting_blocs()`.
+
+#### ~~E3. DataFrame created per number format in report~~ — Done
+
+**Fixed.** Batched all format expressions into single `with_columns()` call.
+
+### Error Handling
+
+#### ~~H1. `irt_linking.py:64-87` — No KeyError guard on matched_bills~~ — Done
+
+**Fixed.** Added membership check; unmatched vote IDs are skipped and counted as dropped.
+
+#### ~~H2. `experiment_monitor.py:245` — `os.open()` unguarded~~ — Done
+
+**Fixed.** Wrapped with `try/except OSError` providing error context.
+
+#### ~~H3. `scraper.py:514` — KLISS API type assumption~~ — Done
+
+**Fixed.** Added `isinstance(data, dict)` guard; non-list/non-dict data falls through to empty list.
+
+### Tests
+
+#### T1. `@pytest.mark.slow` defined but unused
+
+Marker registered in `pyproject.toml` and `just test-fast` skips it, but no tests are actually marked. Mark long-running tests (MCMC, cross-session) for faster local iteration.
+
+#### ~~T2. Two weak assertions~~ — Done
+
+**Fixed.** `test_clustering.py`: added `0.0 <= avg_loyalty <= 1.0` range check. `test_dynamic_irt.py`: added `hasattr(model, "named_vars")` structure check.
+
+### Estimated Impact (Realized)
+
+| Category | Done | Total | Lines changed |
+|----------|------|-------|---------------|
+| Bugs (B1-B3) | 3/3 | 3 | ~15 lines fixed |
+| Dead code (D1-D2) | 2/2 | 2 | ~20 lines removed |
+| Cross-file dedup (R1-R4) | 4/4 | 7 | ~400 lines removed, `phase_utils.py` created |
+| Large functions (R8-R9) | 0/2 | 2 | Deferred |
+| Efficiency (E1-E3) | 3/3 | 3 | E1: vectorized bipartite |
+| Error handling (H1-H3) | 3/3 | 3 | Crash prevention |
+| Tests (T1-T2) | 1/2 | 2 | T1 deferred |
+
+1822 tests passing, lint clean, typecheck clean.
+
+---
+
 ## ~~Backlog~~ — All Cleared
 
 ### ~~1. External Validation Name Matcher: District Tiebreaker~~ — Done

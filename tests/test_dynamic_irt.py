@@ -511,6 +511,7 @@ class TestModelStructure:
 
         model = build_dynamic_irt_graph(small_stacked_data, "per_party")
         assert model is not None
+        assert hasattr(model, "named_vars")
 
     def test_graph_has_xi(self, small_stacked_data) -> None:
         """Model should have xi deterministic with correct dims."""

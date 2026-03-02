@@ -62,8 +62,12 @@ def extract_anchor_params(
     n_dropped = 0
 
     for m in matched_bills:
-        h_idx = house_vid_to_idx[m["house_vote_id"]]
-        s_idx = senate_vid_to_idx[m["senate_vote_id"]]
+        hvid, svid = m["house_vote_id"], m["senate_vote_id"]
+        if hvid not in house_vid_to_idx or svid not in senate_vid_to_idx:
+            n_dropped += 1
+            continue
+        h_idx = house_vid_to_idx[hvid]
+        s_idx = senate_vid_to_idx[svid]
 
         # Posterior means of bill parameters (raw, may be negative)
         a_h = float(house_idata.posterior["beta"].isel(vote=h_idx).mean())
@@ -107,7 +111,11 @@ def link_mean_mean(
     A = mean(a_ref) / mean(a_target)
     B = mean(b_ref) - A * mean(b_target)
     """
-    A = np.mean(a_ref) / np.mean(a_target)
+    denom = np.mean(a_target)
+    if denom == 0:
+        msg = "Mean-Mean linking: mean(a_target) is zero (degenerate anchor items)"
+        raise ValueError(msg)
+    A = np.mean(a_ref) / denom
     B = np.mean(b_ref) - A * np.mean(b_target)
     return float(A), float(B)
 
@@ -124,7 +132,11 @@ def link_mean_sigma(
     A = sd(b_ref) / sd(b_target)
     B = mean(b_ref) - A * mean(b_target)
     """
-    A = np.std(b_ref, ddof=1) / np.std(b_target, ddof=1)
+    denom = np.std(b_target, ddof=1)
+    if denom == 0:
+        msg = "Mean-Sigma linking: sd(b_target) is zero (degenerate anchor items)"
+        raise ValueError(msg)
+    A = np.std(b_ref, ddof=1) / denom
     B = np.mean(b_ref) - A * np.mean(b_target)
     return float(A), float(B)
 

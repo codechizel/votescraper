@@ -36,9 +36,6 @@ GOOD_CORRELATION = 0.85
 CONCERN_CORRELATION = 0.70
 OUTLIER_TOP_N = 5
 
-# Populated as edge cases are found during real matching runs.
-NICKNAME_MAP: dict[str, str] = {}
-
 # ── Name Normalization ───────────────────────────────────────────────────────
 
 _LEADERSHIP_RE = re.compile(r"\s*-\s+.*$")
@@ -250,14 +247,6 @@ def match_legislators(
         our_df = our_df.with_columns(
             pl.col("full_name")
             .map_elements(normalize_our_name, return_dtype=pl.Utf8)
-            .alias("normalized_name")
-        )
-
-    # Apply nickname map
-    if NICKNAME_MAP:
-        our_df = our_df.with_columns(
-            pl.col("normalized_name")
-            .map_elements(lambda n: NICKNAME_MAP.get(n, n), return_dtype=pl.Utf8)
             .alias("normalized_name")
         )
 

@@ -366,19 +366,21 @@ def make_interactive_table(
         msg = f"make_interactive_table expects a polars DataFrame, got {type(df).__name__}"
         raise TypeError(msg)
 
-    # Apply number formatting by creating string columns
+    # Apply number formatting by creating string columns (batched)
     formatted = df
     if number_formats:
-        for col_name, fmt in number_formats.items():
-            if col_name in formatted.columns:
-                formatted = formatted.with_columns(
-                    pl.col(col_name)
-                    .map_elements(
-                        lambda v, f=fmt: f"{v:{f}}" if v is not None else "",
-                        return_dtype=pl.String,
-                    )
-                    .alias(col_name)
-                )
+        fmt_exprs = [
+            pl.col(col_name)
+            .map_elements(
+                lambda v, f=fmt: f"{v:{f}}" if v is not None else "",
+                return_dtype=pl.String,
+            )
+            .alias(col_name)
+            for col_name, fmt in number_formats.items()
+            if col_name in formatted.columns
+        ]
+        if fmt_exprs:
+            formatted = formatted.with_columns(fmt_exprs)
 
     # Rename columns for display
     if column_labels:
@@ -439,16 +441,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>"""
 
 
-def _itables_init_html() -> str:
-    """Return ITables offline init HTML for injection into <head>.
-
-    With ITables >= 2.6 and connected=False, each to_html_datatable() call
-    embeds the DataTables JS inline. This helper returns an empty string since
-    no separate initialization is needed — the JS is bundled per-table.
-    """
-    return ""
-
-
 # ── ReportBuilder ─────────────────────────────────────────────────────────────
 
 
@@ -496,10 +488,8 @@ class ReportBuilder:
         # Key findings rendered above the TOC
         key_findings_html = self._key_findings.render() if self._key_findings else ""
 
-        # Inject ITables init JS if any InteractiveTableSection is present
-        has_itables = any(isinstance(s, InteractiveTableSection) for _, s in self._sections)
         has_scrolly = any(isinstance(s, ScrollySection) for _, s in self._sections)
-        extra_head = _itables_init_html() if has_itables else ""
+        extra_head = ""
         if has_scrolly:
             extra_head += _scrolly_init_js()
 

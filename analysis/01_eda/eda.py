@@ -40,6 +40,11 @@ except ModuleNotFoundError:
     from run_context import RunContext, strip_leadership_suffix
 
 try:
+    from analysis.phase_utils import print_header, save_fig
+except ModuleNotFoundError:
+    from phase_utils import print_header, save_fig
+
+try:
     from analysis.eda_report import build_eda_report
 except ModuleNotFoundError:
     from eda_report import build_eda_report  # type: ignore[no-redef]
@@ -184,21 +189,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data-dir", default=None, help="Override data directory path")
     parser.add_argument("--run-id", default=None, help="Run ID for grouped pipeline output")
     return parser.parse_args()
-
-
-def print_header(title: str) -> None:
-    """Print a visually distinct section header to stdout."""
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    """Save a matplotlib figure to disk and close it to free memory."""
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
 
 
 def numpy_matrix_to_polars(mat: np.ndarray, slugs: list[str]) -> pl.DataFrame:

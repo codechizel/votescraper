@@ -44,6 +44,11 @@ except ModuleNotFoundError:
     from run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
 
 try:
+    from analysis.phase_utils import print_header, save_fig
+except ModuleNotFoundError:
+    from phase_utils import print_header, save_fig
+
+try:
     from analysis.mca_report import build_mca_report
 except ModuleNotFoundError:
     from mca_report import build_mca_report  # type: ignore[no-redef]
@@ -175,19 +180,6 @@ def parse_args() -> argparse.Namespace:
         help="Inertia correction method",
     )
     return parser.parse_args()
-
-
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
 
 
 # ── Phase 1: Load Data ──────────────────────────────────────────────────────

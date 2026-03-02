@@ -86,6 +86,11 @@ except ModuleNotFoundError:
     )
 
 try:
+    from analysis.phase_utils import print_header, save_fig
+except ModuleNotFoundError:
+    from phase_utils import print_header, save_fig  # type: ignore[no-redef]
+
+try:
     from analysis.synthesis_data import (
         _read_parquet_safe,
         build_legislator_df,
@@ -213,18 +218,6 @@ def parse_args() -> argparse.Namespace:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-
-
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
 
 
 def _majority_party(leg_df: pl.DataFrame) -> str | None:

@@ -43,6 +43,11 @@ except ModuleNotFoundError:
     from run_context import RunContext, strip_leadership_suffix
 
 try:
+    from analysis.phase_utils import print_header, save_fig
+except ModuleNotFoundError:
+    from phase_utils import print_header, save_fig  # type: ignore[no-redef]
+
+try:
     from analysis.tsa_report import build_tsa_report
 except ModuleNotFoundError:
     from tsa_report import build_tsa_report  # type: ignore[no-redef]
@@ -1020,20 +1025,6 @@ def run_r_tsa(
 # ── Plotting ─────────────────────────────────────────────────────────────────
 
 
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    """Save a matplotlib figure and close it."""
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
-
-
-def print_header(title: str) -> None:
-    """Print a section header."""
-    print(f"\n{'=' * 60}")
-    print(f"  {title}")
-    print(f"{'=' * 60}")
-
-
 def plot_party_drift(
     party_traj: pl.DataFrame,
     chamber: str,
@@ -1632,13 +1623,9 @@ def main() -> None:
                         sensitivity = run_penalty_sensitivity(rep_weekly["mean_rice"].to_numpy())
                         plot_penalty_sensitivity(sensitivity, chamber, ctx.plots_dir)
                         cp_results["sensitivity"] = sensitivity
-                        max_cps = max(
-                            s["n_changepoints"] for s in sensitivity
-                        )
+                        max_cps = max(s["n_changepoints"] for s in sensitivity)
                         max_pen = next(
-                            s["penalty"]
-                            for s in sensitivity
-                            if s["n_changepoints"] == max_cps
+                            s["penalty"] for s in sensitivity if s["n_changepoints"] == max_cps
                         )
                         print(
                             f"  Penalty sweep [1-50]: max {max_cps}"

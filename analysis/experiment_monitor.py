@@ -242,7 +242,11 @@ class ExperimentLifecycle:
         STATUS_DIR.mkdir(parents=True, exist_ok=True)
 
         # PID file with advisory lock
-        self._pid_fd = os.open(str(PID_PATH), os.O_CREAT | os.O_WRONLY | os.O_TRUNC)
+        try:
+            self._pid_fd = os.open(str(PID_PATH), os.O_CREAT | os.O_WRONLY | os.O_TRUNC)
+        except OSError as e:
+            msg = f"Failed to create PID file {PID_PATH}: {e}"
+            raise RuntimeError(msg) from e
         try:
             fcntl.flock(self._pid_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:

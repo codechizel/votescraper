@@ -5,13 +5,17 @@ comparison. No I/O, no plotting — all functions take DataFrames in, return
 DataFrames or dicts out.
 """
 
-import re
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 
 import numpy as np
 import polars as pl
 from scipy import stats
+
+try:
+    from analysis.phase_utils import normalize_name
+except ModuleNotFoundError:
+    from phase_utils import normalize_name  # type: ignore[no-redef]
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -49,22 +53,7 @@ SIGN_ARBITRARY_METRICS: set[str] = {"PC1"}
 """Metrics whose sign is conventional (orient_pc1 normalizes, but edge cases can flip).
 Correlations use abs() so a sign flip doesn't masquerade as instability."""
 
-_SUFFIX_RE = re.compile(r"\s*-\s+.*$")
-"""Matches leadership suffixes like ' - House Minority Caucus Chair'."""
-
-
 # ── Legislator Matching ──────────────────────────────────────────────────────
-
-
-def normalize_name(name: str) -> str:
-    """Normalize a legislator name for cross-session matching.
-
-    Lowercases, strips whitespace, and removes leadership suffixes
-    (e.g., ``' - House Minority Caucus Chair'``).
-    """
-    name = name.strip().lower()
-    name = _SUFFIX_RE.sub("", name)
-    return name
 
 
 def _normalize_slug_col(df: pl.DataFrame) -> pl.DataFrame:

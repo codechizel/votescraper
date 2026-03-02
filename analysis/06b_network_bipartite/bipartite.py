@@ -49,14 +49,19 @@ from sklearn.metrics import adjusted_rand_score, cohen_kappa_score, normalized_m
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 try:
-    from analysis.run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from analysis.run_context import RunContext, resolve_upstream_dir
 except ModuleNotFoundError:
-    from run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from run_context import RunContext, resolve_upstream_dir
 
 try:
     from analysis.bipartite_report import build_bipartite_report
 except ModuleNotFoundError:
     from bipartite_report import build_bipartite_report  # type: ignore[no-redef]
+
+try:
+    from analysis.phase_utils import load_metadata, print_header, save_fig
+except ImportError:
+    from phase_utils import load_metadata, print_header, save_fig
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -249,19 +254,6 @@ def parse_args() -> argparse.Namespace:
 # ── Utilities ────────────────────────────────────────────────────────────────
 
 
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
-
-
 def save_filtering_manifest(manifest: dict, out_dir: Path) -> None:
     path = out_dir / "filtering_manifest.json"
     with open(path, "w") as f:
@@ -291,20 +283,6 @@ def load_bill_params(irt_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
     house = pl.read_parquet(irt_dir / "data" / "bill_params_house.parquet")
     senate = pl.read_parquet(irt_dir / "data" / "bill_params_senate.parquet")
     return house, senate
-
-
-def load_metadata(data_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Load rollcall and legislator CSVs."""
-    prefix = data_dir.name
-    rollcalls = pl.read_csv(data_dir / f"{prefix}_rollcalls.csv")
-    legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
-    legislators = legislators.with_columns(
-        pl.col("full_name")
-        .map_elements(strip_leadership_suffix, return_dtype=pl.Utf8)
-        .alias("full_name"),
-        pl.col("party").fill_null("Independent").replace("", "Independent").alias("party"),
-    )
-    return rollcalls, legislators
 
 
 # ── Phase 2: Bipartite Graph Construction ─────────────────────────────────
@@ -480,36 +458,34 @@ def compute_bill_polarization(
             }
 
     vote_arr = vote_matrix.select(vote_ids).to_numpy().astype(float)
+
+    # Vectorized party-based tallies using integer masks
+    parties = np.array([party_map.get(s, "") for s in slugs])
+    is_r = (parties == "Republican").astype(np.int8)
+    is_d = (parties == "Democrat").astype(np.int8)
+
+    # voted = not NaN; yea = 1.0; cast to int for arithmetic dot product
+    voted = (~np.isnan(vote_arr)).astype(np.int8)
+    yea = (np.nan_to_num(vote_arr, nan=0.0) == 1.0).astype(np.int8)
+
+    # Per-bill tallies via dot products (sum along legislator axis)
+    r_total = is_r @ voted  # shape (n_bills,)
+    r_yea = is_r @ (voted & yea)
+    d_total = is_d @ voted
+    d_yea = is_d @ (voted & yea)
+
+    total_voters = r_total + d_total
+    mask = total_voters >= min_voters
+
+    # Safe division (filtered below, so zeros don't matter)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        pct_r = np.where(r_total > 0, r_yea / r_total, 0.0)
+        pct_d = np.where(d_total > 0, d_yea / d_total, 0.0)
+    polarization = np.abs(pct_r - pct_d)
+
     rows: list[dict] = []
-
-    for j, vid in enumerate(vote_ids):
-        r_yea = 0
-        r_total = 0
-        d_yea = 0
-        d_total = 0
-
-        for i, slug in enumerate(slugs):
-            v = vote_arr[i, j]
-            if np.isnan(v):
-                continue
-            party = party_map.get(slug, "")
-            if party == "Republican":
-                r_total += 1
-                if v == 1.0:
-                    r_yea += 1
-            elif party == "Democrat":
-                d_total += 1
-                if v == 1.0:
-                    d_yea += 1
-
-        total_voters = r_total + d_total
-        if total_voters < min_voters:
-            continue
-
-        pct_r = r_yea / r_total if r_total > 0 else 0.0
-        pct_d = d_yea / d_total if d_total > 0 else 0.0
-        polarization = abs(pct_r - pct_d)
-
+    for j in np.where(mask)[0]:
+        vid = vote_ids[j]
         bp = bp_dict.get(vid, {})
         rc = rc_dict.get(vid, {})
         bill_number = rc.get("bill_number", bp.get("bill_number", ""))
@@ -517,11 +493,11 @@ def compute_bill_polarization(
         rows.append(
             {
                 "vote_id": vid,
-                "polarization": round(polarization, 4),
-                "pct_r_yea": round(pct_r, 4),
-                "pct_d_yea": round(pct_d, 4),
-                "n_r": r_total,
-                "n_d": d_total,
+                "polarization": round(float(polarization[j]), 4),
+                "pct_r_yea": round(float(pct_r[j]), 4),
+                "pct_d_yea": round(float(pct_d[j]), 4),
+                "n_r": int(r_total[j]),
+                "n_d": int(d_total[j]),
                 "bill_number": bill_number,
                 "short_title": rc.get("short_title", ""),
                 "beta_mean": bp.get("beta_mean", None),

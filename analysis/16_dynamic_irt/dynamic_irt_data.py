@@ -5,11 +5,15 @@ stacking across bienniums, and bridge coverage analysis.  No I/O, no plotting
 — all functions take DataFrames/dicts in and return DataFrames/dicts out.
 """
 
-import re
 from pathlib import Path
 
 import numpy as np
 import polars as pl
+
+try:
+    from analysis.phase_utils import normalize_name
+except ModuleNotFoundError:
+    from phase_utils import normalize_name  # type: ignore[no-redef]
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -45,24 +49,6 @@ LABEL_TO_SESSION: dict[str, str] = dict(zip(BIENNIUM_LABELS, BIENNIUM_SESSIONS))
 
 MIN_BRIDGE_OVERLAP: int = 5
 """Minimum shared legislators between adjacent bienniums for a valid bridge."""
-
-_SUFFIX_RE = re.compile(r"\s*-\s+.*$")
-"""Matches leadership suffixes like ' - House Minority Caucus Chair'."""
-
-
-# ── Name Normalization ───────────────────────────────────────────────────────
-
-
-def normalize_name(name: str) -> str:
-    """Normalize a legislator name for cross-biennium matching.
-
-    Lowercases, strips whitespace, and removes leadership suffixes.
-    Identical to cross_session_data.normalize_name.
-    """
-    name = name.strip().lower()
-    name = _SUFFIX_RE.sub("", name)
-    return name
-
 
 # ── Global Legislator Roster ────────────────────────────────────────────────
 

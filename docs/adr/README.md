@@ -137,6 +137,7 @@ What are the trade-offs?
 | [0071](0071-tier-3-report-enhancements.md) | Tier 3 report enhancements (R14-R20) |
 | [0072](0072-pipeline-audit-fixes.md) | Full pipeline audit — 8-biennium review and fixes |
 | [0077](0077-worktree-cwd-death-prevention.md) | Worktree CWD death prevention |
+| [0078](0078-code-audit-phase-utils-extraction.md) | Code audit — phase_utils extraction, bug fixes, efficiency |
 
 ## Chronological Index
 
@@ -219,6 +220,7 @@ What are the trade-offs?
 | [0075](0075-name-matcher-district-tiebreaker.md) | Name matcher district tiebreaker + shrinkage null investigation (3 incorrect matches fixed, 6 tests) | Accepted | 2026-03-02 |
 | [0076](0076-audit-findings-resolution.md) | Audit findings resolution (A6-A18: bridge-builder, surprising votes, sensitivity, small-group, BiCM, annotations) | Accepted | 2026-03-02 |
 | [0077](0077-worktree-cwd-death-prevention.md) | Worktree CWD death prevention (update-ref, named wt-done, forwarder pattern) | Accepted | 2026-03-02 |
+| [0078](0078-code-audit-phase-utils-extraction.md) | Code audit — phase_utils extraction, bug fixes, efficiency improvements | Accepted | 2026-03-02 |
 
 ## Creating a New ADR
 

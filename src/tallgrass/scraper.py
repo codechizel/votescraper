@@ -347,12 +347,7 @@ class KSVoteScraper:
                         unit="page",
                     ):
                         url = future_to_url[future]
-                        result = future.result()
-                        if result.ok or result.error_type not in _RETRIABLE:
-                            results[url] = result
-                        else:
-                            # Keep the latest failure info
-                            results[url] = result
+                        results[url] = future.result()
             finally:
                 self.delay = self._normal_delay
 
@@ -443,28 +438,30 @@ class KSVoteScraper:
         return bill_urls
 
     @staticmethod
-    def _parse_js_bill_data(js_content: str) -> list[str]:
-        """Extract bill URLs from a ``measures_data = [...]`` JS assignment.
+    @staticmethod
+    def _parse_js_array(js_content: str) -> list[dict]:
+        """Extract the first JSON array from JS source, quoting bare keys.
 
-        Finds the JSON array between the first ``[`` and last ``]``, parses it,
-        and returns ``measures_url`` values that match the bill URL pattern.
-
-        Some sessions (2017-18 and earlier) use JavaScript object literal syntax
-        with unquoted keys (``measures_url:`` instead of ``"measures_url":``) which
-        is not valid JSON.  We quote bare keys before parsing.
+        Finds ``[...]`` in the source, quotes unquoted JS object-literal keys
+        (``measures_url:`` → ``"measures_url":``), and parses as JSON.
+        Returns empty list on failure.
         """
         start = js_content.find("[")
         end = js_content.rfind("]")
         if start == -1 or end == -1 or end <= start:
             return []
         array_text = js_content[start : end + 1]
-        # Quote unquoted JS object keys: `  measures_url:` → `  "measures_url":`
         array_text = re.sub(r"(?m)^(\s+)(\w+):", r'\1"\2":', array_text)
         try:
             data = json.loads(array_text)
         except ValueError:
             return []
+        return data if isinstance(data, list) else []
 
+    @staticmethod
+    def _parse_js_bill_data(js_content: str) -> list[str]:
+        """Extract bill URLs from a ``measures_data = [...]`` JS assignment."""
+        data = KSVoteScraper._parse_js_array(js_content)
         urls: list[str] = []
         for entry in data:
             url = entry.get("measures_url", "") if isinstance(entry, dict) else ""
@@ -511,7 +508,12 @@ class KSVoteScraper:
         # and capture metadata (short_title, sponsor) for each
         bills_with_votes = set()
         bill_metadata: dict[str, dict] = {}
-        content = data if isinstance(data, list) else data.get("content", [])
+        if isinstance(data, list):
+            content = data
+        elif isinstance(data, dict):
+            content = data.get("content", [])
+        else:
+            content = []
         for bill in content:
             bill_no = bill.get("BILLNO", "")
             history = bill.get("HISTORY", [])
@@ -753,24 +755,8 @@ class KSVoteScraper:
 
     @staticmethod
     def _parse_js_member_data(js_content: str) -> list[tuple[str, str]]:
-        """Extract (slug, last_name) pairs from a JS member data file.
-
-        The JS file assigns a ``*_member_data`` variable containing a JSON-like
-        array of member objects with ``members_url`` and ``last_name`` fields.
-        Keys may be unquoted (JS object literal syntax).
-        """
-        start = js_content.find("[")
-        end = js_content.rfind("]")
-        if start == -1 or end == -1 or end <= start:
-            return []
-        array_text = js_content[start : end + 1]
-        # Quote unquoted JS object keys
-        array_text = re.sub(r"(?m)^(\s+)(\w+):", r'\1"\2":', array_text)
-        try:
-            data = json.loads(array_text)
-        except ValueError:
-            return []
-
+        """Extract (slug, last_name) pairs from a JS member data file."""
+        data = KSVoteScraper._parse_js_array(js_content)
         members: list[tuple[str, str]] = []
         for entry in data:
             if not isinstance(entry, dict):
@@ -1277,10 +1263,10 @@ class KSVoteScraper:
         successful = total_vote_pages - len(self.failures)
 
         # Parse tallies and sort by margin (closest first), unparseable last
-        rows: list[tuple[int | None, FetchFailure]] = []
+        rows: list[tuple[int | None, FetchFailure, tuple[int, int, int] | None]] = []
         for f in self.failures:
             tally = self._parse_vote_tally(f.vote_text)
-            rows.append((tally[2] if tally else None, f))
+            rows.append((tally[2] if tally else None, f, tally))
         rows.sort(key=lambda r: (r[0] is None, r[0] or 0))
 
         lines = [
@@ -1296,8 +1282,7 @@ class KSVoteScraper:
             "|------|-------|--------|-------|-----|",
         ]
 
-        for margin, f in rows:
-            tally = self._parse_vote_tally(f.vote_text)
+        for margin, f, tally in rows:
             if tally:
                 yea, nay, mg = tally
                 tally_str = f"{yea}-{nay}"

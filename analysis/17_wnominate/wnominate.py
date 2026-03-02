@@ -38,9 +38,14 @@ import polars as pl
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 try:
-    from analysis.run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from analysis.run_context import RunContext, resolve_upstream_dir
 except ModuleNotFoundError:
-    from run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from run_context import RunContext, resolve_upstream_dir
+
+try:
+    from analysis.phase_utils import load_legislators, print_header, save_fig
+except ModuleNotFoundError:
+    from phase_utils import load_legislators, print_header, save_fig  # type: ignore[no-redef]
 
 try:
     from analysis.wnominate_report import build_wnominate_report
@@ -206,22 +211,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
-
-
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
-
-
 # ── Data Loading ─────────────────────────────────────────────────────────────
 
 
@@ -252,22 +241,6 @@ def load_irt_ideal_points(
     senate = pl.read_parquet(senate_path) if senate_path.exists() else None
 
     return house, senate
-
-
-def load_metadata(data_dir: Path) -> pl.DataFrame:
-    """Load legislator CSV for metadata enrichment."""
-    prefix = data_dir.name
-    legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
-    # Rename slug → legislator_slug to match analysis convention (ADR-0066)
-    if "slug" in legislators.columns and "legislator_slug" not in legislators.columns:
-        legislators = legislators.rename({"slug": "legislator_slug"})
-    legislators = legislators.with_columns(
-        pl.col("full_name")
-        .map_elements(strip_leadership_suffix, return_dtype=pl.Utf8)
-        .alias("full_name"),
-        pl.col("party").fill_null("Independent").replace("", "Independent").alias("party"),
-    )
-    return legislators
 
 
 # ── R Subprocess ─────────────────────────────────────────────────────────────
@@ -770,7 +743,7 @@ def main() -> None:
         pca_house, pca_senate = load_pca_scores(pca_dir)
         irt_house, irt_senate = load_irt_ideal_points(irt_dir)
 
-        legislators = load_metadata(ks.data_dir)
+        legislators = load_legislators(ks.data_dir)
 
         # ── Process chambers ──
         all_results: dict[str, dict] = {}

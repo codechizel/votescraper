@@ -42,6 +42,11 @@ try:
 except ModuleNotFoundError:
     from indices_report import build_indices_report  # type: ignore[no-redef]
 
+try:
+    from analysis.phase_utils import print_header, save_fig
+except ImportError:
+    from phase_utils import print_header, save_fig  # type: ignore[no-redef]
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 INDICES_PRIMER = """\
@@ -199,19 +204,6 @@ def parse_args() -> argparse.Namespace:
         help="Skip sensitivity analysis on EDA-filtered data",
     )
     return parser.parse_args()
-
-
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
 
 
 def _resolve_results_name(session: str) -> str:

@@ -45,14 +45,19 @@ from sklearn.preprocessing import StandardScaler
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 try:
-    from analysis.run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from analysis.run_context import RunContext, resolve_upstream_dir
 except ModuleNotFoundError:
-    from run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from run_context import RunContext, resolve_upstream_dir
 
 try:
     from analysis.clustering_report import build_clustering_report
 except ModuleNotFoundError:
     from clustering_report import build_clustering_report  # type: ignore[no-redef]
+
+try:
+    from analysis.phase_utils import load_metadata, print_header, save_fig
+except ImportError:
+    from phase_utils import load_metadata, print_header, save_fig
 
 # ── Primer ───────────────────────────────────────────────────────────────────
 
@@ -291,19 +296,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
-
-
 # ── Phase 1: Load Data ──────────────────────────────────────────────────────
 
 
@@ -333,20 +325,6 @@ def load_pca_scores(pca_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
     house = pl.read_parquet(pca_dir / "data" / "pc_scores_house.parquet")
     senate = pl.read_parquet(pca_dir / "data" / "pc_scores_senate.parquet")
     return house, senate
-
-
-def load_metadata(data_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Load rollcall and legislator CSVs for metadata enrichment."""
-    prefix = data_dir.name
-    rollcalls = pl.read_csv(data_dir / f"{prefix}_rollcalls.csv")
-    legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
-    legislators = legislators.with_columns(
-        pl.col("full_name")
-        .map_elements(strip_leadership_suffix, return_dtype=pl.Utf8)
-        .alias("full_name"),
-        pl.col("party").fill_null("Independent").replace("", "Independent").alias("party"),
-    )
-    return rollcalls, legislators
 
 
 # ── Phase 2: Party Loyalty ───────────────────────────────────────────────────
@@ -659,24 +637,10 @@ def plot_voting_blocs(
     """
     leaf_order = leaves_list(Z)
 
-    party_map = dict(
-        zip(
-            ideal_points["legislator_slug"].to_list(),
-            ideal_points["party"].to_list(),
-        )
-    )
-    name_map = dict(
-        zip(
-            ideal_points["legislator_slug"].to_list(),
-            ideal_points["full_name"].to_list(),
-        )
-    )
-    ip_map = dict(
-        zip(
-            ideal_points["legislator_slug"].to_list(),
-            ideal_points["xi_mean"].to_list(),
-        )
-    )
+    ip_slugs = ideal_points["legislator_slug"].to_list()
+    party_map = dict(zip(ip_slugs, ideal_points["party"].to_list()))
+    name_map = dict(zip(ip_slugs, ideal_points["full_name"].to_list()))
+    ip_map = dict(zip(ip_slugs, ideal_points["xi_mean"].to_list()))
 
     # Build ordered lists from leaf order
     ordered_slugs = [slugs[i] for i in leaf_order]

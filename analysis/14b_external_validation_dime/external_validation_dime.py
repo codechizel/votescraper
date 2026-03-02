@@ -41,6 +41,11 @@ except ModuleNotFoundError:
     from run_context import RunContext, resolve_upstream_dir
 
 try:
+    from analysis.phase_utils import print_header, save_fig
+except ModuleNotFoundError:
+    from phase_utils import print_header, save_fig  # type: ignore[no-redef]
+
+try:
     from analysis.external_validation_dime_report import build_dime_report
 except ModuleNotFoundError:
     from external_validation_dime_report import (
@@ -182,19 +187,6 @@ def parse_args() -> argparse.Namespace:
         help=f"Minimum unique donors for reliable CFscore (default: {MIN_GIVERS})",
     )
     return parser.parse_args()
-
-
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
 
 
 # ── IRT Loading ──────────────────────────────────────────────────────────────

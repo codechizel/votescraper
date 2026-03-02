@@ -40,9 +40,14 @@ from sklearn.manifold import trustworthiness as sklearn_trustworthiness
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 try:
-    from analysis.run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from analysis.run_context import RunContext, resolve_upstream_dir
 except ModuleNotFoundError:
-    from run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from run_context import RunContext, resolve_upstream_dir
+
+try:
+    from analysis.phase_utils import load_legislators, print_header, save_fig
+except ModuleNotFoundError:
+    from phase_utils import load_legislators, print_header, save_fig
 
 try:
     from analysis.umap_report import build_umap_report
@@ -216,19 +221,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
-
-
 def find_irt_column(df: pl.DataFrame) -> str | None:
     """Find the IRT ideal point column name in a DataFrame.
 
@@ -253,19 +245,6 @@ def load_eda_matrices(
     house = pl.read_parquet(eda_dir / "data" / "vote_matrix_house_filtered.parquet")
     senate = pl.read_parquet(eda_dir / "data" / "vote_matrix_senate_filtered.parquet")
     return house, senate
-
-
-def load_metadata(data_dir: Path) -> pl.DataFrame:
-    """Load legislator CSV for metadata enrichment."""
-    prefix = data_dir.name
-    legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
-    legislators = legislators.with_columns(
-        pl.col("full_name")
-        .map_elements(strip_leadership_suffix, return_dtype=pl.Utf8)
-        .alias("full_name"),
-        pl.col("party").fill_null("Independent").replace("", "Independent").alias("party"),
-    )
-    return legislators
 
 
 def load_pca_scores(pca_dir: Path) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
@@ -968,7 +947,7 @@ def main() -> None:
         # ── Phase 1: Load data ──
         print_header("LOADING DATA")
         house_matrix, senate_matrix = load_eda_matrices(eda_dir)
-        legislators = load_metadata(data_dir)
+        legislators = load_legislators(data_dir)
 
         print(f"  House filtered: {house_matrix.height} x {len(house_matrix.columns) - 1}")
         print(f"  Senate filtered: {senate_matrix.height} x {len(senate_matrix.columns) - 1}")

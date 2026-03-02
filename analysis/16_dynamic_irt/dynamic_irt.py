@@ -49,6 +49,11 @@ except ModuleNotFoundError:
     from run_context import RunContext, resolve_upstream_dir
 
 try:
+    from analysis.phase_utils import print_header, save_fig
+except ModuleNotFoundError:
+    from phase_utils import print_header, save_fig  # type: ignore[no-redef]
+
+try:
     from analysis.dynamic_irt_report import build_dynamic_irt_report
 except ModuleNotFoundError:
     from dynamic_irt_report import build_dynamic_irt_report  # type: ignore[no-redef]
@@ -284,8 +289,11 @@ def build_dynamic_irt_graph(
         # --- Non-centered random walk for ideal points ---
         if xi_init_mu is not None:
             xi_init = pm.Normal(
-                "xi_init", mu=xi_init_mu, sigma=XI_INIT_PRIOR_SIGMA,
-                shape=n_leg, dims="legislator",
+                "xi_init",
+                mu=xi_init_mu,
+                sigma=XI_INIT_PRIOR_SIGMA,
+                shape=n_leg,
+                dims="legislator",
             )
         else:
             xi_init = pm.Normal("xi_init", mu=0, sigma=1, shape=n_leg, dims="legislator")
@@ -840,12 +848,6 @@ def check_convergence(
 # ── Plotting ─────────────────────────────────────────────────────────────────
 
 
-def save_fig(fig: plt.Figure, path: Path) -> None:
-    """Save figure and close to free memory."""
-    fig.savefig(path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-
-
 def plot_polarization_trend(
     trajectories: pl.DataFrame,
     out_path: Path,
@@ -1228,13 +1230,6 @@ def parse_args() -> argparse.Namespace:
         help="Run ID for upstream data resolution",
     )
     return parser.parse_args()
-
-
-def print_header(title: str) -> None:
-    """Print a section header."""
-    print(f"\n{'═' * 72}")
-    print(f"  {title}")
-    print(f"{'═' * 72}")
 
 
 def main() -> None:

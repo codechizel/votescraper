@@ -40,9 +40,14 @@ from scipy import stats
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 try:
-    from analysis.run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from analysis.run_context import RunContext, resolve_upstream_dir
 except ModuleNotFoundError:
-    from run_context import RunContext, resolve_upstream_dir, strip_leadership_suffix
+    from run_context import RunContext, resolve_upstream_dir
+
+try:
+    from analysis.phase_utils import load_metadata, print_header, save_fig
+except ModuleNotFoundError:
+    from phase_utils import load_metadata, print_header, save_fig
 
 try:
     from analysis.irt_report import build_irt_report
@@ -257,19 +262,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def print_header(title: str) -> None:
-    width = 80
-    print(f"\n{'=' * width}")
-    print(f"  {title}")
-    print(f"{'=' * width}")
-
-
-def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
-    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
-
-
 # ── Phase 1: Load Data ──────────────────────────────────────────────────────
 
 
@@ -288,22 +280,6 @@ def load_pca_scores(pca_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
     house = pl.read_parquet(pca_dir / "data" / "pc_scores_house.parquet")
     senate = pl.read_parquet(pca_dir / "data" / "pc_scores_senate.parquet")
     return house, senate
-
-
-def load_metadata(data_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Load rollcall and legislator CSVs for metadata enrichment."""
-    prefix = data_dir.name
-    rollcalls = pl.read_csv(data_dir / f"{prefix}_rollcalls.csv")
-    legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
-    # Strip leadership suffixes (" - President of the Senate" etc.)
-    # Fill empty/null party with "Independent" (e.g. Dennis Pyle in 89th)
-    legislators = legislators.with_columns(
-        pl.col("full_name")
-        .map_elements(strip_leadership_suffix, return_dtype=pl.Utf8)
-        .alias("full_name"),
-        pl.col("party").fill_null("Independent").replace("", "Independent").alias("party"),
-    )
-    return rollcalls, legislators
 
 
 # ── Joint Cross-Chamber Functions ───────────────────────────────────────────
