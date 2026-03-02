@@ -25,11 +25,26 @@
 | `ROLLCALL_YEA` | 1 | pscl convention: 1 = Yea |
 | `ROLLCALL_NAY` | 6 | pscl convention: 6 = Nay |
 | `ROLLCALL_MISSING` | 9 | pscl convention: 9 = Missing/Not Voting |
+| `ROLLCALL_NOT_IN_LEGIS` | NA | Must differ from `ROLLCALL_MISSING` to avoid pscl "codes not unique" error (ADR-0073) |
 | `WNOMINATE_DIMS` | 2 | Standard 2D estimation. Dim 1 dominates; dim 2 is diagnostic. |
 | `MIN_LEGISLATORS` | 10 | Chamber must have ≥10 legislators to run. Safety guard. |
 | `MIN_VOTES` | 20 | Passed to R: legislators with <20 votes excluded by W-NOMINATE. |
 | `LOP_THRESHOLD` | 0.025 | Lopsided vote filter: votes with <2.5% minority excluded. Matches our EDA filter. |
 | `PARTY_COLORS` | R=#E81B23, D=#0015BC, I=#999999 | Consistent with all prior phases. |
+
+## R Compatibility Notes (ADR-0073)
+
+Discovered during all-biennium production run (84th-91st). These are version-dependent behaviors in the R packages:
+
+1. **`notInLegis` must be unique.** pscl's `rollcall()` requires all code values to be distinct. Setting `notInLegis=NA` avoids collision with `missing=9`.
+
+2. **Polarity must be a vector of length `dims`.** For 2D W-NOMINATE and OC, `polarity` must be `rep(idx, dims)`, not a scalar. Scalar works for 1D only.
+
+3. **OC `legislators` is a matrix, not a data.frame** (oc 1.2.1). Use `oc_leg[, "coord1D"]` column indexing, not `$coord1D` list-style access.
+
+4. **R CSV "NA" strings.** R's `write.csv()` writes `NA` for missing values. Polars requires `null_values="NA"` to parse these correctly.
+
+5. **Fit statistics as strings.** R's `jsonlite::write_json()` serializes numeric values that may be read back as strings. Always cast to float with NA-safe conversion.
 
 ## Methodological Choices
 

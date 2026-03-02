@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-02 (full pipeline audit across all 8 bienniums — 18 findings catalogued)
+**Last updated:** 2026-03-02 (all-biennium W-NOMINATE + PPC runs, R compatibility fixes — ADR-0073)
 
 ---
 
@@ -50,13 +50,16 @@ What's been done, what's next, and what's on the horizon for the Tallgrass analy
 | 4b | 2D Bayesian IRT (Pipeline, Experimental) | 2026-02-26 (experiment), 2026-02-28 (pipeline) | M2PL model with PLT identification to resolve Tyson paradox. Pipeline phase 04b: both chambers, nutpie sampling, RunContext/HTML report, relaxed convergence thresholds. Deep dive: `docs/2d-irt-deep-dive.md`, design: `analysis/design/irt_2d.md`, ADR-0046, ADR-0054. |
 | 15 | Time Series Analysis | 2026-02-28 | Rolling-window PCA ideological drift + PELT changepoint detection on weekly Rice. Per-chamber analysis, penalty sensitivity, veto override cross-reference. Uses `ruptures` library. Deep dive: `docs/tsa-deep-dive.md`, design: `analysis/design/tsa.md`, ADR-0057. |
 | 16 | Dynamic Ideal Points (Martin-Quinn) | 2026-02-28 | State-space IRT across 8 bienniums (84th-91st). Non-centered random walk with per-party evolution SD. PyMC + nutpie. Conversion vs. replacement polarization decomposition. Bridge coverage analysis. Post-hoc sign correction via static IRT correlation (ADR-0068). 63 tests. Deep dive: `docs/dynamic-ideal-points-deep-dive.md`, design: `analysis/design/dynamic_irt.md`, ADR-0058. |
-| 17 | W-NOMINATE + OC Validation | 2026-02-28 | Field-standard legislative scaling comparison. W-NOMINATE (Poole & Rosenthal) + Optimal Classification (Poole 2000) via R subprocess. 3×3 correlation matrix (IRT/WNOM/OC), per-chamber scatter plots, 2D W-NOMINATE space, eigenvalue scree, fit statistics. Validation-only (does not feed downstream). Deep dive: `docs/w-nominate-deep-dive.md`, design: `analysis/design/wnominate.md`, ADR-0059. |
-| 4c | PPC + LOO-CV Model Comparison | 2026-02-28 | PPC battery (Yea rate, accuracy, GMP, APRE) + item/person fit + Yen's Q3 local dependence + LOO-CV model comparison across flat 1D, 2D IRT, and hierarchical IRT. Manual numpy log-likelihood (no PyMC rebuild). Graceful degradation for missing models. 60 tests. Design: `analysis/design/ppc.md`, ADR-0063. |
+| 17 | W-NOMINATE + OC Validation | 2026-02-28 | Field-standard legislative scaling comparison. W-NOMINATE (Poole & Rosenthal) + Optimal Classification (Poole 2000) via R subprocess. 3×3 correlation matrix (IRT/WNOM/OC), per-chamber scatter plots, 2D W-NOMINATE space, eigenvalue scree, fit statistics. Validation-only (does not feed downstream). **All 8 bienniums validated** (2026-03-02, 6 R compatibility bugs fixed — ADR-0073). Deep dive: `docs/w-nominate-deep-dive.md`, design: `analysis/design/wnominate.md`, ADR-0059. |
+| 4c | PPC + LOO-CV Model Comparison | 2026-02-28 | PPC battery (Yea rate, accuracy, GMP, APRE) + item/person fit + Yen's Q3 local dependence + LOO-CV model comparison across flat 1D, 2D IRT, and hierarchical IRT. Manual numpy log-likelihood (no PyMC rebuild). Graceful degradation for missing models. **6/8 bienniums** (87th/89th LOO mismatch — ADR-0073). 60 tests. Design: `analysis/design/ppc.md`, ADR-0063. |
 | 5b | Latent Class Analysis | 2026-02-28 | Bernoulli mixture (LCA) on binary vote matrix via StepMix. BIC model selection (K=1..8), Salsa effect detection (profile correlations), IRT cross-validation, Phase 5 ARI comparison, within-party LCA. Correct generative model for binary data. Deep dive: `docs/latent-class-deep-dive.md`, design: `analysis/design/lca.md`. |
 | 6b | Bipartite Bill-Legislator Network | 2026-02-28 | Two-mode network (legislators × bills). Bill polarization, bridge bills, bill communities (Leiden on Newman projection), BiCM backbone extraction (statistical validation via maximum-entropy null model), Phase 6 comparison. Deep dive: `docs/bipartite-network-deep-dive.md`, design: `analysis/design/bipartite.md`, ADR-0065. |
 | — | 84th Biennium Pipeline Stress Test | 2026-03-01 | Full 17-phase pipeline + PPC + External Validation + DIME on 2011-12 data. 8 bug fixes (column naming, IRT sensitivity sign flip, arviz/matplotlib deprecations, DIME party type). LCA class membership tables added. ADR-0066. |
 | — | Open-Source Readiness | 2026-03-01 | MIT LICENSE, README, CONTRIBUTING, pyproject metadata, CI expansion (lint+typecheck+test). 9 bug fixes (except syntax, Jinja2 autoescape, sign-flip DuplicateError, circular import, PID race). Phase 04b tests (16 new). 1701 total tests. ADR-0067. |
 | — | Report Enhancements (R1-R13) | 2026-03-01 | 3 new section types (KeyFindings, InteractiveTable, Interactive), ITables for 10+ large tables, Plotly interactive scatters (IRT, PCA, indices), PyVis network graphs, key findings in all 22+ reports, party density + ICC in flat IRT, cutting lines + swing votes, BPI + plus-minus indices, coalition labeler, absenteeism analysis. 39 new tests (1716 total). ADR-0069. |
+| — | Full Pipeline Audit | 2026-03-02 | 8-biennium × 17-phase review. 18 findings catalogued, 6 code fixes shipped (except syntax, prediction data leakage, sample threshold, logging). ADR-0072. |
+| — | W-NOMINATE All-Biennium Run | 2026-03-02 | All 8 bienniums (84th-91st) validated against W-NOMINATE + OC. 6 R compatibility bugs fixed (rollcall codes, polarity vector, OC matrix access, CSV "NA" parsing, fit stat casting, slug rename). R installed via Homebrew. ADR-0073. |
+| — | PPC All-Biennium Expansion | 2026-03-02 | Phase 4c expanded from 2 to 6 bienniums (85th, 86th, 88th, 90th added). 87th/89th excluded: ArviZ LOO observation mismatch between hierarchical and flat IRT vote matrices. ADR-0073. |
 
 ---
 
@@ -348,12 +351,12 @@ See `docs/method-evaluation.md` for detailed rationale on each rejection.
 | 09 | PCA | DIM | Completed (PCA) |
 | 10 | MCA / Correspondence Analysis | DIM | Completed (MCA, Phase 2c) |
 | 11 | UMAP / t-SNE | DIM | Completed (UMAP, Phase 2b) |
-| 12 | W-NOMINATE | DIM | Completed (W-NOMINATE + OC, Phase 17) |
-| 13 | Optimal Classification | DIM | Completed (W-NOMINATE + OC, Phase 17) |
+| 12 | W-NOMINATE | DIM | Completed (W-NOMINATE + OC, Phase 17) — all 8 bienniums |
+| 13 | Optimal Classification | DIM | Completed (W-NOMINATE + OC, Phase 17) — all 8 bienniums |
 | 14 | Beta-Binomial Party Loyalty | BAY | Completed (Beta-Binomial, Phase 7b) |
 | 15 | Bayesian IRT (1D) | BAY | Completed (IRT) |
 | 16 | Hierarchical Bayesian Model | BAY | Completed (Hierarchical IRT, Phase 8) |
-| 17 | Posterior Predictive Checks | BAY | **Done** — Phase 4 basic + Phase 4c standalone |
+| 17 | Posterior Predictive Checks | BAY | **Done** — Phase 4 basic + Phase 4c standalone (6/8 bienniums) |
 | 18 | Hierarchical Clustering | CLU | Completed (Clustering) |
 | 19 | K-Means / GMM Clustering | CLU | Completed (Clustering) |
 | 20 | Co-Voting Network | NET | Completed (Network) |
@@ -367,7 +370,7 @@ See `docs/method-evaluation.md` for detailed rationale on each rejection.
 | 28 | Latent Class Mixture Models | CLU | Completed (LCA, Phase 5b) |
 | 29 | Dynamic Ideal Points (Martin-Quinn) | TSA | Completed (Dynamic IRT, Phase 16) |
 | 30 | DIME/CFscores External Validation | VAL | Completed — Phase 14b (ADR-0062) |
-| 31 | Standalone Posterior Predictive Checks | BAY | **Done** — Phase 4c (ADR-0063) |
+| 31 | Standalone Posterior Predictive Checks | BAY | **Done** — Phase 4c (ADR-0063), 6/8 bienniums (ADR-0073) |
 | 32 | TSA Hardening (Desposato, CROPS, validation) | TSA | Completed — item #7 above |
 
 **Score: 32 completed, 7 rejected = 39 total**
@@ -379,7 +382,7 @@ Note: Methods 29-32 are additions beyond the original 28 (Dynamic Ideal Points, 
 ## Key Architectural Decisions Still Standing
 
 - **Polars over pandas** everywhere
-- **Python-first, R where necessary** — R allowed via subprocess for field-standard methods with no Python equivalent (W-NOMINATE, Optimal Classification in Phase 17; emIRT in Phase 16)
+- **Python-first, R where necessary** — R allowed via subprocess for field-standard methods with no Python equivalent (W-NOMINATE, Optimal Classification in Phase 17; emIRT in Phase 16; CROPS/Bai-Perron in Phase 15). Install: `brew install r` + `install.packages(c("wnominate", "oc", "pscl", "jsonlite", "changepoint", "strucchange"))`
 - **Ruff + ty + uv** — all-Astral toolchain (lint, type check, package management)
 - **IRT ideal points are the primary feature** — prediction confirmed this; everything else is marginal
 - **Chambers analyzed separately** unless explicitly doing cross-chamber comparison

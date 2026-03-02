@@ -106,6 +106,7 @@ What are the trade-offs?
 | [0039](0039-cross-session-validation-enhancements.md) | Cross-session validation enhancements |
 | [0059](0059-wnominate-validation-phase.md) | W-NOMINATE + OC validation phase |
 | [0063](0063-ppc-loo-standalone-phase.md) | Standalone PPC + LOO-CV phase (Phase 4c) |
+| [0073](0073-wnominate-all-biennium-production-run.md) | W-NOMINATE all-biennium production run + R compatibility fixes |
 
 ### Infrastructure
 
@@ -209,6 +210,7 @@ What are the trade-offs?
 | [0070](0070-dynamic-irt-convergence-and-identification.md) | Dynamic IRT convergence and identification (informative prior, adaptive tau, symlink race guard) | Accepted | 2026-03-01 |
 | [0071](0071-tier-3-report-enhancements.md) | Tier 3 report enhancements (R14-R20: CSV downloads, full voting records, geographic maps, freshmen cohort, bloc stability, dashboard, scrollytelling) | Accepted | 2026-03-01 |
 | [0072](0072-pipeline-audit-fixes.md) | Full pipeline audit — 8-biennium review, 6 fixes (except syntax, data leakage, sample threshold, logging) | Accepted | 2026-03-02 |
+| [0073](0073-wnominate-all-biennium-production-run.md) | W-NOMINATE all-biennium production run + R compatibility fixes (6 bugs, 8 bienniums) | Accepted | 2026-03-02 |
 
 ## Creating a New ADR
 

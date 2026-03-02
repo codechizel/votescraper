@@ -37,6 +37,12 @@ Yen's Q3 correlates item residuals after conditioning on ability. |Q3| > 0.2 ind
 
 ArviZ `loo()` + `compare()`. PSIS-LOO estimates ELPD without refitting. Pareto k diagnostics identify observations where importance sampling is unreliable (k > 0.7). Stacking weights provide multi-model averaging.
 
+## Known Limitations
+
+### LOO observation mismatch (87th, 89th bienniums)
+
+ArviZ `compare()` requires identical observation counts across all models. In the 87th and 89th bienniums, the hierarchical model uses a different vote matrix than flat IRT (different lopsided-vote filtering thresholds produce different observation sets). This causes `compare()` to raise a ValueError. PPC statistics (accuracy, GMP, APRE) still compute per-model; only the cross-model LOO comparison fails. These bienniums are excluded from LOO results. See ADR-0073.
+
 ## Downstream Implications
 
 None. Phase 4c is terminal — results are human-interpretable validation, not pipeline inputs.

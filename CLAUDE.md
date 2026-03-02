@@ -149,7 +149,7 @@ See `.claude/rules/analysis-framework.md` for the full pipeline, report system a
 
 Key references:
 - Design docs: `analysis/design/README.md`
-- ADRs: `docs/adr/README.md` (72 decisions)
+- ADRs: `docs/adr/README.md` (73 decisions)
 - Analysis primer: `docs/analysis-primer.md` (plain-English guide)
 - How IRT works: `docs/how-irt-works.md` (general-audience explanation of anchors, identification, and MCMC divergences)
 - External validation: `docs/external-validation-results.md` (5-biennium results, all 20 correlations "strong")
@@ -197,6 +197,7 @@ Key references:
 - 84th biennium analysis: `docs/84th-biennium-analysis.md` (full pipeline review, moderate Republican faction, 2012 purge, data quality flags)
 - Report enhancement survey: `docs/report-enhancement-survey.md` (current report inventory, gap analysis, open-source tools, 26 prioritized recommendations — R1-R13 implemented ADR-0069, R14-R20 implemented ADR-0071)
 - Pipeline audit: ADR-0072 (8-biennium review, 18 findings, 6 fixes — except syntax, prediction leakage, sample threshold, logging)
+- W-NOMINATE all-biennium run: ADR-0073 (6 R compatibility bugs fixed, all 8 bienniums validated, PPC expanded to 6/8)
 - Analytic flags: `docs/analytic-flags.md` (living document of observations)
 - Field survey: `docs/landscape-legislative-vote-analysis.md`
 - Method evaluation: `docs/method-evaluation.md`
@@ -218,6 +219,7 @@ All hierarchical experiments (whether using `ExperimentRunner` or standalone scr
 - **MCMC (all models)**: nutpie Rust NUTS sampler — single process, Rust threads for parallel chains (ADR-0051, ADR-0053). Graph-building functions (`build_per_chamber_graph()`, `build_joint_graph()`, `build_irt_graph()`) return PyMC models without sampling. Sampling functions compile with `nutpie.compile_pymc_model()` and sample with `nutpie.sample()`. PCA-informed init via `initial_points`; `jitter_rvs` excludes the PCA-initialized variable.
 - **Apple Silicon (M3 Pro, 6P+6E)**: run bienniums sequentially; cap thread pools (`OMP_NUM_THREADS=6`); never use `taskpolicy -c background`. See ADR-0022.
 - **PyTensor C compiler**: PyTensor requires `clang++`/`g++` for C-compiled kernels. Without it, falls back to pure Python (~18x slower). Common failure: Xcode update requires opening Xcode.app to accept license. Justfile exports `PATH` with `/usr/bin` to prevent stripped-PATH failures.
+- **R (optional)**: Required for Phase 17 (W-NOMINATE/OC: `wnominate`, `oc`, `pscl`, `jsonlite`) and Phase 15 TSA enrichment (`changepoint`, `strucchange`). Install via `brew install r` then `install.packages()`. Not managed by uv. Core pipeline works without R. R CSV files use literal "NA" for missing values — always pass `null_values="NA"` to `pl.read_csv()` when reading R output (ADR-0073).
 - **StepMix / scikit-learn shim (Phase 5b)**: StepMix 2.2.1 uses sklearn's private `_validate_data` and deprecated `force_all_finite` kwarg — both removed in scikit-learn 1.8. A monkey-patch in `analysis/05b_lca/lca.py` (lines 45-57) restores compatibility. **TODO: remove shim when StepMix ships a fix** (check `hasattr(StepMix, "_validate_data")` — shim is already guarded and will no-op once fixed upstream).
 
 ## Testing
