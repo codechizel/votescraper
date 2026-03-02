@@ -42,6 +42,7 @@ def build_hierarchical_report(
     *,
     chamber_results: dict[str, dict],
     joint_results: dict | None,
+    linking_results: dict | None = None,
     plots_dir: Path,
 ) -> None:
     """Build the full hierarchical IRT HTML report by adding sections."""
@@ -72,6 +73,10 @@ def build_hierarchical_report(
     # Joint model
     if joint_results is not None:
         _add_joint_model_section(report, joint_results, plots_dir)
+
+    # Stocking-Lord linking (cross-chamber alignment without joint model)
+    if linking_results is not None:
+        _add_linking_section(report, linking_results)
 
     # Flat vs hierarchical comparison
     _add_flat_vs_hier_comparison(report, chamber_results)
@@ -544,6 +549,72 @@ def _add_joint_model_section(
                     "All House and Senate legislators placed on the same ideological scale "
                     "by the joint hierarchical model."
                 ),
+            )
+        )
+
+
+def _add_linking_section(report: ReportBuilder, linking_results: dict) -> None:
+    """Section for Stocking-Lord IRT scale linking results."""
+    all_methods = linking_results.get("all_methods", {})
+    linked_df = linking_results.get("linked_df")
+    matched_bills = linking_results.get("matched_bills", [])
+
+    # Linking coefficients table (all 4 methods)
+    if all_methods:
+        rows = []
+        for method_name, coeffs in sorted(all_methods.items()):
+            rows.append(
+                {
+                    "method": method_name,
+                    "A (slope)": round(float(coeffs.get("A", 0)), 4),
+                    "B (intercept)": round(float(coeffs.get("B", 0)), 4),
+                }
+            )
+        if rows:
+            coeff_df = pl.DataFrame(rows)
+            html = make_gt(
+                coeff_df,
+                title="IRT Scale Linking Coefficients",
+                subtitle=(
+                    f"Cross-chamber alignment using {len(matched_bills)} shared anchor bills. "
+                    "Senate scale is transformed to House scale: θ* = A·θ + B."
+                ),
+                column_labels={
+                    "method": "Method",
+                    "A (slope)": "A (Slope)",
+                    "B (intercept)": "B (Intercept)",
+                },
+            )
+            report.add(
+                TableSection(
+                    id="linking-coefficients",
+                    title="Cross-Chamber Scale Linking (Stocking-Lord)",
+                    html=html,
+                )
+            )
+
+    # Linked ideal points interactive table
+    if linked_df is not None and linked_df.height > 0:
+        display = linked_df.select("legislator_slug", "chamber", "xi_linked", "xi_sd")
+        html = make_interactive_table(
+            display,
+            title="Linked Ideal Points (Common Scale)",
+            column_labels={
+                "legislator_slug": "Legislator",
+                "chamber": "Chamber",
+                "xi_linked": "Ideal Point (Linked)",
+                "xi_sd": "Posterior SD",
+            },
+            number_formats={
+                "xi_linked": "+.3f",
+                "xi_sd": ".3f",
+            },
+        )
+        report.add(
+            InteractiveTableSection(
+                id="linking-ideal-points",
+                title="All Legislators on a Common Scale (Stocking-Lord Linking)",
+                html=html,
             )
         )
 

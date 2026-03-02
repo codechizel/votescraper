@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-02 (all-biennium W-NOMINATE + PPC runs, R compatibility fixes — ADR-0073)
+**Last updated:** 2026-03-02 (3 MCMC convergence failures resolved — ADR-0074)
 
 ---
 
@@ -127,17 +127,17 @@ Full-pipeline review across all 8 bienniums (84th-91st), 17 phases each, plus cr
 
 ### High: Systematic Issues (All Bienniums)
 
-#### A2. Joint hierarchical model fails convergence in all 8 bienniums
+#### ~~A2. Joint hierarchical model fails convergence in all 8 bienniums~~ — Done
 
-Every biennium shows the same joint cross-chamber model pathology (256-4,281 divergences, sigma_chamber R-hat 1.14-2.56, ESS 5-39). Root cause: known ADR-0042 issue — `build_joint_model()` deduplicates by `vote_id` (always unique), preventing shared bill parameters. Per-chamber + Stocking-Lord linking works fine. **Decision: either fix the joint model's bill matching or stop running it** (wastes ~4 min/biennium, produces unusable results).
+**Resolved 2026-03-02.** Joint model switched from default to opt-in (`--run-joint`). Stocking-Lord linking is the production cross-chamber alignment method. Report includes linking coefficients + linked ideal points. ADR-0074.
 
-#### A3. 2D IRT (Phase 04b) fails convergence in most bienniums
+#### ~~A3. 2D IRT (Phase 04b) fails convergence in most bienniums~~ — Done
 
-Senate ESS catastrophically low across all sessions (ESS 6-52, threshold 200). House marginal. Dim 2 captures little beyond noise (Dim2-vs-PC2 r = 0.12-0.82, mostly weak). **Decision: consider House-only or dropping 04b from pipeline runs.**
+**Resolved 2026-03-02.** Phase 04b removed from `just pipeline` and dashboard. Kansas voting is fundamentally 1D — Dim 2 is noise. Standalone `just irt-2d` preserved for research. ADR-0074.
 
-#### A4. Dynamic IRT Senate convergence failure (cross-session)
+#### ~~A4. Dynamic IRT Senate convergence failure (cross-session)~~ — Done
 
-Despite ADR-0070 fixes, Senate still shows R-hat 1.84, ESS 3. 87th/88th have sign-flip artifacts (r=-0.657, r=-0.425). House works (R-hat 1.02, ESS 789). **Decision: investigate Senate reparameterization or restrict dynamic IRT to House-only.**
+**Fixed 2026-03-02.** Root cause: double-standardization bug in informative prior (ADR-0070 regression). Static IRT values (already unit-scale) were re-standardized, destroying per-legislator sign info. Fix: remove re-standardization, use accumulator averaging, widen sigma 0.75→1.5. ADR-0074.
 
 ### Medium: Analysis Methodology
 

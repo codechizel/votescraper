@@ -28,7 +28,6 @@ PHASE_ORDER = [
     ("02c_mca", "Multiple Correspondence Analysis"),
     ("03_umap", "UMAP Visualization"),
     ("04_irt", "IRT Ideal Points"),
-    ("04b_irt_2d", "2D IRT (Experimental)"),
     ("04c_ppc", "Posterior Predictive Checks"),
     ("05_clustering", "Clustering"),
     ("05b_lca", "Latent Class Analysis"),

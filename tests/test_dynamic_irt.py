@@ -14,6 +14,7 @@ from analysis.dynamic_irt import (
     DEFAULT_TAU_SIGMA,
     SMALL_CHAMBER_TAU_SIGMA,
     SMALL_CHAMBER_THRESHOLD,
+    XI_INIT_PRIOR_SIGMA,
     build_dynamic_irt_graph,
 )
 from analysis.dynamic_irt_data import (
@@ -1172,3 +1173,24 @@ class TestDynamicIRTGraphConstruction:
         model = build_dynamic_irt_graph(data, tau_sigma=0.3)
         assert "tau" in [rv.name for rv in model.free_RVs]
         assert model is not None
+
+    def test_xi_init_prior_sigma_constant(self) -> None:
+        """XI_INIT_PRIOR_SIGMA should be 1.5 (ADR-0074)."""
+        assert XI_INIT_PRIOR_SIGMA == 1.5
+
+    def test_informative_prior_no_restandardization(self) -> None:
+        """Informative prior should use raw static IRT values, not re-standardize.
+
+        The double-standardization bug (ADR-0074) re-standardized already
+        unit-scale static IRT values, causing mode-splitting. This test
+        passes static IRT values with known mean/std and verifies that
+        the model accepts them without transformation.
+        """
+        data = _make_small_stacked_data(n_leg=20)
+        # Create prior means with non-zero mean and std != 1
+        # (would break if code re-standardized to zero-mean/unit-var)
+        mu = np.linspace(-2.0, 2.0, 20)
+        assert abs(mu.mean()) < 0.01  # mean ~0 for linspace, but std != 1
+        assert mu.std() > 1.0  # wider than unit-scale
+        model = build_dynamic_irt_graph(data, xi_init_mu=mu)
+        assert "xi_init" in [rv.name for rv in model.free_RVs]

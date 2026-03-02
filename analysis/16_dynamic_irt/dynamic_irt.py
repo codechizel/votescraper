@@ -118,6 +118,10 @@ SMALL_CHAMBER_TAU_SIGMA: float = 0.15
 """Tau prior sigma for small chambers — prevents mode-splitting."""
 DEFAULT_TAU_SIGMA: float = 0.5
 """Tau prior sigma for large chambers."""
+XI_INIT_PRIOR_SIGMA: float = 1.5
+"""Sigma for informative xi_init prior from static IRT (ADR-0074).
+Wider than the original 0.75 — lets the sampler explore while still
+transferring sign identification from static IRT."""
 
 PARTY_COLORS_DYNAMIC: dict[str, str] = {
     "Republican": "#E81B23",
@@ -216,8 +220,8 @@ def build_dynamic_irt_graph(
         tau_sigma: Explicit tau prior sigma. If None, uses adaptive logic
             (0.15 for small chambers, 0.5 for large — ADR-0070).
         xi_init_mu: Optional prior mean for ``xi_init`` from static IRT.
-            When provided, uses ``Normal(xi_init_mu, 0.75)`` instead of
-            ``Normal(0, 1)`` for sign identification (ADR-0070).
+            When provided, uses ``Normal(xi_init_mu, 1.5)`` instead of
+            ``Normal(0, 1)`` for sign identification (ADR-0070, ADR-0074).
 
     Returns:
         PyMC model ready for nutpie compilation.
@@ -280,7 +284,8 @@ def build_dynamic_irt_graph(
         # --- Non-centered random walk for ideal points ---
         if xi_init_mu is not None:
             xi_init = pm.Normal(
-                "xi_init", mu=xi_init_mu, sigma=0.75, shape=n_leg, dims="legislator"
+                "xi_init", mu=xi_init_mu, sigma=XI_INIT_PRIOR_SIGMA,
+                shape=n_leg, dims="legislator",
             )
         else:
             xi_init = pm.Normal("xi_init", mu=0, sigma=1, shape=n_leg, dims="legislator")
@@ -1398,12 +1403,17 @@ def main() -> None:
                     pass
             print(f"    Loaded static IRT for {len(all_static_irt)} bienniums")
 
-            # Build informative xi_init prior from static IRT (ADR-0070)
+            # Build informative xi_init prior from static IRT (ADR-0070, ADR-0074)
+            # Accumulator pattern: average across all bienniums where a legislator
+            # appears, instead of first-match-only. Static IRT values are already
+            # approximately unit-scale — do NOT re-standardize (the original global
+            # re-standardization was the root cause of the double-standardization bug
+            # that caused Senate mode-splitting, R-hat 1.84, ESS 3).
             xi_init_mu = None
             if all_static_irt:
                 print("\n  Building informative xi_init prior from static IRT...")
-                xi_init_mu_arr = np.zeros(stacked["n_legislators"])
-                n_mapped = 0
+                xi_init_sum = np.zeros(stacked["n_legislators"])
+                xi_init_count = np.zeros(stacked["n_legislators"], dtype=int)
                 for t_idx, static_df in all_static_irt.items():
                     xi_col = "xi_mean" if "xi_mean" in static_df.columns else "mean"
                     if "name_norm" not in static_df.columns:
@@ -1412,15 +1422,20 @@ def main() -> None:
                         nn = row.get("name_norm", "")
                         if nn in name_to_global:
                             gidx = name_to_global[nn]
-                            if xi_init_mu_arr[gidx] == 0.0:
-                                xi_init_mu_arr[gidx] = row[xi_col]
-                                n_mapped += 1
-                # Standardize to unit scale
-                nz = xi_init_mu_arr[xi_init_mu_arr != 0]
-                if len(nz) > 5:
-                    xi_init_mu_arr = (xi_init_mu_arr - nz.mean()) / max(nz.std(), 1e-6)
+                            xi_init_sum[gidx] += row[xi_col]
+                            xi_init_count[gidx] += 1
+                n_mapped = int((xi_init_count > 0).sum())
+                if n_mapped > 5:
+                    # Average where we have data, leave zero where we don't
+                    mask = xi_init_count > 0
+                    xi_init_mu_arr = np.zeros(stacked["n_legislators"])
+                    xi_init_mu_arr[mask] = xi_init_sum[mask] / xi_init_count[mask]
                     xi_init_mu = xi_init_mu_arr
-                    print(f"    Mapped {n_mapped} of {stacked['n_legislators']} legislators")
+                    nz = xi_init_mu_arr[mask]
+                    print(
+                        f"    Mapped {n_mapped} of {stacked['n_legislators']} legislators"
+                        f" (prior range [{nz.min():.2f}, {nz.max():.2f}])"
+                    )
                 else:
                     print("    Too few matches for informative prior, using uninformative")
 

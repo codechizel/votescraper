@@ -8,12 +8,12 @@ changes vs. the flat model.
 
 Two models:
 - Per-chamber (primary): 2-level model, run separately for House and Senate
-- Joint cross-chamber (secondary): 3-level model with both chambers, skipped with --skip-joint
+- Joint cross-chamber (optional): 3-level model with both chambers, enabled with --run-joint
 
 Uses method 16 from Analytic_Methods/16_BAY_hierarchical_legislator_model.md.
 
 Usage:
-  uv run python analysis/hierarchical.py [--session 2025-26] [--skip-joint]
+  uv run python analysis/hierarchical.py [--session 2025-26] [--run-joint]
       [--n-samples 2000] [--n-tune 1500] [--n-chains 2]
 
 Outputs (in results/<session>/hierarchical/<date>/):
@@ -206,7 +206,7 @@ Reads from upstream phases:
 
 - Non-centered parameterization may be slightly less efficient than centered for
   large, well-identified groups. The safety margin is worth the minor cost.
-- Joint model may not converge — use `--skip-joint` if it fails.
+- Joint model off by default (ADR-0074) — enable with `--run-joint`.
 - Small Senate-D group (~10 legislators) produces wide credible intervals on the
   Democratic party mean in the Senate.
 """
@@ -263,7 +263,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cores", type=int, default=None, help="CPU cores for sampling (default: n_chains)"
     )
-    parser.add_argument("--skip-joint", action="store_true", help="Skip joint cross-chamber model")
+    parser.add_argument(
+        "--run-joint", action="store_true",
+        help="Run joint cross-chamber model (off by default — ADR-0074)",
+    )
     return parser.parse_args()
 
 
@@ -1765,7 +1768,7 @@ def main() -> None:
 
         # ── Joint model (optional) ──
         joint_results: dict | None = None
-        if not args.skip_joint:
+        if args.run_joint:
             print_header("JOINT CROSS-CHAMBER MODEL")
             try:
                 house_data = per_chamber_results["House"]["data"]
@@ -1852,8 +1855,6 @@ def main() -> None:
                 print(f"\n  WARNING: Joint model failed: {e}")
                 print("  Continuing with per-chamber results only.")
                 joint_results = None
-        else:
-            print("\n  Skipping joint model (--skip-joint)")
 
         # ── Stocking-Lord linking (separate-then-link alternative to joint model) ──
         linking_results: dict | None = None
@@ -1992,6 +1993,7 @@ def main() -> None:
             ctx.report,
             chamber_results=per_chamber_results,
             joint_results=joint_results,
+            linking_results=linking_results,
             plots_dir=ctx.plots_dir,
         )
 

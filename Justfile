@@ -151,7 +151,6 @@ pipeline session="2025-26" *args:
     just pca      --session {{session}} --run-id "$RUN_ID" {{args}}
     just mca      --session {{session}} --run-id "$RUN_ID" {{args}}
     just irt      --session {{session}} --run-id "$RUN_ID" {{args}}
-    just irt-2d   --session {{session}} --run-id "$RUN_ID" {{args}}
     just umap     --session {{session}} --run-id "$RUN_ID" {{args}}
     just clustering --session {{session}} --run-id "$RUN_ID" {{args}}
     just lca      --session {{session}} --run-id "$RUN_ID" {{args}}
