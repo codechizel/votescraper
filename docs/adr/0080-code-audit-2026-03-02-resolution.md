@@ -33,15 +33,13 @@ Mitigating factor: nutpie provides its own terminal progress bar via `progress_b
 
 Action: Either strip the dead callback infrastructure or replace with a nutpie-aware heartbeat. Not urgent — the operational need (watching MCMC progress) is met by the terminal progress bar.
 
-**C. Dead helpers in `irt.py` (low priority — CLEANUP)**
+**C. Dead helpers in `irt.py` (low priority — FIXED)**
 
-Two functions are genuinely dead:
-- `plot_joint_vs_chamber` (line 601, ~100 lines) — joint MCMC visualization orphaned when joint model was abandoned for mean/sigma equating
-- `run_joint_pca_for_anchors` (line 489, ~50 lines) — joint anchor selection never integrated
+Two functions removed (~155 lines):
+- `plot_joint_vs_chamber` — joint MCMC visualization orphaned when joint model was abandoned for mean/sigma equating
+- `run_joint_pca_for_anchors` — joint anchor selection never integrated
 
-All other functions the audit flagged (`plot_paradox_spotlight`, `compare_with_pca`) are called from `main()` in production.
-
-Action: Remove ~150 lines of dead code.
+All other functions the audit flagged (`plot_paradox_spotlight`, `compare_with_pca`) are called from `main()` in production. `unmerge_bridging_legislators` has dedicated tests and was retained.
 
 **D. Special session analysis support (medium priority — FIXED)**
 
