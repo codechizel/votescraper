@@ -8,7 +8,7 @@ paths:
 ## Commands
 
 ```bash
-just test                    # run all tests (~1941)
+just test                    # run all tests (~1952)
 just test-scraper            # scraper tests only (-m scraper, ~282)
 just test-fast               # skip slow tests (-m "not slow", ~1873)
 just check                   # full check (lint + typecheck + tests)
@@ -59,16 +59,16 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_pca.py` — imputation, PC1 orientation, extreme PC2 detection (~16 tests)
 - `tests/test_mca.py` — categorical matrix, Polars-to-pandas, MCA fitting, orientation, eigenvalues, contributions, cos², horseshoe detection, constants (~34 tests)
 - `tests/test_prediction.py` — vote/bill features, model training, SHAP, NLP integration, holdout eval, baselines, proper scoring rules, sponsor party feature, stratified accuracy (~64 tests)
-- `tests/test_phase_utils.py` — sponsor name parsing, sponsor-to-party text matching (~13 tests)
+- `tests/test_phase_utils.py` — sponsor name parsing, sponsor-to-slug resolution, sponsor-to-party text matching (~19 tests)
 - `tests/test_beta_binomial.py` — method of moments, posteriors, shrinkage, edge cases (~26 tests)
 - `tests/test_hierarchical.py` — hierarchical data prep, model structure, variance decomposition, small-group warning, joint ordering, rescaling fallback, Independent exclusion, sign convention fix, bill-matching, adaptive priors (~48 tests)
-- `tests/test_profiles.py` — profile targets, scorecard, bill-type breakdown, defections, name resolution, full voting record (~44 tests)
+- `tests/test_profiles.py` — profile targets, scorecard, bill-type breakdown, defections, sponsorship stats, name resolution, full voting record (~50 tests)
 - `tests/test_cross_session.py` — matching, IRT alignment, shift, stability, PSI, ICC, fuzzy matching, prediction transfer, detection, freshmen cohort, bloc stability, plot smoke tests, report (~111 tests)
 - `tests/test_clustering.py` — party loyalty, cross-method ARI, within-party, kappa distance, hierarchical, spectral, HDBSCAN, characterization (~70 tests)
 - `tests/test_network.py` — network construction, centrality, Leiden/CPM community detection, bridges, threshold sweep, polarization, disparity filter backbone, extreme edge weights (~53 tests)
 - `tests/test_bipartite.py` — bipartite graph construction, bill polarization, bipartite betweenness, bill projection, bill communities, BiCM backbone extraction, backbone comparison, constants (~50 tests)
 - `tests/test_indices.py` — Rice formula, party votes, ENP, unity/maverick, co-defection, Carey UNITY, fractured votes (~37 tests)
-- `tests/test_synthesis.py` — synthesis data loading, build_legislator_df joins, _extract_best_auc, detect_all integration, minority mavericks, Democrat-majority paradox (~47 tests)
+- `tests/test_synthesis.py` — synthesis data loading, build_legislator_df joins, _extract_best_auc, sponsor summary, detect_all integration, minority mavericks, Democrat-majority paradox (~51 tests)
 - `tests/test_synthesis_detect.py` — maverick, bridge-builder, metric paradox detection, annotation slugs, threshold constants, percentile modes (~33 tests)
 - `tests/test_external_validation.py` — SM name normalization, parsing, biennium filtering, matching, correlations, outliers (~65 tests)
 - `tests/test_external_validation_dime.py` — DIME name normalization, parsing, biennium filtering, min-givers filter, matching, overlap detection, correlation reuse (~43 tests)

@@ -112,6 +112,18 @@ def build_prediction_report(
         for chamber in chambers:
             _add_passage_roc_figure(report, plots_dir, chamber)
 
+        for chamber in chambers:
+            _add_passage_shap_beeswarm_figure(report, plots_dir, chamber)
+
+        for chamber in chambers:
+            _add_passage_shap_bar_figure(report, plots_dir, chamber)
+
+        for chamber in chambers:
+            _add_passage_feature_importance_figure(report, plots_dir, chamber)
+
+        for chamber in chambers:
+            _add_stratified_accuracy_table(report, results[chamber], chamber)
+
         # NLP topic features sections
         if topic_models:
             _add_nlp_interpretation(report)
@@ -839,6 +851,87 @@ def _add_passage_roc_figure(report: ReportBuilder, plots_dir: Path, chamber: str
         )
 
 
+def _add_passage_shap_beeswarm_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:
+    path = plots_dir / f"shap_passage_{chamber.lower()}.png"
+    if path.exists():
+        report.add(
+            FigureSection.from_file(
+                f"passage-shap-beeswarm-{chamber.lower()}",
+                f"{chamber} Passage SHAP Beeswarm",
+                path,
+                alt_text=(
+                    f"SHAP beeswarm plot for {chamber} bill passage prediction. "
+                    f"Each dot is a bill; position shows feature impact on passage probability."
+                ),
+            )
+        )
+
+
+def _add_passage_shap_bar_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:
+    path = plots_dir / f"shap_bar_passage_{chamber.lower()}.png"
+    if path.exists():
+        report.add(
+            FigureSection.from_file(
+                f"passage-shap-bar-{chamber.lower()}",
+                f"{chamber} Passage Feature Importance (SHAP)",
+                path,
+                alt_text=(
+                    f"Mean absolute SHAP values for {chamber} bill passage features. "
+                    f"Longer bars indicate features with greater influence on passage prediction."
+                ),
+            )
+        )
+
+
+def _add_passage_feature_importance_figure(
+    report: ReportBuilder, plots_dir: Path, chamber: str
+) -> None:
+    path = plots_dir / f"passage_importance_{chamber.lower()}.png"
+    if path.exists():
+        report.add(
+            FigureSection.from_file(
+                f"passage-importance-{chamber.lower()}",
+                f"{chamber} Passage Feature Importance (XGBoost Gain)",
+                path,
+                alt_text=(
+                    f"XGBoost native feature importance (gain) for {chamber} bill passage. "
+                    f"Shows which features contribute most to the passage model's splits."
+                ),
+            )
+        )
+
+
+def _add_stratified_accuracy_table(
+    report: ReportBuilder,
+    result: dict,
+    chamber: str,
+) -> None:
+    stratified = result.get("stratified_accuracy")
+    if stratified is None or stratified.height == 0:
+        return
+
+    number_fmts = {"accuracy": ".3f", "passage_rate": ".3f"}
+    html = make_gt(
+        stratified,
+        title=f"{chamber} — Passage Accuracy by Bill Prefix",
+        column_labels={
+            "prefix": "Bill Prefix",
+            "count": "Count",
+            "accuracy": "Accuracy",
+            "passage_rate": "Passage Rate",
+        },
+        number_formats=number_fmts,
+        source_note="Accuracy on holdout test set, stratified by bill type prefix (HB, SB, etc.).",
+    )
+    report.add(
+        TableSection(
+            id=f"stratified-accuracy-{chamber.lower()}",
+            title=f"{chamber} Passage Accuracy by Bill Prefix",
+            html=html,
+        )
+    )
+
+
 def _add_temporal_split_table(
     report: ReportBuilder,
     result: dict,
@@ -1000,6 +1093,12 @@ def _add_passage_interpretation(
         "<li>Expected performance: bill passage AUC will be lower than vote AUC because we lack "
         "legislator-level features at the bill level. The model sees bill characteristics but not "
         "who will vote on it.</li>",
+        "<li><strong>Sponsor party</strong> indicates whether the bill's primary sponsor is a "
+        "Republican. In a Republican supermajority, Republican-sponsored bills may have higher "
+        "passage rates, making this a useful structural feature.</li>",
+        "<li><strong>Stratified accuracy by bill prefix</strong> (HB vs SB) reveals whether the "
+        "model performs differently on House bills vs Senate bills. Different passage rates and "
+        "procedural paths can create systematic prediction gaps.</li>",
     ]
     if has_topics:
         parts.append(

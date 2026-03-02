@@ -76,9 +76,17 @@ except ModuleNotFoundError:
     )
 
 try:
-    from analysis.phase_utils import print_header, save_fig
+    from analysis.phase_utils import (
+        match_sponsor_to_slug,
+        print_header,
+        save_fig,
+    )
 except ImportError:
-    from phase_utils import print_header, save_fig  # type: ignore[no-redef]
+    from phase_utils import (  # type: ignore[no-redef]
+        match_sponsor_to_slug,
+        print_header,
+        save_fig,
+    )
 
 
 # ── Constants ────────────────────────────────────────────────────────────────
@@ -112,6 +120,7 @@ FEATURE_DISPLAY_NAMES: dict[str, str] = {
     "PC2": "Secondary voting dimension",
     "day_of_session": "How far into the session",
     "is_veto_override": "Whether it\u2019s a veto override vote",
+    "sponsor_party_R": "Sponsored by a Republican",
 }
 
 PREDICTION_PRIMER = """\
@@ -413,6 +422,7 @@ def build_bill_features(
     bill_params: pl.DataFrame,
     chamber: str,
     topic_features: pl.DataFrame | None = None,
+    legislators: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     """Build the bill-level feature matrix for passage prediction.
 
@@ -466,6 +476,52 @@ def build_bill_features(
             pl.when(pl.col("bill_prefix") == pfx).then(1).otherwise(0).alias(f"pfx_{pfx.lower()}")
         )
 
+    # Sponsor party feature: 1 if primary sponsor is Republican, 0 otherwise
+    has_sponsor_party = False
+    if legislators is not None:
+        # Slug-based matching (preferred — unambiguous)
+        if "sponsor_slugs" in rc.columns:
+            # Extract first slug from semicolon-joined string
+            rc = rc.with_columns(
+                pl.col("sponsor_slugs").str.split("; ").list.first().alias("_first_slug")
+            )
+            # Determine the slug column name in legislators
+            slug_col = "legislator_slug" if "legislator_slug" in legislators.columns else "slug"
+            slug_party = legislators.select(
+                pl.col(slug_col).alias("_first_slug"), pl.col("party")
+            ).unique(subset=["_first_slug"])
+            rc = rc.join(slug_party, on="_first_slug", how="left")
+            rc = rc.with_columns(
+                pl.when(pl.col("party") == "Republican")
+                .then(1)
+                .otherwise(0)
+                .alias("sponsor_party_R")
+            )
+            rc = rc.drop("_first_slug", "party")
+            has_sponsor_party = rc["sponsor_party_R"].sum() > 0
+
+        # Text-based fallback for old data without sponsor_slugs:
+        # resolve sponsor text → slug, then use the same slug-based join path
+        if not has_sponsor_party and "sponsor" in rc.columns:
+            resolved_slugs = [
+                match_sponsor_to_slug(row.get("sponsor", ""), legislators) or ""
+                for row in rc.iter_rows(named=True)
+            ]
+            rc = rc.with_columns(pl.Series("_first_slug", resolved_slugs))
+            slug_col = "legislator_slug" if "legislator_slug" in legislators.columns else "slug"
+            slug_party = legislators.select(
+                pl.col(slug_col).alias("_first_slug"), pl.col("party")
+            ).unique(subset=["_first_slug"])
+            rc = rc.join(slug_party, on="_first_slug", how="left")
+            rc = rc.with_columns(
+                pl.when(pl.col("party") == "Republican")
+                .then(1)
+                .otherwise(0)
+                .alias("sponsor_party_R")
+            )
+            rc = rc.drop("_first_slug", "party")
+            has_sponsor_party = rc["sponsor_party_R"].sum() > 0
+
     # Join NLP topic features if provided
     if topic_features is not None:
         # topic_features must have vote_id + topic_* columns
@@ -482,6 +538,8 @@ def build_bill_features(
         "is_veto_override",
         "day_of_session",
     ]
+    if has_sponsor_party:
+        feature_cols.append("sponsor_party_R")
     vt_cols = [c for c in rc.columns if c.startswith("vt_")]
     pfx_cols = [c for c in rc.columns if c.startswith("pfx_")]
     topic_cols = [c for c in rc.columns if c.startswith("topic_")]
@@ -489,7 +547,7 @@ def build_bill_features(
     feature_cols.extend(pfx_cols)
     feature_cols.extend(topic_cols)
 
-    metadata_cols = ["vote_id", "bill_number", "passed_binary", "vote_date"]
+    metadata_cols = ["vote_id", "bill_number", "passed_binary", "vote_date", "bill_prefix"]
     keep_cols = [c for c in feature_cols + metadata_cols if c in rc.columns]
     result = rc.select(keep_cols).drop_nulls(subset=feature_cols + ["passed_binary"])
 
@@ -654,7 +712,7 @@ def train_passage_models(
     Returns dict with models, cv_results, holdout data, and temporal split results.
     """
     feature_cols = _get_feature_cols(
-        features_df, "passed_binary", ["vote_id", "bill_number", "vote_date"]
+        features_df, "passed_binary", ["vote_id", "bill_number", "vote_date", "bill_prefix"]
     )
     X = features_df.select(feature_cols).to_numpy().astype(np.float64)
     y = features_df["passed_binary"].to_numpy()
@@ -1024,12 +1082,8 @@ def split_surprising_by_class(
     if surprising.height == 0:
         return {"surprising_nay": surprising.clone(), "surprising_yea": surprising.clone()}
 
-    fp = surprising.filter(
-        (pl.col("predicted") == 1) & (pl.col("actual") == 0)
-    ).head(top_n)
-    fn = surprising.filter(
-        (pl.col("predicted") == 0) & (pl.col("actual") == 1)
-    ).head(top_n)
+    fp = surprising.filter((pl.col("predicted") == 1) & (pl.col("actual") == 0)).head(top_n)
+    fn = surprising.filter((pl.col("predicted") == 0) & (pl.col("actual") == 1)).head(top_n)
     return {"surprising_nay": fp, "surprising_yea": fn}
 
 
@@ -1203,6 +1257,36 @@ def plot_model_comparison(
     save_fig(fig, out_path)
 
 
+def compute_stratified_accuracy(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    bill_prefixes: list[str],
+) -> pl.DataFrame:
+    """Compute accuracy and passage rate stratified by bill prefix.
+
+    Returns a DataFrame with columns: prefix, count, accuracy, passage_rate,
+    sorted by count descending.
+    """
+    df = pl.DataFrame(
+        {
+            "y_true": y_true,
+            "y_pred": y_pred,
+            "bill_prefix": bill_prefixes,
+        }
+    )
+    result = (
+        df.group_by("bill_prefix")
+        .agg(
+            pl.len().alias("count"),
+            (pl.col("y_true") == pl.col("y_pred")).mean().alias("accuracy"),
+            pl.col("y_true").mean().alias("passage_rate"),
+        )
+        .sort("count", descending=True)
+        .rename({"bill_prefix": "prefix"})
+    )
+    return result
+
+
 def _rename_shap_features(shap_values: shap.Explanation) -> shap.Explanation:
     """Return a copy of SHAP values with plain-English feature names."""
     import copy
@@ -1220,12 +1304,13 @@ def plot_shap_summary(
     shap_values: shap.Explanation,
     chamber: str,
     out_path: Path,
+    title: str | None = None,
 ) -> None:
     """SHAP beeswarm plot with plain-English feature names."""
     sv = _rename_shap_features(shap_values)
     shap.plots.beeswarm(sv, max_display=TOP_SHAP_FEATURES, show=False, plot_size=(10, 8))
     fig = plt.gcf()
-    fig.suptitle(f"{chamber} \u2014 What Predicts a Yea Vote?", fontsize=14, y=1.02)
+    fig.suptitle(title or f"{chamber} \u2014 What Predicts a Yea Vote?", fontsize=14, y=1.02)
     save_fig(fig, out_path)
 
 
@@ -1233,13 +1318,14 @@ def plot_shap_bar(
     shap_values: shap.Explanation,
     chamber: str,
     out_path: Path,
+    title: str | None = None,
 ) -> None:
     """SHAP mean |SHAP| bar plot with plain-English feature names."""
     sv = _rename_shap_features(shap_values)
     shap.plots.bar(sv, max_display=TOP_SHAP_FEATURES, show=False)
     fig = plt.gcf()
     fig.suptitle(
-        f"{chamber} \u2014 What Predicts a Yea Vote? (Feature Importance)",
+        title or f"{chamber} \u2014 What Predicts a Yea Vote? (Feature Importance)",
         fontsize=14,
         y=1.02,
     )
@@ -1251,6 +1337,7 @@ def plot_feature_importance(
     feature_names: list[str],
     chamber: str,
     out_path: Path,
+    title: str | None = None,
 ) -> None:
     """XGBoost native feature importance (gain) with plain-English names."""
     importances = model.feature_importances_
@@ -1275,7 +1362,7 @@ def plot_feature_importance(
     ax.set_yticks(range(len(sorted_idx)))
     ax.set_yticklabels(display_names, fontsize=10)
     ax.set_xlabel("Feature Importance (Gain)", fontsize=12)
-    ax.set_title(f"{chamber} \u2014 What Matters Most for Predicting Votes?", fontsize=14)
+    ax.set_title(title or f"{chamber} \u2014 What Matters Most for Predicting Votes?", fontsize=14)
     ax.grid(True, axis="x", alpha=0.3)
 
     fig.tight_layout()
@@ -1925,7 +2012,11 @@ def main() -> None:
                 FEATURE_DISPLAY_NAMES.update(display_names)
 
                 bill_features = build_bill_features(
-                    rollcalls, cd["bill_params"], chamber, topic_features=topic_df
+                    rollcalls,
+                    cd["bill_params"],
+                    chamber,
+                    topic_features=topic_df,
+                    legislators=legislators,
                 )
                 n_rows = bill_features.height
                 n_cols = bill_features.width
@@ -2009,12 +2100,73 @@ def main() -> None:
                     ctx.plots_dir / f"passage_roc_{chamber.lower()}.png",
                 )
 
+                # Passage SHAP analysis
+                passage_xgb = passage_result["models"]["XGBoost"]
+                n_passage_shap = min(500, passage_result["X_test"].shape[0])
+                passage_shap_sample = passage_result["X_test"][:n_passage_shap]
+                passage_shap_values = compute_shap_values(
+                    passage_xgb, passage_shap_sample, passage_result["feature_names"]
+                )
+                print(f"  Passage SHAP computed on {n_passage_shap} test samples")
+
+                plot_shap_summary(
+                    passage_shap_values,
+                    chamber,
+                    ctx.plots_dir / f"shap_passage_{chamber.lower()}.png",
+                    title=f"{chamber} \u2014 What Predicts Bill Passage?",
+                )
+                plot_shap_bar(
+                    passage_shap_values,
+                    chamber,
+                    ctx.plots_dir / f"shap_bar_passage_{chamber.lower()}.png",
+                    title=f"{chamber} \u2014 What Predicts Bill Passage? (Feature Importance)",
+                )
+                plot_feature_importance(
+                    passage_xgb,
+                    passage_result["feature_names"],
+                    chamber,
+                    ctx.plots_dir / f"passage_importance_{chamber.lower()}.png",
+                    title=f"{chamber} \u2014 What Matters Most for Bill Passage?",
+                )
+
+                # Stratified accuracy by bill prefix
+                passage_preds = passage_xgb.predict(passage_result["X_test"])
+                if "bill_prefix" in bill_features.columns:
+                    test_bill_prefixes = (
+                        bill_features[passage_result["test_indices"].tolist()]
+                        .get_column("bill_prefix")
+                        .to_list()
+                    )
+                    stratified = compute_stratified_accuracy(
+                        passage_result["y_test"], passage_preds, test_bill_prefixes
+                    )
+                    stratified.write_parquet(
+                        ctx.data_dir / f"stratified_accuracy_{chamber.lower()}.parquet"
+                    )
+                    ctx.export_csv(
+                        stratified,
+                        f"stratified_accuracy_{chamber.lower()}.csv",
+                        f"Passage accuracy by bill prefix for {chamber}",
+                    )
+                    print(f"  Stratified accuracy: {stratified.height} prefixes")
+                    for row in stratified.iter_rows(named=True):
+                        print(
+                            f"    {row['prefix']}: "
+                            f"acc={row['accuracy']:.3f}, "
+                            f"rate={row['passage_rate']:.3f}, "
+                            f"n={row['count']}"
+                        )
+                else:
+                    stratified = None
+
                 results[chamber]["passage_result"] = passage_result
                 results[chamber]["passage_cv"] = passage_cv_df
                 results[chamber]["passage_holdout"] = passage_holdout_df
                 results[chamber]["temporal_results"] = passage_result["temporal_results"]
                 results[chamber]["surprising_bills"] = surprising_bills
                 results[chamber]["bill_features"] = bill_features
+                results[chamber]["passage_shap_values"] = passage_shap_values
+                results[chamber]["stratified_accuracy"] = stratified
 
         # ── Filtering Manifest ──────────────────────────────────────────
         print_header("FILTERING MANIFEST")

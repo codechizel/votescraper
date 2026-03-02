@@ -39,6 +39,7 @@ try:
         build_full_voting_record,
         build_scorecard,
         compute_bill_type_breakdown,
+        compute_sponsorship_stats,
         find_defection_bills,
         find_legislator_surprising_votes,
         find_voting_neighbors,
@@ -53,6 +54,7 @@ except ModuleNotFoundError:
         build_full_voting_record,
         build_scorecard,
         compute_bill_type_breakdown,
+        compute_sponsorship_stats,
         find_defection_bills,
         find_legislator_surprising_votes,
         find_voting_neighbors,
@@ -768,6 +770,12 @@ def main() -> None:
                 target.slug, chamber_votes, rollcalls, target.party, party_slugs
             )
 
+            # Sponsorship stats
+            sponsorship = compute_sponsorship_stats(target.slug, rollcalls)
+            if sponsorship is not None and sponsorship.height > 0:
+                n_primary = sponsorship.filter(pl.col("is_primary")).height
+                print(f"    Sponsored {sponsorship.height} bills ({n_primary} as primary)")
+
             # Voting neighbors
             neighbors = find_voting_neighbors(target.slug, chamber_votes, chamber_df)
 
@@ -792,6 +800,7 @@ def main() -> None:
                 "scorecard": scorecard,
                 "breakdown": breakdown,
                 "defections": defections,
+                "sponsorship": sponsorship,
                 "neighbors": neighbors,
                 "surprising": surprising,
                 "full_record": full_record,

@@ -87,6 +87,7 @@ What are the trade-offs?
 | [0064](0064-lca-latent-class-analysis.md) | Latent Class Analysis (Phase 5b) |
 | [0065](0065-bipartite-network-phase.md) | Bipartite Bill-Legislator Network (Phase 6b) |
 | [0066](0066-84th-pipeline-stress-test-fixes.md) | 84th pipeline stress test fixes (8 bugs, 1 enhancement) |
+| [0081](0081-sponsor-slugs-phase-11-12-integration.md) | Sponsor slugs integration into Synthesis and Profiles |
 
 ### Time Series
 
@@ -225,6 +226,7 @@ What are the trade-offs?
 | [0078](0078-code-audit-phase-utils-extraction.md) | Code audit — phase_utils extraction, bug fixes, efficiency improvements | Accepted | 2026-03-02 |
 | [0079](0079-wcag-accessibility-alt-text.md) | WCAG 2.1 AA accessibility — alt-text and ARIA labels (132 figures, 8 interactive sections, 23 report builders) | Accepted | 2026-03-02 |
 | [0080](0080-code-audit-2026-03-02-resolution.md) | Code audit 2026-03-02 — synthesis manifest key fix, 4 remaining cleanup items | Accepted | 2026-03-02 |
+| [0081](0081-sponsor-slugs-phase-11-12-integration.md) | Sponsor slugs integration into Synthesis (n_bills_sponsored) and Profiles (sponsorship section, defection sponsor) | Accepted | 2026-03-02 |
 
 ## Creating a New ADR
 

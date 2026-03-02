@@ -73,9 +73,9 @@ Two capabilities that appear in the literature but not in our profiles:
 
 1. **Temporal trajectory within session.** Nokken-Poole scores (session-specific, no career-static assumption) are the Voteview standard for session-level ideology. We have this via the cross-session phase for between-session comparison, but not within-session — the time series analysis (roadmap items 3a/3b) would add this.
 
-2. **Sponsorship/cosponsorship analysis.** GovTrack's strongest feature is their cosponsorship-based ideology score (SVD on the cosponsor matrix) and PageRank leadership score. We don't scrape sponsorship data. This would require a scraper extension.
+2. **~~Sponsorship/cosponsorship analysis.~~** ~~GovTrack's strongest feature is their cosponsorship-based ideology score (SVD on the cosponsor matrix) and PageRank leadership score. We don't scrape sponsorship data. This would require a scraper extension.~~ **Resolved (2026-03-02).** The scraper now captures `sponsor_slugs` (semicolon-joined legislator slugs from bill page HTML, 89th+ sessions). Phase 12 profiles include a per-legislator sponsorship section: sponsored bills table, primary vs co-sponsor role, passage rate. Defection tables include the bill's sponsor for context. Full cosponsorship-network analysis (GovTrack-style SVD + PageRank) remains a future opportunity. ADR-0081.
 
-Neither is a deficiency in the current implementation — they're future opportunities that require upstream data not yet available.
+The temporal trajectory gap is not a deficiency in the current implementation — it's a future opportunity. The within-session TSA (Phase 15, rolling PCA drift + PELT changepoints) partially addresses it.
 
 ---
 
@@ -310,7 +310,7 @@ Option (a) is simpler. The full change is moving the spine/grid operations insid
 
 | Capability | Who Does It | Gap Assessment |
 |-----------|------------|----------------|
-| Cosponsorship analysis | GovTrack (SVD + PageRank) | Requires scraper extension — bill sponsorship not currently captured |
+| ~~Cosponsorship analysis~~ | ~~GovTrack (SVD + PageRank)~~ | **Partially resolved** (ADR-0081): per-legislator sponsorship stats + defection sponsor context now in profiles. Full cosponsorship-network SVD remains future work. |
 | Policy-domain categorization | CalMatters (6 policy areas) | Requires bill text — see `docs/future-bill-text-analysis.md` |
 | Interactive web profiles | CalMatters, GovTrack, Vote Smart | Our static HTML is appropriate for the current audience |
 | Multi-year career trajectory | Voteview (DW-NOMINATE vs Nokken-Poole) | Cross-session phase handles between-biennium; within-session temporal analysis is a roadmap item |

@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-02 (M7: animated ideal point scatter in dynamic IRT report)
+**Last updated:** 2026-03-02 (sponsor_slugs integration into Phase 11 Synthesis + Phase 12 Profiles)
 
 ---
 
@@ -68,6 +68,7 @@ What's been done, what's next, and what's on the horizon for the Tallgrass analy
 | — | Bill Lifecycle (M5) | 2026-03-02 | `BillAction` dataclass, KLISS HISTORY capture, `_bill_actions.csv` export. Sankey lifecycle diagram in EDA report. 17 new tests. |
 | — | Ridgeline Plots (M6) | 2026-03-02 | `plot_ridgeline_ideology()` — stacked KDE curves by biennium in dynamic IRT report. Republicans/Democrats shown separately. 3 new tests (73 total in Phase 16). |
 | — | Animated Scatter (M7) | 2026-03-02 | `plot_animated_scatter()` — Gapminder-style Plotly animation in dynamic IRT report. X=ideal point, Y=uncertainty, color=party, frame=biennium. 3 new tests (76 total in Phase 16). |
+| — | Sponsor Slugs → Synthesis + Profiles | 2026-03-02 | `sponsor_slugs` (M8 scraper output) integrated into Phase 11 and Phase 12. Synthesis: `n_bills_sponsored` in unified scorecard. Profiles: per-legislator sponsorship section (primary/co-sponsor, passage rate), defection sponsor context. Graceful degradation for pre-89th data. 11 new tests (1952 total). ADR-0081. |
 
 ---
 
@@ -131,7 +132,7 @@ Full-pipeline review across all 8 bienniums (84th-91st), 17 phases each, plus cr
 
 #### ~~A1. Python 2 `except` syntax across 9 call sites~~ — Done
 
-**Fixed 2026-03-02.** Ruff's formatter stripped parentheses from multi-exception `except` clauses (known ruff bug). All 9 call sites across 6 files fixed with parenthesized tuple + `# fmt: skip`: `network.py` (3), `geographic.py` (3), `tsa_r_data.py` (1), `experiment_monitor.py` (1), `dynamic_irt_report.py` (1).
+**Fixed 2026-03-02.** Originally fixed with `# fmt: skip` workaround. Permanently resolved by Python 3.14.3 upgrade: PEP 758 makes bracketless `except A, B:` valid syntax meaning "catch both exceptions." All `# fmt: skip` comments removed; ruff now formats correctly.
 
 ### High: Systematic Issues (All Bienniums)
 
@@ -327,7 +328,7 @@ Clustering, bipartite, network, profiles all build lookup dicts the same way. Id
 | Error handling (H1-H3) | 3/3 | 3 | Crash prevention |
 | Tests (T1-T2) | 2/2 | 2 | T1: slow markers, T2: weak assertions |
 
-1912 tests passing, lint clean, typecheck clean.
+1952 tests passing, lint clean, typecheck clean.
 
 ---
 
@@ -411,7 +412,7 @@ All Tier 4 items plus remaining code audit items have detailed implementation do
 | R23 | **Ridgeline plots** for ideology | [M6](milestones/m6-ridgeline-plots.md) | **Done** — `plot_ridgeline_ideology()` in dynamic IRT report |
 | R24 | **Animated scatter** (Gapminder) | [M7](milestones/m7-animated-scatter.md) | **Done** — `plot_animated_scatter()` in dynamic IRT report |
 | R25 | **Descriptive alt text** | [M3](milestones/m3-accessibility-alt-text.md) | **Done.** WCAG 2.1 AA — alt_text on all FigureSections + aria_label on InteractiveSections across 23 report files |
-| R26 | **Prediction enhancement** | [M8](milestones/m8-prediction-enhancement.md) | Sponsor party, SHAP passage, stratified accuracy |
+| R26 | **Prediction enhancement** | [M8](milestones/m8-prediction-enhancement.md) | **Done** — `sponsor_slugs` in scraper, `sponsor_party_R` feature, passage SHAP/importance, stratified accuracy by bill prefix. Downstream: Phase 11 `n_bills_sponsored` scorecard, Phase 12 sponsorship section (ADR-0081). |
 
 Additional milestones from code audit:
 
@@ -420,7 +421,7 @@ Additional milestones from code audit:
 | M1 | ~~`@pytest.mark.slow` + test helper consolidation~~ | **Done** — slow markers on retry tests; shared `factories.py` for test data |
 | M2 | ~~Extract `_parse_vote_page()` + `enrich_legislators()` helpers~~ | **Done** |
 
-**Recommended order:** M8 (only remaining milestone). M1, M2, M3, M5, M6, M7 completed.
+**All milestones completed.** M1, M2, M3, M5, M6, M7, M8 done.
 
 ### Key Library Additions (All Integrated)
 
@@ -442,7 +443,7 @@ All 18 phases define `*_PRIMER` strings (150-200 lines of Markdown each) that Ru
 
 ### ~~Test Suite Expansion~~ — Done
 
-1912 tests across scraper and analysis modules. All passing. Three gaps closed:
+1952 tests across scraper and analysis modules. All passing. Three gaps closed:
 - **Integration tests**: `test_integration_pipeline.py` — synthetic data → EDA → PCA pipeline chain, RunContext lifecycle, upstream resolution (26 tests)
 - **HTML report structural tests**: `test_report_structure.py` — TOC anchors, section ordering, numbering, container types, empty report, CSS embedding, make_gt integration (22 tests)
 - **Pytest markers**: `@pytest.mark.scraper` (264 tests), `@pytest.mark.integration` (29 tests), `@pytest.mark.slow` (24 tests). Registered in `pyproject.toml`. Recipes: `just test-scraper`, `just test-fast`

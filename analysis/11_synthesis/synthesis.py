@@ -574,6 +574,43 @@ def plot_pipeline_summary(
     return out
 
 
+# ── Sponsor Summary ──────────────────────────────────────────────────────────
+
+
+def _compute_sponsor_summary(rollcalls: pl.DataFrame) -> pl.DataFrame | None:
+    """Per-legislator sponsorship stats from rollcalls. Returns None if no data."""
+    if "sponsor_slugs" not in rollcalls.columns:
+        return None
+
+    with_slugs = rollcalls.filter(
+        pl.col("sponsor_slugs").is_not_null() & (pl.col("sponsor_slugs") != "")
+    )
+    if with_slugs.height == 0:
+        return None
+
+    # Explode semicolon-joined slugs into individual rows
+    exploded = with_slugs.with_columns(
+        pl.col("sponsor_slugs").str.split("; ").alias("_slugs")
+    ).explode("_slugs").rename({"_slugs": "legislator_slug"})
+
+    # Compute per-legislator: count and passage rate
+    has_passed = "passed" in exploded.columns
+    agg_exprs = [pl.len().alias("n_bills_sponsored")]
+    if has_passed:
+        agg_exprs.append(
+            pl.col("passed").mean().alias("sponsor_passage_rate"),
+        )
+
+    summary = exploded.group_by("legislator_slug").agg(agg_exprs)
+
+    if not has_passed:
+        summary = summary.with_columns(
+            pl.lit(None).cast(pl.Float64).alias("sponsor_passage_rate")
+        )
+
+    return summary.cast({"n_bills_sponsored": pl.UInt32})
+
+
 # ── Argument Parsing ─────────────────────────────────────────────────────────
 
 
@@ -632,6 +669,31 @@ def main() -> None:
                 f"full_scorecard_{chamber}.csv",
                 f"Full legislator scorecard for {chamber.title()} (all metrics)",
             )
+
+        # ── Sponsor stats (optional — needs rollcalls CSV) ────────────
+        data_dir = Path("data") / STATE_DIR / ctx.session
+        rollcalls_path = next(data_dir.glob("*_rollcalls.csv"), None)
+        if rollcalls_path is not None:
+            rollcalls = pl.read_csv(rollcalls_path)
+            sponsor_summary = _compute_sponsor_summary(rollcalls)
+            if sponsor_summary is not None:
+                for chamber, leg_df in leg_dfs.items():
+                    chamber_summary = sponsor_summary.filter(
+                        pl.col("legislator_slug").is_in(leg_df["legislator_slug"])
+                    )
+                    if chamber_summary.height > 0:
+                        leg_dfs[chamber] = leg_df.join(
+                            chamber_summary, on="legislator_slug", how="left"
+                        )
+                        print(
+                            f"  {chamber}: joined sponsor stats for "
+                            f"{chamber_summary.height} legislators"
+                        )
+                # Re-export parquets with sponsor columns
+                for chamber in ("house", "senate"):
+                    leg_dfs[chamber].write_parquet(
+                        ctx.data_dir / f"legislator_df_{chamber}.parquet"
+                    )
 
         # ── Detect Notable Legislators ────────────────────────────────
         print("\nDetecting notable legislators...")

@@ -54,6 +54,7 @@ One row per roll call vote. Summary-level data (~500 rows for a full session).
 | `not_voting_count` | int | Number of Not Voting |
 | `total_votes` | int | Sum of all 5 categories |
 | `passed` | bool/None | True if passed/adopted/prevailed/concurred, False if failed/rejected/sustained, None if unclear |
+| `sponsor_slugs` | str | Semicolon-joined legislator slugs of bill sponsors, extracted from bill page `<a>` hrefs (e.g. `"sen_tyson_caryn_1; sen_alley_larry_1"`). First slug is the primary sponsor. Empty for committee-sponsored bills, pre-89th sessions (before 2021), and data scraped before M8. Used by Phase 08 (prediction: `sponsor_party_R` feature), Phase 11 (synthesis: `n_bills_sponsored` scorecard column), and Phase 12 (profiles: sponsorship section, defection sponsor context). |
 
 **Primary key**: `vote_id`
 

@@ -58,6 +58,7 @@ def build_profiles_report(
         _add_scorecard_figure(report, target, slug_short, plots_dir)
         _add_bill_type_figure(report, target, slug_short, plots_dir)
         _add_position_figure(report, target, slug_short, plots_dir)
+        _add_sponsorship_section(report, target, data.get("sponsorship"))
         _add_defections_table(report, target, data.get("defections"))
         _add_surprising_votes_table(report, target, data.get("surprising"))
         _add_neighbors_figure(report, target, slug_short, plots_dir)
@@ -197,6 +198,64 @@ def _add_position_figure(
     )
 
 
+def _add_sponsorship_section(
+    report: object, target: ProfileTarget, sponsored: "pl.DataFrame | None"
+) -> None:
+    """Sponsorship summary and table of sponsored bills."""
+    if sponsored is None or sponsored.height == 0:
+        return
+
+    slug_short = target.slug.replace("rep_", "").replace("sen_", "")
+    n_total = sponsored.height
+    n_primary = sponsored.filter(pl.col("is_primary")).height
+    n_passed = sponsored.filter(pl.col("passed") == True).height  # noqa: E712
+    n_with_outcome = sponsored.filter(pl.col("passed").is_not_null()).height
+    passage_pct = f"{n_passed / n_with_outcome:.0%}" if n_with_outcome > 0 else "N/A"
+
+    report.add(
+        TextSection(
+            id=f"sponsorship-summary-{slug_short}",
+            title=f"Sponsorship — {target.full_name}",
+            html=(
+                f"<p>Sponsored <strong>{n_total}</strong> bill"
+                f"{'s' if n_total != 1 else ''}"
+                f" ({n_primary} as primary sponsor). "
+                f"Passage rate: <strong>{passage_pct}</strong>.</p>"
+            ),
+        )
+    )
+
+    display = sponsored.select(
+        pl.col("bill_number").alias("Bill"),
+        pl.col("short_title").alias("Title"),
+        pl.col("motion").alias("Motion"),
+        pl.when(pl.col("passed").is_null())
+        .then(pl.lit(""))
+        .when(pl.col("passed"))
+        .then(pl.lit("Passed"))
+        .otherwise(pl.lit("Failed"))
+        .alias("Outcome"),
+        pl.when(pl.col("is_primary"))
+        .then(pl.lit("Primary"))
+        .otherwise(pl.lit("Co-sponsor"))
+        .alias("Role"),
+    )
+
+    html = make_gt(
+        display,
+        title=f"Bills Sponsored by {target.full_name}",
+        subtitle=f"{n_primary} as primary sponsor, {n_total - n_primary} as co-sponsor",
+    )
+
+    report.add(
+        TableSection(
+            id=f"sponsorship-{slug_short}",
+            title=f"Sponsored Bills — {target.full_name}",
+            html=html,
+        )
+    )
+
+
 def _add_defections_table(
     report: object, target: ProfileTarget, defections: pl.DataFrame | None
 ) -> None:
@@ -206,14 +265,18 @@ def _add_defections_table(
 
     slug_short = target.slug.replace("rep_", "").replace("sen_", "")
 
-    display = defections.select(
+    display_cols = [
         pl.col("bill_number").alias("Bill"),
         pl.col("short_title").alias("Title"),
         pl.col("motion").alias("Motion"),
         pl.col("legislator_vote").alias("Their Vote"),
         pl.col("party_majority_vote").alias("Party Majority"),
         pl.col("party_yea_pct").alias("Party Yea %"),
-    )
+    ]
+    if "sponsor" in defections.columns:
+        display_cols.append(pl.col("sponsor").alias("Sponsor"))
+
+    display = defections.select(display_cols)
 
     html = make_gt(
         display,

@@ -67,6 +67,16 @@ synthesis.py          — Orchestrator (imports from all three, produces plots +
 
 **Alternatives:** Hardcode session-specific numbers as fallbacks. Rejected because wrong numbers for a nontechnical audience are worse than "not available".
 
+### 7. Sponsor summary from rollcalls
+
+**Decision:** After `build_legislator_df()`, load `rollcalls.csv` and compute per-legislator sponsorship stats (`n_bills_sponsored`, `sponsor_passage_rate`) when the `sponsor_slugs` column is present. LEFT JOIN onto each chamber's `leg_df`. Display `n_bills_sponsored` as "Bills Sponsored" in the full scorecard (integer format).
+
+**Implementation:** `_compute_sponsor_summary()` inline helper splits `sponsor_slugs` by `"; "`, explodes, groups by slug, computes count + mean passage rate. Returns `None` when column is missing or all empty — `leg_dfs` unchanged in that case.
+
+**Alternatives:** (a) Only show sponsorship in profiles, not synthesis. Rejected because the synthesis scorecard is the unified cross-legislator comparison view — omitting sponsorship counts there means users must open individual profiles to compare. (b) Include `sponsor_passage_rate` in the scorecard too. Deferred — passage rate on small N (typical legislator sponsors ~5-15 bills) is noisy.
+
+**Graceful degradation:** Pre-89th data (84th-88th), pre-rescrape data, and committee-sponsored bills have no `sponsor_slugs` — the helper returns `None` and synthesis proceeds unchanged. ADR-0081.
+
 ## Downstream Implications
 
 - **Narrative quality:** Template-based narratives are adequate but less polished than hand-crafted prose. For publication-quality reports, the generated text should be reviewed and edited.

@@ -5,8 +5,6 @@ Uses a synthetic 20-legislator × 50-vote fixture with known party-line structur
 party lines with some noise.
 """
 
-from __future__ import annotations
-
 import numpy as np
 import polars as pl
 import pytest
@@ -20,6 +18,7 @@ from analysis.prediction import (
     build_vote_features,
     compute_per_legislator_accuracy,
     compute_shap_values,
+    compute_stratified_accuracy,
     detect_hardest_legislators,
     evaluate_holdout,
     find_surprising_bills,
@@ -192,7 +191,10 @@ def synthetic_rollcalls() -> pl.DataFrame:
                 "vote_type": "Final Action" if j % 3 != 2 else "Emergency Final Action",
                 "result": "Passed" if passed else "Failed",
                 "short_title": short_title,
-                "sponsor": "Test Sponsor",
+                "sponsor": (
+                    "Representative Republican0" if j % 2 == 0 else "Representative Democrat0"
+                ),
+                "sponsor_slugs": "rep_r0_1" if j % 2 == 0 else "rep_d0_1",
                 "yea_count": int(yea),
                 "nay_count": int(nay),
                 "present_passing_count": 0,
@@ -1081,6 +1083,164 @@ class TestProperScoringRules:
                 assert ll >= 0
 
 
+# ── Tests: Sponsor Party Feature ────────────────────────────────────────────
+
+
+class TestSponsorFeature:
+    """Tests for sponsor_party_R feature in build_bill_features().
+
+    Run: uv run pytest tests/test_prediction.py::TestSponsorFeature -v
+    """
+
+    def test_slug_based_sponsor_party(
+        self, synthetic_rollcalls, synthetic_bill_params, synthetic_legislators
+    ):
+        """When sponsor_slugs present, sponsor_party_R is derived from slug matching."""
+        result = build_bill_features(
+            synthetic_rollcalls,
+            synthetic_bill_params,
+            "House",
+            legislators=synthetic_legislators,
+        )
+        assert "sponsor_party_R" in result.columns
+        # Even-numbered bills have R sponsor (rep_r0_1), odd have D sponsor (rep_d0_1)
+        vals = result["sponsor_party_R"].unique().sort().to_list()
+        assert set(vals).issubset({0, 1})
+
+    def test_text_fallback_when_no_slugs(self, synthetic_rollcalls, synthetic_bill_params):
+        """When sponsor_slugs column is absent, falls back to text matching."""
+        rc_no_slugs = synthetic_rollcalls.drop("sponsor_slugs")
+        # Build legislators with full_name matching sponsor text format
+        # Sponsor text is "Representative Republican0" / "Representative Democrat0"
+        # match_sponsor_to_party extracts last name and matches against full_name
+        legs = pl.DataFrame(
+            {
+                "legislator_slug": ["rep_r0_1", "rep_d0_1"],
+                "full_name": ["Republican0", "Democrat0"],
+                "chamber": ["House", "House"],
+                "party": ["Republican", "Democrat"],
+            }
+        )
+        result = build_bill_features(
+            rc_no_slugs,
+            synthetic_bill_params,
+            "House",
+            legislators=legs,
+        )
+        # Should still have the feature (via text fallback)
+        assert "sponsor_party_R" in result.columns
+
+    def test_committee_sponsor_is_zero(self, synthetic_bill_params, synthetic_legislators):
+        """Committee-sponsored bills get sponsor_party_R=0."""
+        rc = pl.DataFrame(
+            {
+                "session": ["2025-26"],
+                "bill_number": ["HB 1"],
+                "bill_title": ["Test"],
+                "vote_id": ["je_20250300120000"],
+                "vote_url": ["http://example.com"],
+                "vote_datetime": ["2025-03-01T12:00:00"],
+                "vote_date": ["2025-03-01"],
+                "chamber": ["House"],
+                "motion": ["Final Action"],
+                "vote_type": ["Final Action"],
+                "result": ["Passed"],
+                "short_title": ["Tax bill"],
+                "sponsor": ["Committee on Taxation"],
+                "sponsor_slugs": [""],
+                "yea_count": [15],
+                "nay_count": [5],
+                "present_passing_count": [0],
+                "absent_not_voting_count": [0],
+                "not_voting_count": [0],
+                "total_votes": [20],
+                "passed": [True],
+            }
+        )
+        bp = synthetic_bill_params.head(1)
+        result = build_bill_features(rc, bp, "House", legislators=synthetic_legislators)
+        if "sponsor_party_R" in result.columns:
+            assert result["sponsor_party_R"][0] == 0
+
+    def test_backward_compat_no_legislators(self, synthetic_rollcalls, synthetic_bill_params):
+        """Without legislators parameter, sponsor_party_R is absent (backward compatible)."""
+        result = build_bill_features(synthetic_rollcalls, synthetic_bill_params, "House")
+        assert "sponsor_party_R" not in result.columns
+
+
+# ── Tests: Stratified Accuracy ──────────────────────────────────────────────
+
+
+class TestStratifiedAccuracy:
+    """Tests for compute_stratified_accuracy().
+
+    Run: uv run pytest tests/test_prediction.py::TestStratifiedAccuracy -v
+    """
+
+    def test_all_prefixes_present(self):
+        """Each unique prefix gets a row."""
+        y_true = np.array([1, 0, 1, 1, 0])
+        y_pred = np.array([1, 0, 0, 1, 1])
+        prefixes = ["HB", "HB", "SB", "SB", "SB"]
+        result = compute_stratified_accuracy(y_true, y_pred, prefixes)
+        assert result.height == 2
+        assert set(result["prefix"].to_list()) == {"HB", "SB"}
+
+    def test_accuracy_computation(self):
+        """Accuracy is correct per prefix."""
+        y_true = np.array([1, 0, 1, 1])
+        y_pred = np.array([1, 0, 0, 1])
+        prefixes = ["HB", "HB", "SB", "SB"]
+        result = compute_stratified_accuracy(y_true, y_pred, prefixes)
+        hb = result.filter(pl.col("prefix") == "HB")
+        assert hb["accuracy"][0] == 1.0  # both correct
+        sb = result.filter(pl.col("prefix") == "SB")
+        assert sb["accuracy"][0] == 0.5  # 1 of 2 correct
+
+    def test_passage_rate(self):
+        """Passage rate is the mean of y_true per prefix."""
+        y_true = np.array([1, 0, 1, 0])
+        y_pred = np.array([1, 1, 1, 1])
+        prefixes = ["HB", "HB", "SB", "SB"]
+        result = compute_stratified_accuracy(y_true, y_pred, prefixes)
+        for row in result.iter_rows(named=True):
+            assert row["passage_rate"] == 0.5
+
+    def test_sorted_by_count_desc(self):
+        """Results sorted by count descending."""
+        y_true = np.array([1, 0, 1, 0, 1])
+        y_pred = np.array([1, 0, 1, 0, 1])
+        prefixes = ["SB", "HB", "HB", "HB", "SB"]
+        result = compute_stratified_accuracy(y_true, y_pred, prefixes)
+        counts = result["count"].to_list()
+        assert counts == sorted(counts, reverse=True)
+
+    def test_single_prefix(self):
+        """Single prefix produces one row."""
+        y_true = np.array([1, 1, 0])
+        y_pred = np.array([1, 0, 0])
+        prefixes = ["HB", "HB", "HB"]
+        result = compute_stratified_accuracy(y_true, y_pred, prefixes)
+        assert result.height == 1
+        assert result["prefix"][0] == "HB"
+        assert result["count"][0] == 3
+
+
+# ── Tests: Bill Features Metadata ──────────────────────────────────────────
+
+
+class TestBillFeaturesMetadata:
+    """Tests for bill_prefix in build_bill_features() metadata.
+
+    Run: uv run pytest tests/test_prediction.py::TestBillFeaturesMetadata -v
+    """
+
+    def test_bill_prefix_in_output(self, synthetic_rollcalls, synthetic_bill_params):
+        """bill_prefix should be in the output metadata columns."""
+        result = build_bill_features(synthetic_rollcalls, synthetic_bill_params, "House")
+        assert "bill_prefix" in result.columns
+
+
 # ── Tests: Test Indices ─────────────────────────────────────────────────────
 
 
@@ -1170,7 +1330,7 @@ class TestTemporalSplit:
         """Temporal split returns results for all 3 models."""
         features = build_bill_features(synthetic_rollcalls, synthetic_bill_params, "House")
         feature_cols = _get_feature_cols(
-            features, "passed_binary", ["vote_id", "bill_number", "vote_date"]
+            features, "passed_binary", ["vote_id", "bill_number", "vote_date", "bill_prefix"]
         )
         results = _temporal_split_eval(features, feature_cols, "House")
         if results:  # May be empty if too few rows

@@ -3,8 +3,6 @@
 Extracted from per-phase duplicates (R1-R3 in code audit).
 """
 
-from __future__ import annotations
-
 import re
 from pathlib import Path
 
@@ -86,3 +84,95 @@ def normalize_name(name: str) -> str:
     name = name.strip().lower()
     name = _LEADERSHIP_SUFFIX_RE.sub("", name)
     return name
+
+
+# ── Sponsor Matching ──────────────────────────────────────────────────────
+
+_TITLE_RE = re.compile(r"^(Senator|Representative)\s+", re.IGNORECASE)
+"""Matches chamber title prefix in sponsor text."""
+
+
+def parse_sponsor_name(raw: str) -> tuple[str | None, str | None]:
+    """Parse a single sponsor entry like 'Senator Tyson' into (name, chamber).
+
+    Returns (None, None) for committee sponsors or empty/malformed input.
+    """
+    if not raw or not raw.strip():
+        return None, None
+    raw = raw.strip()
+
+    # Detect committee sponsors
+    if "committee" in raw.lower():
+        return None, None
+
+    match = _TITLE_RE.match(raw)
+    if not match:
+        return None, None
+
+    title = match.group(1).lower()
+    name = raw[match.end() :].strip()
+    if not name:
+        return None, None
+
+    chamber = "Senate" if title == "senator" else "House"
+    return name, chamber
+
+
+def match_sponsor_to_slug(sponsor_text: str, legislators: pl.DataFrame) -> str | None:
+    """Match the first person sponsor to a legislator slug via name + chamber.
+
+    Uses text-based matching as a fallback when slug-based matching is unavailable
+    (e.g., CSVs scraped before sponsor_slugs was added).
+
+    The slug column is auto-detected: ``legislator_slug`` (analysis convention) or
+    ``slug`` (scraper convention).
+
+    Returns the legislator slug string or None.
+    """
+    if not sponsor_text:
+        return None
+
+    # Take the first sponsor entry
+    first = sponsor_text.split(";")[0].strip()
+    name, chamber = parse_sponsor_name(first)
+    if name is None or chamber is None:
+        return None
+
+    slug_col = "legislator_slug" if "legislator_slug" in legislators.columns else "slug"
+
+    # Normalize for matching
+    name_lower = name.strip().lower()
+
+    # Filter to matching chamber
+    chamber_legs = legislators.filter(pl.col("chamber") == chamber)
+    if chamber_legs.height == 0:
+        return None
+
+    # Try last-name match against full_name column
+    for row in chamber_legs.iter_rows(named=True):
+        full_name = (row.get("full_name") or "").lower()
+        # full_name is "Last" or "Last, First" — check if our name ends with the last name
+        last_name = full_name.split(",")[0].strip() if full_name else ""
+        if last_name and last_name == name_lower.split()[-1].lower():
+            return row.get(slug_col)
+
+    return None
+
+
+def match_sponsor_to_party(sponsor_text: str, legislators: pl.DataFrame) -> str | None:
+    """Match the first person sponsor to a party via name + chamber.
+
+    Thin wrapper around :func:`match_sponsor_to_slug` — resolves identity first,
+    then looks up party.
+
+    Returns party string ("Republican", "Democrat", "Independent") or None.
+    """
+    slug = match_sponsor_to_slug(sponsor_text, legislators)
+    if slug is None:
+        return None
+
+    slug_col = "legislator_slug" if "legislator_slug" in legislators.columns else "slug"
+    matched = legislators.filter(pl.col(slug_col) == slug)
+    if matched.height == 0:
+        return None
+    return matched[0, "party"]

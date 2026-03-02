@@ -18,7 +18,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from analysis.synthesis import _extract_best_auc
+from analysis.synthesis import _compute_sponsor_summary, _extract_best_auc
 from analysis.synthesis_data import (
     UPSTREAM_PHASES,
     _read_manifest,
@@ -860,3 +860,61 @@ class TestDetectAll:
         # Should not crash, just have empty results
         assert result["mavericks"] == {}
         assert result["bridges"] == {}
+
+
+# ── _compute_sponsor_summary() ───────────────────────────────────────────────
+
+
+class TestComputeSponsorSummary:
+    """Per-legislator sponsorship stats from rollcalls."""
+
+    def test_sponsor_stats_computed(self):
+        """Rollcalls with sponsor_slugs → per-legislator counts."""
+        rc = pl.DataFrame(
+            {
+                "vote_id": ["v1", "v2", "v3"],
+                "bill_number": ["HB 1", "HB 2", "HB 3"],
+                "sponsor_slugs": ["rep_a; rep_b", "rep_a", "rep_c"],
+                "passed": [True, False, True],
+            }
+        )
+        result = _compute_sponsor_summary(rc)
+        assert result is not None
+        rep_a = result.filter(pl.col("legislator_slug") == "rep_a")
+        assert rep_a["n_bills_sponsored"][0] == 2
+
+    def test_passage_rate_correct(self):
+        """Passage rate should match hand-calculated values."""
+        rc = pl.DataFrame(
+            {
+                "vote_id": ["v1", "v2", "v3", "v4"],
+                "bill_number": ["HB 1", "HB 2", "HB 3", "HB 4"],
+                "sponsor_slugs": ["rep_a", "rep_a", "rep_a", "rep_a"],
+                "passed": [True, True, False, True],
+            }
+        )
+        result = _compute_sponsor_summary(rc)
+        assert result is not None
+        rate = result.filter(pl.col("legislator_slug") == "rep_a")["sponsor_passage_rate"][0]
+        assert rate == pytest.approx(0.75)
+
+    def test_graceful_without_column(self):
+        """Rollcalls missing sponsor_slugs → None."""
+        rc = pl.DataFrame(
+            {
+                "vote_id": ["v1"],
+                "bill_number": ["HB 1"],
+            }
+        )
+        assert _compute_sponsor_summary(rc) is None
+
+    def test_graceful_with_empty_slugs(self):
+        """Column exists, all empty → None."""
+        rc = pl.DataFrame(
+            {
+                "vote_id": ["v1", "v2"],
+                "bill_number": ["HB 1", "HB 2"],
+                "sponsor_slugs": ["", ""],
+            }
+        )
+        assert _compute_sponsor_summary(rc) is None

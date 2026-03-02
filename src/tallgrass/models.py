@@ -37,6 +37,7 @@ class RollCall:
     result: str
     short_title: str
     sponsor: str
+    sponsor_slugs: str = ""  # semicolon-joined legislator slugs from bill page <a> hrefs
     yea_count: int = 0
     nay_count: int = 0
     present_passing_count: int = 0

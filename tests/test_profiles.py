@@ -7,8 +7,6 @@ Usage:
     uv run pytest tests/test_profiles.py -v
 """
 
-from __future__ import annotations
-
 import polars as pl
 import pytest
 from analysis.profiles_data import (
@@ -17,6 +15,7 @@ from analysis.profiles_data import (
     build_full_voting_record,
     build_scorecard,
     compute_bill_type_breakdown,
+    compute_sponsorship_stats,
     find_defection_bills,
     find_legislator_surprising_votes,
     find_voting_neighbors,
@@ -718,3 +717,91 @@ class TestBuildFullVotingRecord:
         )
         dates = result["date"].to_list()
         assert dates == ["2025-03-20", "2025-02-10", "2025-01-15"]
+
+
+# ── Tests: Sponsorship Stats ────────────────────────────────────────────────
+
+
+class TestSponsorshipStats:
+    """Tests for the compute_sponsorship_stats() function."""
+
+    @pytest.fixture
+    def rollcalls_with_sponsors(self) -> pl.DataFrame:
+        """Rollcalls with sponsor_slugs column."""
+        return pl.DataFrame(
+            {
+                "vote_id": [f"v{i}" for i in range(5)],
+                "bill_number": ["HB 1", "HB 2", "HB 3", "HB 4", "HB 5"],
+                "short_title": [f"Bill {i}" for i in range(5)],
+                "motion": ["Final Action"] * 5,
+                "passed": [True, True, False, True, None],
+                "sponsor_slugs": [
+                    "rep_a; rep_b",
+                    "rep_a",
+                    "rep_c; rep_a",
+                    "rep_d",
+                    "rep_a; rep_e",
+                ],
+            }
+        )
+
+    def test_returns_sponsored_bills(self, rollcalls_with_sponsors):
+        """Target slug in some rollcalls → DataFrame with correct bills."""
+        result = compute_sponsorship_stats("rep_a", rollcalls_with_sponsors)
+        assert result is not None
+        assert result.height == 4  # rep_a sponsors HB 1, 2, 3, 5
+
+    def test_primary_vs_cosponsor(self, rollcalls_with_sponsors):
+        """First slug = primary, subsequent = co-sponsor."""
+        result = compute_sponsorship_stats("rep_a", rollcalls_with_sponsors)
+        assert result is not None
+        # HB 1: rep_a is first → primary. HB 3: rep_c is first → co-sponsor.
+        hb1 = result.filter(pl.col("bill_number") == "HB 1")
+        assert hb1["is_primary"][0] is True
+        hb3 = result.filter(pl.col("bill_number") == "HB 3")
+        assert hb3["is_primary"][0] is False
+
+    def test_returns_none_without_column(self, rollcalls):
+        """Rollcalls missing sponsor_slugs → None."""
+        result = compute_sponsorship_stats("rep_a", rollcalls)
+        assert result is None
+
+    def test_empty_when_no_matches(self, rollcalls_with_sponsors):
+        """Column present but target not found → empty DataFrame."""
+        result = compute_sponsorship_stats("rep_z", rollcalls_with_sponsors)
+        assert result is not None
+        assert result.height == 0
+
+
+# ── Tests: Defection Enrichment with Sponsor ─────────────────────────────────
+
+
+class TestDefectionSponsorEnrichment:
+    """Tests for sponsor column in find_defection_bills() output."""
+
+    def test_defections_include_sponsor(self, votes_long):
+        """Rollcalls with sponsor column → defections output includes it."""
+        rc_with_sponsor = pl.DataFrame(
+            {
+                "vote_id": [f"v{i}" for i in range(10)],
+                "bill_number": [f"HB {i}" for i in range(10)],
+                "short_title": [f"Bill {i}" for i in range(10)],
+                "motion": ["Final Action"] * 10,
+                "sponsor": [f"Senator {chr(65 + i)}" for i in range(10)],
+            }
+        )
+        party_slugs = ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "rep_g"]
+        result = find_defection_bills(
+            "rep_g", votes_long, rc_with_sponsor, "Republican", party_slugs
+        )
+        assert result.height > 0
+        assert "sponsor" in result.columns
+
+    def test_defections_backward_compat(self, votes_long, rollcalls):
+        """Without sponsor column → existing output unchanged."""
+        party_slugs = ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "rep_g"]
+        result = find_defection_bills(
+            "rep_g", votes_long, rollcalls, "Republican", party_slugs
+        )
+        assert result.height > 0
+        assert "sponsor" not in result.columns

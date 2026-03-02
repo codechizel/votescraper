@@ -22,7 +22,7 @@ just lint-check                              # → ruff check + ruff format --ch
 just typecheck                               # → ty check src/ + ty check analysis/
 just sessions                                # → uv run tallgrass --list-sessions
 just check                                   # → lint-check + typecheck + test (quality gate)
-just test                                    # → uv run pytest tests/ -v (~1941 tests)
+just test                                    # → uv run pytest tests/ -v (~1952 tests)
 just test-scraper                            # → pytest -m scraper (~282 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just monitor                                 # → check running experiment status
@@ -57,8 +57,8 @@ just wt-done                                 # same, but auto-detects (from insi
 
 ## Code Style
 
-- Python 3.14+, modern type hints (`list[str]` not `List[str]`, `X | None` not `Optional[X]`)
-- Ruff: line-length 100, rules E/F/I/W. **Known ruff bug:** `ruff format` strips parentheses from `except (A, B):`, converting it to the Python 2 form `except A, B:` (= `except A as B:`). Always add `# fmt: skip` to multi-exception `except` lines (ADR-0072).
+- Python 3.14.3+, modern type hints (`list[str]` not `List[str]`, `X | None` not `Optional[X]`)
+- Ruff: line-length 100, rules E/F/I/W. Multi-exception `except` uses PEP 758 bracketless syntax: `except ValueError, TypeError:` (no parens needed in 3.14+). Ruff formats this automatically.
 - ty: type checking (beta) — `src/` must pass clean; `analysis/` warnings-only for third-party stub noise
 - Frozen dataclasses for data models; type hints on all function signatures
 - Libraries with incomplete stubs configured as `replace-imports-with-any` in `pyproject.toml`
@@ -128,7 +128,7 @@ These are real bugs that were found and fixed. Do NOT regress on them:
 - Legislator slugs: `sen_` = Senate, `rep_` = House
 - Column naming: scraper CSVs use `slug` and `vote`; analysis phases rename to `legislator_slug` and expect `vote` (not `vote_category`). Each phase handles the rename at load time (ADR-0066).
 - Independent party handling: scraper outputs empty string; all analysis fills to "Independent" at load time (ADR-0021)
-- `sponsor_slugs`: semicolon-joined legislator slugs extracted from bill page `<a>` hrefs (e.g. `"sen_tyson_caryn_1; sen_alley_larry_1"`). Empty for committee sponsors, pre-89th sessions, and data scraped before this feature. Used by Phase 08 to build `sponsor_party_R` feature for passage prediction; text-based fallback via `phase_utils.match_sponsor_to_party()` when slugs unavailable.
+- `sponsor_slugs`: semicolon-joined legislator slugs extracted from bill page `<a>` hrefs (e.g. `"sen_tyson_caryn_1; sen_alley_larry_1"`). Empty for committee sponsors, pre-89th sessions, and data scraped before this feature. Used by Phase 08 (`sponsor_party_R` for prediction), Phase 11 (`n_bills_sponsored` in scorecard), and Phase 12 (per-legislator sponsorship section + defection sponsor display). Text-based fallback via `phase_utils.match_sponsor_to_party()` when slugs unavailable.
 - `BillAction`: KLISS API HISTORY data — `action_code`, `chamber`, `committee_names` (tuple, semicolon-joined in CSV), `occurred_datetime`, `session_date`, `status`, `journal_page_number`. Available for sessions with KLISS API (89th+); pre-KLISS sessions (84th-88th) may have limited or no HISTORY data.
 
 ## Output
@@ -166,7 +166,7 @@ See `.claude/rules/analysis-framework.md` for the full pipeline, report system a
 
 Key references:
 - Design docs: `analysis/design/README.md`
-- ADRs: `docs/adr/README.md` (80 decisions)
+- ADRs: `docs/adr/README.md` (81 decisions)
 - Analysis primer: `docs/analysis-primer.md` (plain-English guide)
 - How IRT works: `docs/how-irt-works.md` (general-audience explanation of anchors, identification, and MCMC divergences)
 - External validation: `docs/external-validation-results.md` (5-biennium results, all 20 correlations "strong")

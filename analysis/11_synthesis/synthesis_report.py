@@ -1652,6 +1652,7 @@ def _add_full_scorecard(report: object, leg_dfs: dict, session: str) -> None:
         "maverick_rate",
         "betweenness",
         "accuracy",
+        "n_bills_sponsored",
         "UMAP1",
         "UMAP2",
     ]
@@ -1675,6 +1676,7 @@ def _add_full_scorecard(report: object, leg_dfs: dict, session: str) -> None:
             "maverick_rate": "Maverick Rate",
             "betweenness": "Betweenness",
             "accuracy": "Pred. Accuracy",
+            "n_bills_sponsored": "Bills Sponsored",
             "UMAP1": "UMAP 1",
             "UMAP2": "UMAP 2",
         },
@@ -1685,6 +1687,7 @@ def _add_full_scorecard(report: object, leg_dfs: dict, session: str) -> None:
             "maverick_rate": ".3f",
             "betweenness": ".4f",
             "accuracy": ".3f",
+            "n_bills_sponsored": "d",
             "UMAP1": ".3f",
             "UMAP2": ".3f",
         },

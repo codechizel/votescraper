@@ -427,7 +427,7 @@ def find_defection_bills(
 
     # Join with rollcalls for bill metadata
     rc_cols = ["vote_id"]
-    for col in ("bill_number", "short_title", "motion"):
+    for col in ("bill_number", "short_title", "motion", "sponsor"):
         if col in rollcalls.columns:
             rc_cols.append(col)
 
@@ -442,7 +442,7 @@ def find_defection_bills(
         if col_name not in result.columns:
             result = result.with_columns(pl.lit(None).cast(pl.Utf8).alias(col_name))
 
-    return result.select(
+    select_cols = [
         pl.col("bill_number").fill_null("Unknown"),
         pl.col("short_title").fill_null(""),
         pl.col("motion").fill_null(""),
@@ -455,7 +455,11 @@ def find_defection_bills(
         .otherwise(pl.lit("Nay"))
         .alias("party_majority_vote"),
         (pl.col("party_yea_pct") * 100).round(1).alias("party_yea_pct"),
-    )
+    ]
+    if "sponsor" in result.columns:
+        select_cols.append(pl.col("sponsor").fill_null(""))
+
+    return result.select(select_cols)
 
 
 def _empty_defection_df() -> pl.DataFrame:
@@ -468,6 +472,71 @@ def _empty_defection_df() -> pl.DataFrame:
             "legislator_vote": pl.Utf8,
             "party_majority_vote": pl.Utf8,
             "party_yea_pct": pl.Float64,
+        }
+    )
+
+
+# ── Sponsorship Stats ───────────────────────────────────────────────────────
+
+
+def compute_sponsorship_stats(
+    slug: str,
+    rollcalls: pl.DataFrame,
+) -> pl.DataFrame | None:
+    """Bills where this legislator is a sponsor.
+
+    Returns DataFrame: bill_number, short_title, motion, passed, is_primary.
+    Returns None if sponsor_slugs column is missing or absent.
+    """
+    if "sponsor_slugs" not in rollcalls.columns:
+        return None
+
+    # Filter rows where target slug appears in the semicolon-split list
+    with_slugs = rollcalls.filter(
+        pl.col("sponsor_slugs").is_not_null() & (pl.col("sponsor_slugs") != "")
+    )
+    if with_slugs.height == 0:
+        return None
+
+    # Split and check membership
+    matched = with_slugs.filter(
+        pl.col("sponsor_slugs").str.split("; ").list.contains(slug)
+    )
+    if matched.height == 0:
+        return _empty_sponsorship_df()
+
+    # Mark primary (first slug in the list)
+    result = matched.with_columns(
+        (pl.col("sponsor_slugs").str.split("; ").list.first() == slug).alias("is_primary"),
+    )
+
+    # Select output columns, handling missing ones gracefully
+    out_cols = []
+    for col in ("bill_number", "short_title", "motion"):
+        if col in result.columns:
+            out_cols.append(pl.col(col).fill_null(""))
+        else:
+            out_cols.append(pl.lit("").alias(col))
+
+    if "passed" in result.columns:
+        out_cols.append(pl.col("passed"))
+    else:
+        out_cols.append(pl.lit(None).cast(pl.Boolean).alias("passed"))
+
+    out_cols.append(pl.col("is_primary"))
+
+    return result.select(out_cols).unique(subset=["bill_number", "motion"])
+
+
+def _empty_sponsorship_df() -> pl.DataFrame:
+    """Return an empty DataFrame with the sponsorship schema."""
+    return pl.DataFrame(
+        schema={
+            "bill_number": pl.Utf8,
+            "short_title": pl.Utf8,
+            "motion": pl.Utf8,
+            "passed": pl.Boolean,
+            "is_primary": pl.Boolean,
         }
     )
 

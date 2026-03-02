@@ -73,9 +73,82 @@ class TestExtractBillNumber:
 
 
 class TestExtractSponsor:
-    """Extract sponsor from bill page portlet structure."""
+    """Extract sponsor text and slugs from bill page portlet structure."""
 
-    def test_single_sponsor(self):
+    def test_single_sponsor_text(self):
+        html = """
+        <html><body>
+        <div class="portlet-header">Original Sponsor</div>
+        <div class="portlet-content">
+          <ul><li><a href="/li/b2025_26/members/sen_steffen_joe_1/">Senator Steffen</a></li></ul>
+        </div>
+        </body></html>
+        """
+        soup = BeautifulSoup(html, "lxml")
+        text, slugs = KSVoteScraper._extract_sponsor(soup)
+        assert text == "Senator Steffen"
+        assert slugs == "sen_steffen_joe_1"
+
+    def test_multiple_sponsors(self):
+        html = """
+        <html><body>
+        <div class="portlet-header">Original Sponsor</div>
+        <div class="portlet-content">
+          <ul>
+            <li><a href="/li/b2025_26/members/sen_steffen_joe_1/">Senator Steffen</a></li>
+            <li><a href="/li/b2025_26/members/sen_bowers_larry_1/">Senator Bowers</a></li>
+          </ul>
+        </div>
+        </body></html>
+        """
+        soup = BeautifulSoup(html, "lxml")
+        text, slugs = KSVoteScraper._extract_sponsor(soup)
+        assert text == "Senator Steffen; Senator Bowers"
+        assert slugs == "sen_steffen_joe_1; sen_bowers_larry_1"
+
+    def test_missing_portlet(self):
+        html = "<html><body><p>No sponsor section</p></body></html>"
+        soup = BeautifulSoup(html, "lxml")
+        text, slugs = KSVoteScraper._extract_sponsor(soup)
+        assert text == ""
+        assert slugs == ""
+
+    def test_committee_sponsor_no_slug(self):
+        """Committee links (/committees/) produce text but no slug."""
+        html = """
+        <html><body>
+        <div class="portlet-header">Original Sponsor</div>
+        <div class="portlet-content">
+          <ul><li><a href="/li/b2025_26/committees/ctte_h_tax_1/"
+          >Committee on Taxation</a></li></ul>
+        </div>
+        </body></html>
+        """
+        soup = BeautifulSoup(html, "lxml")
+        text, slugs = KSVoteScraper._extract_sponsor(soup)
+        assert text == "Committee on Taxation"
+        assert slugs == ""
+
+    def test_mixed_person_and_committee(self):
+        """Mix of person and committee sponsors — only person gets slug."""
+        html = """
+        <html><body>
+        <div class="portlet-header">Original Sponsor</div>
+        <div class="portlet-content">
+          <ul>
+            <li><a href="/li/b2025_26/members/sen_tyson_caryn_1/">Senator Tyson</a></li>
+            <li><a href="/li/b2025_26/committees/ctte_s_jud_1/">Judiciary Committee</a></li>
+          </ul>
+        </div>
+        </body></html>
+        """
+        soup = BeautifulSoup(html, "lxml")
+        text, slugs = KSVoteScraper._extract_sponsor(soup)
+        assert text == "Senator Tyson; Judiciary Committee"
+        assert slugs == "sen_tyson_caryn_1"
+
+    def test_sponsor_without_href(self):
+        """Sponsor <a> without href — text only, no slug."""
         html = """
         <html><body>
         <div class="portlet-header">Original Sponsor</div>
@@ -85,27 +158,9 @@ class TestExtractSponsor:
         </body></html>
         """
         soup = BeautifulSoup(html, "lxml")
-        assert KSVoteScraper._extract_sponsor(soup) == "Senator Steffen"
-
-    def test_multiple_sponsors(self):
-        html = """
-        <html><body>
-        <div class="portlet-header">Original Sponsor</div>
-        <div class="portlet-content">
-          <ul>
-            <li><a>Senator Steffen</a></li>
-            <li><a>Senator Bowers</a></li>
-          </ul>
-        </div>
-        </body></html>
-        """
-        soup = BeautifulSoup(html, "lxml")
-        assert KSVoteScraper._extract_sponsor(soup) == "Senator Steffen; Senator Bowers"
-
-    def test_missing_portlet(self):
-        html = "<html><body><p>No sponsor section</p></body></html>"
-        soup = BeautifulSoup(html, "lxml")
-        assert KSVoteScraper._extract_sponsor(soup) == ""
+        text, slugs = KSVoteScraper._extract_sponsor(soup)
+        assert text == "Senator Steffen"
+        assert slugs == ""
 
 
 # ── Vote category parsing ───────────────────────────────────────────────────

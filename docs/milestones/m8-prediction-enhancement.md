@@ -284,7 +284,16 @@ just pipeline 2025-26                 # full pipeline run
 ## Documentation
 
 - Update `docs/roadmap.md` item R26 to "Done"
-- No ADR needed (enhancement to existing phase, no architectural decision)
+- No ADR needed for Phase 08 changes (enhancement to existing phase, no architectural decision)
+
+### Downstream Integration (ADR-0081)
+
+The `sponsor_slugs` column introduced by M8 is also consumed by:
+
+- **Phase 11 (Synthesis):** `_compute_sponsor_summary()` splits `sponsor_slugs`, computes `n_bills_sponsored` and `sponsor_passage_rate` per legislator, LEFT JOINs onto `leg_dfs`. Displayed as "Bills Sponsored" in the unified scorecard.
+- **Phase 12 (Profiles):** `compute_sponsorship_stats()` identifies bills where a target legislator appears in the sponsor list. Marks primary vs co-sponsor. Report section shows sponsored bills table with passage rate. Defection tables include `sponsor` column for context.
+
+All downstream consumers degrade gracefully when `sponsor_slugs` is absent (pre-89th data, committee sponsors).
 
 ## Commit
 

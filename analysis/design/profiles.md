@@ -64,6 +64,20 @@
 
 **Reuse:** Name normalization uses `normalize_name()` from `cross_session_data` (lowercases, strips leadership suffixes). No new normalization code.
 
+### 7. Sponsorship analysis from sponsor_slugs
+
+**Decision:** Add `compute_sponsorship_stats()` in `profiles_data.py` to identify bills where the target legislator appears in the `sponsor_slugs` semicolon-split list. Mark the first slug as primary sponsor. Display a sponsorship section in the per-legislator report between the position figure and defections table.
+
+**Implementation:** Pure function: filter rollcalls where slug appears in the split list, derive `is_primary` from position, return DataFrame with bill_number, short_title, motion, passed, is_primary. Returns `None` if `sponsor_slugs` column is absent. Report section shows summary text ("Sponsored N bills, M as primary, passage rate X%") plus a table.
+
+**Alternatives:** (a) Use the text `sponsor` column for name matching instead of `sponsor_slugs`. Rejected because slug matching is exact and deterministic, while name matching requires fuzzy logic and fails on committee sponsors. (b) Build a cosponsorship network (GovTrack-style SVD). Deferred — requires all-legislator sponsorship matrix, not just per-target lookup.
+
+### 8. Defection table enrichment with sponsor
+
+**Decision:** Add the `sponsor` column (human-readable text from rollcalls, e.g. "Senator Tyson") to the defection bills output when present. No slug resolution needed — the raw text is already display-ready.
+
+**Graceful degradation:** Both features silently skip when `sponsor_slugs` or `sponsor` columns are missing (pre-89th, pre-rescrape data). ADR-0081.
+
 ## Downstream Implications
 
 - **Plot filenames** use the full slug minus the `rep_`/`sen_` prefix (e.g., `scorecard_schreiber_mark_1.png`). These names change across sessions as different legislators are detected.
