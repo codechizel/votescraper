@@ -8,7 +8,14 @@ from __future__ import annotations
 
 import numpy as np
 import polars as pl
+import pymc as pm
 import pytest
+from analysis.dynamic_irt import (
+    DEFAULT_TAU_SIGMA,
+    SMALL_CHAMBER_TAU_SIGMA,
+    SMALL_CHAMBER_THRESHOLD,
+    build_dynamic_irt_graph,
+)
 from analysis.dynamic_irt_data import (
     BIENNIUM_LABELS,
     BIENNIUM_SESSIONS,
@@ -512,14 +519,15 @@ class TestModelStructure:
         var_names = [v.name for v in model.deterministics]
         assert "xi" in var_names
 
-    def test_per_party_tau_shape(self, small_stacked_data) -> None:
-        """Per-party tau should have one value per party."""
+    def test_per_party_tau_auto_switches_for_small_chamber(self, small_stacked_data) -> None:
+        """Per-party tau auto-switches to global for small chambers (ADR-0070)."""
         from analysis.dynamic_irt import build_dynamic_irt_graph
 
+        # small_stacked_data has < SMALL_CHAMBER_THRESHOLD legislators,
+        # so per_party request auto-switches to global tau
         model = build_dynamic_irt_graph(small_stacked_data, "per_party")
         tau_var = [v for v in model.free_RVs if v.name == "tau"][0]
-        n_parties = len(small_stacked_data["party_names"])
-        assert tau_var.eval().shape == (n_parties,)
+        assert tau_var.eval().shape == ()  # scalar, not per-party
 
     def test_global_tau_scalar(self, small_stacked_data) -> None:
         """Global tau should be a scalar."""
@@ -1099,3 +1107,68 @@ class TestEdgeCases:
         assert len(stacked["party_names"]) == 2
         assert "Democrat" in stacked["party_names"]
         assert "Republican" in stacked["party_names"]
+
+
+# ── Graph Construction Tests (ADR-0070) ──────────────────────────────────────
+
+
+def _make_small_stacked_data(n_leg: int = 10, n_time: int = 2) -> dict:
+    """Build minimal stacked data dict for graph construction tests."""
+    n_bills = 20
+    n_obs = n_leg * n_bills
+    return {
+        "leg_global_idx": np.repeat(np.arange(n_leg), n_bills),
+        "bill_idx": np.tile(np.arange(n_bills), n_leg),
+        "time_idx": np.zeros(n_obs, dtype=int),
+        "y": np.random.default_rng(42).integers(0, 2, size=n_obs),
+        "n_legislators": n_leg,
+        "n_bills": n_bills,
+        "n_time": n_time,
+        "n_obs": n_obs,
+        "party_idx": np.array([0] * (n_leg // 2) + [1] * (n_leg - n_leg // 2)),
+        "party_names": ["Democrat", "Republican"],
+        "leg_names": [f"leg_{i}" for i in range(n_leg)],
+        "bill_ids": [f"bill_{i}" for i in range(n_bills)],
+        "leg_periods": [list(range(n_time)) for _ in range(n_leg)],
+    }
+
+
+class TestDynamicIRTGraphConstruction:
+    """Graph construction tests — no MCMC, just model structure (ADR-0070)."""
+
+    def test_uninformative_prior_default(self) -> None:
+        """Default xi_init uses Normal(0, 1)."""
+        data = _make_small_stacked_data(n_leg=20)
+        model = build_dynamic_irt_graph(data, xi_init_mu=None)
+        assert "xi_init" in [rv.name for rv in model.free_RVs]
+
+    def test_informative_prior_uses_mu(self) -> None:
+        """Provided xi_init_mu is used as prior mean."""
+        data = _make_small_stacked_data(n_leg=20)
+        mu = np.linspace(-1, 1, 20)
+        model = build_dynamic_irt_graph(data, xi_init_mu=mu)
+        assert "xi_init" in [rv.name for rv in model.free_RVs]
+        assert model is not None
+
+    def test_adaptive_tau_small_chamber(self) -> None:
+        """Small chamber (n_leg < 80) auto-switches to global tau."""
+        data = _make_small_stacked_data(n_leg=40)
+        model = build_dynamic_irt_graph(data, evolution_structure="per_party")
+        tau_rv = model["tau"]
+        # Small chamber should auto-switch to global (scalar tau)
+        assert tau_rv.type.ndim == 0, "Small chamber should use global (scalar) tau"
+
+    def test_adaptive_tau_large_chamber(self) -> None:
+        """Large chamber (n_leg >= 80) keeps per-party tau."""
+        data = _make_small_stacked_data(n_leg=100)
+        model = build_dynamic_irt_graph(data, evolution_structure="per_party")
+        tau_rv = model["tau"]
+        # Large chamber keeps per-party tau (vector)
+        assert tau_rv.type.ndim == 1, "Large chamber should use per-party (vector) tau"
+
+    def test_tau_sigma_override(self) -> None:
+        """Explicit tau_sigma=0.3 overrides adaptive logic."""
+        data = _make_small_stacked_data(n_leg=40)
+        model = build_dynamic_irt_graph(data, tau_sigma=0.3)
+        assert "tau" in [rv.name for rv in model.free_RVs]
+        assert model is not None

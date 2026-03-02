@@ -678,8 +678,8 @@ class TestRunContextAutoRunId:
         assert ctx.run_dir.name == "01_eda"
         assert ctx.run_dir.parent.parent.name == "91st_2025-2026"
 
-    def test_auto_run_id_session_level_latest(self, tmp_path):
-        """Auto-generated run_id creates a session-level latest symlink."""
+    def test_auto_run_id_does_not_update_latest(self, tmp_path):
+        """Auto-generated run_id does NOT create a session-level latest symlink."""
         ctx = RunContext(
             session="2025-26",
             analysis_name="01_eda",
@@ -688,8 +688,45 @@ class TestRunContextAutoRunId:
         ctx.setup()
         ctx.finalize()
         latest = tmp_path / "91st_2025-2026" / "latest"
+        assert not latest.exists()
+
+    def test_explicit_run_id_does_update_latest(self, tmp_path):
+        """Explicit run_id DOES create a session-level latest symlink."""
+        run_id = "91-260301.1"
+        ctx = RunContext(
+            session="2025-26",
+            analysis_name="01_eda",
+            run_id=run_id,
+            results_root=tmp_path,
+        )
+        ctx.setup()
+        ctx.finalize()
+        latest = tmp_path / "91st_2025-2026" / "latest"
         assert latest.is_symlink()
-        assert str(latest.readlink()) == ctx.run_id
+        assert str(latest.readlink()) == run_id
+
+    def test_auto_run_id_preserves_existing_latest(self, tmp_path):
+        """Auto-generated run_id preserves an existing latest symlink."""
+        session_root = tmp_path / "91st_2025-2026"
+        session_root.mkdir(parents=True)
+        # Pre-set latest → a pipeline run
+        original_target = "91-260301.1"
+        (session_root / original_target).mkdir()
+        latest = session_root / "latest"
+        latest.symlink_to(original_target)
+
+        # Run standalone phase with auto-generated run_id
+        ctx = RunContext(
+            session="2025-26",
+            analysis_name="01_eda",
+            results_root=tmp_path,
+        )
+        ctx.setup()
+        ctx.finalize()
+
+        # latest should still point to the original pipeline run
+        assert latest.is_symlink()
+        assert str(latest.readlink()) == original_target
 
     def test_auto_run_id_increments(self, tmp_path):
         """Successive auto-generated run_ids increment the counter."""

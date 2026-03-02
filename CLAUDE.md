@@ -22,7 +22,7 @@ just lint-check                              # → ruff check + ruff format --ch
 just typecheck                               # → ty check src/ + ty check analysis/
 just sessions                                # → uv run tallgrass --list-sessions
 just check                                   # → lint-check + typecheck + test (quality gate)
-just test                                    # → uv run pytest tests/ -v (~1701 tests)
+just test                                    # → uv run pytest tests/ -v (~1747 tests)
 just test-scraper                            # → pytest -m scraper (~264 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just monitor                                 # → check running experiment status
@@ -179,6 +179,7 @@ Key references:
 - TSA R enrichment: ADR-0061 (CROPS penalty selection + Bai-Perron CIs via R subprocess)
 - Dynamic ideal points: `docs/dynamic-ideal-points-deep-dive.md` (ecosystem survey, Martin-Quinn model, state-space IRT, decomposition)
 - Dynamic IRT sign correction: ADR-0068 (post-hoc per-period xi negation using static IRT correlation, 87th House sign flip case)
+- Dynamic IRT convergence: ADR-0070 (informative xi_init prior from static IRT, adaptive tau for small chambers, symlink race guard, MCMC budget increase)
 - W-NOMINATE + OC: `docs/w-nominate-deep-dive.md` (field-standard comparison, R subprocess, validation-only design); design: `analysis/design/wnominate.md`
 - PPC + LOO-CV: design: `analysis/design/ppc.md` (manual log-likelihood, Q3 local dependence, PSIS-LOO model comparison, ADR-0063)
 - LCA deep dive: `docs/latent-class-deep-dive.md` (literature survey, StepMix evaluation, Salsa effect, Lubke & Neale impossibility)
@@ -221,7 +222,7 @@ All hierarchical experiments (whether using `ExperimentRunner` or standalone scr
 ## Testing
 
 ```bash
-just test                    # 1701 tests
+just test                    # 1747 tests
 just test-scraper            # scraper tests only (-m scraper)
 just test-fast               # skip slow/integration tests (-m "not slow")
 just check                   # full check (lint + typecheck + tests)

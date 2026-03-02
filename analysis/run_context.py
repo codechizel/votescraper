@@ -130,7 +130,7 @@ def _git_commit_hash() -> str:
         )
         if result.returncode == 0:
             return result.stdout.strip()
-    except FileNotFoundError, subprocess.TimeoutExpired:
+    except (FileNotFoundError, subprocess.TimeoutExpired):  # fmt: skip
         pass
     return "unknown"
 
@@ -265,6 +265,10 @@ class RunContext:
         today = datetime.now(_CT).strftime("%y%m%d")
         self._session_root = root / self.session
 
+        # Track whether run_id was explicitly provided (pipeline) vs auto-generated
+        # (standalone). Only explicit run_ids update the `latest` symlink (ADR-0069).
+        self._explicit_run_id = run_id is not None
+
         # Auto-generate run_id for biennium sessions (contain "_" after normalization,
         # e.g. "91st_2025-2026") so standalone phase runs use the same directory
         # structure as pipeline runs.  Non-biennium sessions (cross-session, special
@@ -392,7 +396,7 @@ class RunContext:
                 report_path = self.run_dir / f"{self.analysis_name}_report.html"
                 self.report.write(report_path)
 
-                if self.run_id is not None:
+                if self.run_id is not None and self._explicit_run_id:
                     # Run-directory mode: symlink chains through session-level latest
                     report_link = self._session_root / f"{self.analysis_name}_report.html"
                     if report_link.is_symlink() or report_link.exists():
@@ -400,7 +404,7 @@ class RunContext:
                     report_link.symlink_to(
                         Path("latest") / self.analysis_name / f"{self.analysis_name}_report.html"
                     )
-                else:
+                elif self.run_id is None:
                     # Flat mode: symlink through phase-level latest
                     session_root = self._analysis_dir.parent
                     report_link = session_root / f"{self.analysis_name}_report.html"
@@ -413,13 +417,13 @@ class RunContext:
         # Update latest symlink
         # Skip symlink update on failed runs so downstream phases don't see partial results
         if not failed:
-            if self.run_id is not None:
+            if self.run_id is not None and self._explicit_run_id:
                 # Run-directory mode: session-level `latest` → run_id (idempotent)
                 latest = self._session_root / "latest"
                 if latest.is_symlink() or latest.exists():
                     latest.unlink()
                 latest.symlink_to(self.run_id)
-            else:
+            elif self.run_id is None:
                 # Flat mode: phase-level `latest` → date label
                 latest = self._analysis_dir / "latest"
                 if latest.is_symlink() or latest.exists():

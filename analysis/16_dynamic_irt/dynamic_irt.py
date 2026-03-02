@@ -101,9 +101,9 @@ from tallgrass.session import KSSession
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-DEFAULT_N_SAMPLES: int = 1000
-DEFAULT_N_TUNE: int = 1000
-DEFAULT_N_CHAINS: int = 2
+DEFAULT_N_SAMPLES: int = 2000
+DEFAULT_N_TUNE: int = 2000
+DEFAULT_N_CHAINS: int = 4
 RANDOM_SEED: int = 42
 RHAT_THRESHOLD: float = 1.05
 """Relaxed from standard 1.01 — dynamic IRT with ~10K params. Document in ADR."""
@@ -112,6 +112,12 @@ MAX_DIVERGENCES: int = 50
 """Higher tolerance for large state-space model."""
 TOP_MOVERS_N: int = 20
 """Number of top movers to display."""
+SMALL_CHAMBER_THRESHOLD: int = 80
+"""Chambers with fewer legislators get tighter tau priors (ADR-0070)."""
+SMALL_CHAMBER_TAU_SIGMA: float = 0.15
+"""Tau prior sigma for small chambers — prevents mode-splitting."""
+DEFAULT_TAU_SIGMA: float = 0.5
+"""Tau prior sigma for large chambers."""
 
 PARTY_COLORS_DYNAMIC: dict[str, str] = {
     "Republican": "#E81B23",
@@ -136,8 +142,8 @@ per-biennium IRT cannot answer.
 ### State-Space 2PL IRT Model (Non-Centered Random Walk)
 
 ```
-tau ~ HalfNormal(0.5)                        -- evolution SD (per party or global)
-xi_init ~ Normal(0, 1)                       -- initial ideal points (period 0)
+tau ~ HalfNormal(sigma)                      -- evolution SD (adaptive: 0.15 small, 0.5 large)
+xi_init ~ Normal(mu, sigma)                  -- mu=static IRT if available, else 0; sigma=0.75/1
 xi_innovations ~ Normal(0, 1)                -- non-centered innovations
 xi[0] = xi_init
 xi[t] = xi[t-1] + tau * xi_innovations[t-1]  -- random walk
@@ -146,14 +152,19 @@ beta ~ HalfNormal(2.5)                       -- bill discrimination (positive fo
 P(Yea) = logit^-1(beta * xi - alpha)
 ```
 
-**Identification:** Positive beta (HalfNormal) provides sign identification.
-Cross-period anchoring handled by the random walk bridge — legislators serving
-multiple bienniums connect the scales.
+**Identification:** Three-layer strategy (ADR-0070):
+1. Positive beta (HalfNormal) fixes discrimination sign.
+2. Informative xi_init prior from static IRT transfers the well-identified sign convention.
+3. Post-hoc sign correction (ADR-0068) as diagnostic safety net.
+
+**Small chambers:** Chambers with <80 legislators auto-switch to global tau with
+tighter prior (sigma=0.15) to prevent mode-splitting.
 
 ## Inputs
 
 - Vote matrices from 01_eda (all bienniums)
 - PCA scores from 02_pca (for initialization)
+- Static IRT ideal points from 04_irt (for informative prior + sign correction)
 - Legislator CSVs (for party/chamber/name matching)
 
 ## Outputs
@@ -189,6 +200,8 @@ multiple bienniums connect the scales.
 def build_dynamic_irt_graph(
     data: dict,
     evolution_structure: str = "per_party",
+    tau_sigma: float | None = None,
+    xi_init_mu: np.ndarray | None = None,
 ) -> pm.Model:
     """Build state-space 2PL IRT model graph (no sampling).
 
@@ -200,6 +213,11 @@ def build_dynamic_irt_graph(
         data: Stacked data dict from ``stack_bienniums()``.
         evolution_structure: ``"per_party"`` (tau per party, 2 params) or
             ``"global"`` (single tau, 1 param).
+        tau_sigma: Explicit tau prior sigma. If None, uses adaptive logic
+            (0.15 for small chambers, 0.5 for large — ADR-0070).
+        xi_init_mu: Optional prior mean for ``xi_init`` from static IRT.
+            When provided, uses ``Normal(xi_init_mu, 0.75)`` instead of
+            ``Normal(0, 1)`` for sign identification (ADR-0070).
 
     Returns:
         PyMC model ready for nutpie compilation.
@@ -234,16 +252,38 @@ def build_dynamic_irt_graph(
 
     with pm.Model(coords=coords) as model:
         # --- Evolution variance ---
-        if evolution_structure == "per_party":
-            tau = pm.HalfNormal("tau", sigma=0.5, shape=n_parties, dims="party")
+        # Adaptive tau sigma: small chambers get tighter prior to prevent mode-splitting
+        if tau_sigma is not None:
+            _tau_sigma = tau_sigma
+        elif n_leg < SMALL_CHAMBER_THRESHOLD:
+            _tau_sigma = SMALL_CHAMBER_TAU_SIGMA
+        else:
+            _tau_sigma = DEFAULT_TAU_SIGMA
+
+        # Auto-switch to global tau for small chambers with per-party request
+        _evolution = evolution_structure
+        if _evolution == "per_party" and n_leg < SMALL_CHAMBER_THRESHOLD:
+            print(
+                f"    Small chamber ({n_leg} legislators < {SMALL_CHAMBER_THRESHOLD}): "
+                f"using global tau (sigma={_tau_sigma})"
+            )
+            _evolution = "global"
+
+        if _evolution == "per_party":
+            tau = pm.HalfNormal("tau", sigma=_tau_sigma, shape=n_parties, dims="party")
             # Broadcast tau to each legislator's party
             tau_leg = tau[party_idx]  # shape (n_leg,)
         else:
-            tau = pm.HalfNormal("tau", sigma=0.5)
+            tau = pm.HalfNormal("tau", sigma=_tau_sigma)
             tau_leg = pt.ones(n_leg) * tau
 
         # --- Non-centered random walk for ideal points ---
-        xi_init = pm.Normal("xi_init", mu=0, sigma=1, shape=n_leg, dims="legislator")
+        if xi_init_mu is not None:
+            xi_init = pm.Normal(
+                "xi_init", mu=xi_init_mu, sigma=0.75, shape=n_leg, dims="legislator"
+            )
+        else:
+            xi_init = pm.Normal("xi_init", mu=0, sigma=1, shape=n_leg, dims="legislator")
         xi_innovations = pm.Normal("xi_innovations", mu=0, sigma=1, shape=(n_time - 1, n_leg))
 
         # Build xi trajectory: xi[0] = xi_init, xi[t] = xi[t-1] + tau * innov[t-1]
@@ -272,6 +312,8 @@ def sample_dynamic_irt(
     n_chains: int = DEFAULT_N_CHAINS,
     evolution_structure: str = "per_party",
     xi_init_values: np.ndarray | None = None,
+    tau_sigma: float | None = None,
+    xi_init_mu: np.ndarray | None = None,
 ) -> tuple[az.InferenceData, float]:
     """Build dynamic IRT model and sample with nutpie.
 
@@ -282,11 +324,15 @@ def sample_dynamic_irt(
         n_chains: Independent MCMC chains.
         evolution_structure: ``"per_party"`` or ``"global"``.
         xi_init_values: Optional PCA-informed init for ``xi_init``.
+        tau_sigma: Explicit tau prior sigma (forwarded to graph builder).
+        xi_init_mu: Informative prior mean for ``xi_init`` from static IRT.
 
     Returns:
         (InferenceData, sampling_time_seconds).
     """
-    model = build_dynamic_irt_graph(data, evolution_structure)
+    model = build_dynamic_irt_graph(
+        data, evolution_structure, tau_sigma=tau_sigma, xi_init_mu=xi_init_mu
+    )
 
     compile_kwargs: dict = {}
     if xi_init_values is not None:
@@ -1108,7 +1154,7 @@ def load_biennium_data(
     try:
         pca_dir = resolve_upstream_dir("02_pca", results_root, run_id)
         pca_house, pca_senate = load_pca_scores(pca_dir)
-    except FileNotFoundError, OSError:
+    except (FileNotFoundError, OSError):  # fmt: skip
         pca_house, pca_senate = None, None
 
     # Load legislator metadata
@@ -1164,6 +1210,12 @@ def parse_args() -> argparse.Namespace:
         "--bienniums",
         default=None,
         help="Comma-separated bienniums to include (default: all 8)",
+    )
+    parser.add_argument(
+        "--tau-sigma",
+        type=float,
+        default=None,
+        help="Explicit tau prior sigma (overrides adaptive logic)",
     )
     parser.add_argument(
         "--run-id",
@@ -1325,6 +1377,53 @@ def main() -> None:
                     xi_init_values = init_vals
                     print(f"    Initialized {np.count_nonzero(init_vals)} of {len(init_vals)}")
 
+            # ── Step 6b: Load static IRT for informative prior + sign correction ──
+            print("\n  Loading static IRT data...")
+            all_static_irt: dict[int, pl.DataFrame] = {}
+            for t, session_str in enumerate(session_list):
+                try:
+                    ks_t = KSSession.from_session_string(session_str)
+                    irt_dir = resolve_upstream_dir("04_irt", ks_t.results_dir, args.run_id)
+                    irt_path = irt_dir / "data" / f"ideal_points_{chamber}.parquet"
+                    if irt_path.exists():
+                        static_df = pl.read_parquet(irt_path)
+                        if "full_name" in static_df.columns:
+                            static_df = static_df.with_columns(
+                                pl.col("full_name")
+                                .map_elements(normalize_name, return_dtype=pl.Utf8)
+                                .alias("name_norm")
+                            )
+                        all_static_irt[t] = static_df
+                except (FileNotFoundError, OSError):  # fmt: skip
+                    pass
+            print(f"    Loaded static IRT for {len(all_static_irt)} bienniums")
+
+            # Build informative xi_init prior from static IRT (ADR-0070)
+            xi_init_mu = None
+            if all_static_irt:
+                print("\n  Building informative xi_init prior from static IRT...")
+                xi_init_mu_arr = np.zeros(stacked["n_legislators"])
+                n_mapped = 0
+                for t_idx, static_df in all_static_irt.items():
+                    xi_col = "xi_mean" if "xi_mean" in static_df.columns else "mean"
+                    if "name_norm" not in static_df.columns:
+                        continue
+                    for row in static_df.iter_rows(named=True):
+                        nn = row.get("name_norm", "")
+                        if nn in name_to_global:
+                            gidx = name_to_global[nn]
+                            if xi_init_mu_arr[gidx] == 0.0:
+                                xi_init_mu_arr[gidx] = row[xi_col]
+                                n_mapped += 1
+                # Standardize to unit scale
+                nz = xi_init_mu_arr[xi_init_mu_arr != 0]
+                if len(nz) > 5:
+                    xi_init_mu_arr = (xi_init_mu_arr - nz.mean()) / max(nz.std(), 1e-6)
+                    xi_init_mu = xi_init_mu_arr
+                    print(f"    Mapped {n_mapped} of {stacked['n_legislators']} legislators")
+                else:
+                    print("    Too few matches for informative prior, using uninformative")
+
             # ── Step 7: emIRT exploration (optional) ──
             emirt_results = None
             if not args.skip_emirt:
@@ -1346,6 +1445,8 @@ def main() -> None:
                 n_chains=args.n_chains,
                 evolution_structure=args.evolution,
                 xi_init_values=xi_init_values,
+                tau_sigma=args.tau_sigma,
+                xi_init_mu=xi_init_mu,
             )
 
             # ── Step 9: Convergence ──
@@ -1358,28 +1459,7 @@ def main() -> None:
             print(f"    Divergences: {convergence['n_divergences']}")
             print(f"    PASSED: {convergence['passed']}")
 
-            # ── Step 10: Load static IRT for sign correction ──
-            print("\n  Loading static IRT data...")
-            all_static_irt: dict[int, pl.DataFrame] = {}
-            for t, session_str in enumerate(session_list):
-                try:
-                    ks_t = KSSession.from_session_string(session_str)
-                    irt_dir = resolve_upstream_dir("04_irt", ks_t.results_dir, args.run_id)
-                    irt_path = irt_dir / "data" / f"ideal_points_{chamber}.parquet"
-                    if irt_path.exists():
-                        static_df = pl.read_parquet(irt_path)
-                        if "full_name" in static_df.columns:
-                            static_df = static_df.with_columns(
-                                pl.col("full_name")
-                                .map_elements(normalize_name, return_dtype=pl.Utf8)
-                                .alias("name_norm")
-                            )
-                        all_static_irt[t] = static_df
-                except FileNotFoundError, OSError:  # fmt: skip
-                    pass
-            print(f"    Loaded static IRT for {len(all_static_irt)} bienniums")
-
-            # ── Step 11: Sign correction ──
+            # ── Step 10: Sign correction (uses static IRT from Step 6b) ──
             print("\n  Checking for per-period sign flips...")
             idata, sign_corrections = fix_period_sign_flips(idata, stacked, all_static_irt, roster)
 

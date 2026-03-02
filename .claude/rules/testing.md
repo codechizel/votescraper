@@ -47,7 +47,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 
 ## Analysis Test Files
 
-- `tests/test_run_context.py` — TeeStream, session normalization, strip_leadership_suffix, lifecycle, generate_run_id, resolve_upstream_dir, run-directory mode, auto-run-id (~74 tests)
+- `tests/test_run_context.py` — TeeStream, session normalization, strip_leadership_suffix, lifecycle, generate_run_id, resolve_upstream_dir, run-directory mode, auto-run-id, symlink race guard (~76 tests)
 - `tests/test_eda.py` — vote matrix, filtering, agreement, Rice, party-line, integrity, new diagnostics (~28 tests)
 - `tests/test_report.py` — section rendering, format parsing, ReportBuilder, make_gt, elapsed (~38 tests)
 - `tests/test_irt.py` — IRT data prep, anchor selection, sensitivity, forest, paradox detection, convergence diagnostics, posterior extraction, equating (~73 tests)
@@ -69,7 +69,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_external_validation.py` — SM name normalization, parsing, biennium filtering, matching, correlations, outliers (~65 tests)
 - `tests/test_external_validation_dime.py` — DIME name normalization, parsing, biennium filtering, min-givers filter, matching, overlap detection, correlation reuse (~43 tests)
 - `tests/test_tsa.py` — rolling PCA drift, sign alignment, party trajectories, early-vs-late, Rice timeseries, weekly aggregation, PELT changepoints, joint detection, penalty sensitivity, vote matrix, veto cross-reference, Desposato correction, short-session warnings, imputation sensitivity, variance-change detection, CROPS parsing, Bai-Perron parsing, elbow detection, PELT/BP merge, R package check (~85 tests)
-- `tests/test_dynamic_irt.py` — global roster, name dedup, cross-biennium stacking, bridge coverage, model structure, polarization decomposition, top movers, sign correction, static correlation, report smoke tests (~63 tests)
+- `tests/test_dynamic_irt.py` — global roster, name dedup, cross-biennium stacking, bridge coverage, model structure, polarization decomposition, top movers, sign correction, static correlation, graph construction (adaptive tau, informative prior), report smoke tests (~68 tests)
 - `tests/test_ppc.py` — log-likelihood (1D/2D/hierarchical), PPC battery, item/person fit, Q3 local dependence, LOO-CV, Pareto k, data alignment (~60 tests)
 - `tests/test_wnominate.py` — vote matrix conversion, polarity selection, result parsing, sign alignment, three-way correlations, comparison table, eigenvalues (~25 tests)
 - `tests/test_lca.py` — vote matrix construction, class enumeration, BIC selection, Salsa effect detection, IRT cross-validation, ARI comparison, within-party LCA, discriminating bills, constants consistency (~37 tests)

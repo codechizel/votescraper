@@ -66,6 +66,7 @@ What are the trade-offs?
 | [0054](0054-2d-irt-pipeline-integration.md) | 2D IRT pipeline integration (experimental phase 04b) |
 | [0055](0055-reparameterized-beta-and-irt-linking.md) | Reparameterized LogNormal beta and IRT scale linking |
 | [0068](0068-dynamic-irt-sign-correction.md) | Dynamic IRT post-hoc sign correction |
+| [0070](0070-dynamic-irt-convergence-and-identification.md) | Dynamic IRT convergence and identification |
 
 ### Classical Analysis
 
@@ -203,6 +204,7 @@ What are the trade-offs?
 | [0067](0067-open-source-readiness.md) | Open-source readiness polish (LICENSE, README, 9 bug fixes, 16 tests, CI expansion) | Accepted | 2026-03-01 |
 | [0068](0068-dynamic-irt-sign-correction.md) | Dynamic IRT post-hoc sign correction (per-period xi negation, static IRT reference) | Accepted | 2026-03-01 |
 | [0069](0069-report-enhancement-infrastructure.md) | Report enhancement infrastructure (R1-R13: ITables, Plotly, PyVis, key findings, BPI, cutting lines, coalition labeler) | Accepted | 2026-03-01 |
+| [0070](0070-dynamic-irt-convergence-and-identification.md) | Dynamic IRT convergence and identification (informative prior, adaptive tau, symlink race guard) | Accepted | 2026-03-01 |
 
 ## Creating a New ADR
 

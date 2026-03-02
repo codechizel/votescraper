@@ -128,15 +128,15 @@ The current 84th results (`84-260228.5`) predate three code fixes: (1) Carey Uni
 
 ### ~~4. Symlink Race: Pipeline-Only `latest` Updates~~ — Done
 
-**Completed 2026-03-01.** `RunContext` now tracks `_explicit_run_id` to distinguish pipeline (explicit) from standalone (auto-generated) run IDs. Only explicit run IDs update `latest` and report convenience symlinks. 3 new tests + 1 updated test. ADR-0069.
+**Completed 2026-03-01.** `RunContext` now tracks `_explicit_run_id` to distinguish pipeline (explicit) from standalone (auto-generated) run IDs. Only explicit run IDs update `latest` and report convenience symlinks. 3 new tests + 1 updated test. ADR-0070.
 
 ### ~~5. Dynamic IRT Sign Identification~~ — Done
 
-**Completed 2026-03-01.** Informative `xi_init` prior from static IRT: loads Phase 04 ideal points, maps to global roster, uses `Normal(xi_init_mu, 0.75)` instead of `Normal(0, 1)`. Transfers the well-identified sign convention. Post-hoc correction (ADR-0068) retained as diagnostic safety net. ADR-0069.
+**Completed 2026-03-01.** Informative `xi_init` prior from static IRT: loads Phase 04 ideal points, maps to global roster, uses `Normal(xi_init_mu, 0.75)` instead of `Normal(0, 1)`. Transfers the well-identified sign convention. Post-hoc correction (ADR-0068) retained as diagnostic safety net. ADR-0070.
 
 ### ~~6. Dynamic IRT Senate Convergence~~ — Done
 
-**Completed 2026-03-01.** Adaptive tau: small chambers (<80 legs) get `HalfNormal(0.15)` + global tau; large chambers keep `HalfNormal(0.5)` + per-party tau. MCMC budget increased to 2000/2000/4. `--tau-sigma` CLI override for experimentation. 5 new graph construction tests. ADR-0069.
+**Completed 2026-03-01.** Adaptive tau: small chambers (<80 legs) get `HalfNormal(0.15)` + global tau; large chambers keep `HalfNormal(0.5)` + per-party tau. MCMC budget increased to 2000/2000/4. `--tau-sigma` CLI override for experimentation. 5 new graph construction tests. ADR-0070.
 
 ---
 
