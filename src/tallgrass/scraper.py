@@ -1,5 +1,6 @@
 """Core scraper class for Kansas Legislature roll call votes."""
 
+import hashlib
 import json
 import random
 import re
@@ -18,7 +19,6 @@ from tqdm import tqdm
 from tallgrass.config import (
     BASE_URL,
     BILL_TITLE_MAX_LENGTH,
-    CACHE_FILENAME_MAX_LENGTH,
     MAX_RETRIES,
     MAX_WORKERS,
     REQUEST_DELAY,
@@ -166,9 +166,9 @@ class KSVoteScraper:
         error-page detection.  Caches with a ``.bin`` extension.
         """
         # Check cache first (no rate limiting needed)
-        cache_key = url.replace("/", "_").replace(":", "_").replace("?", "_")
+        cache_hash = hashlib.sha256(url.encode()).hexdigest()[:16]
         cache_ext = ".bin" if binary else ".html"
-        cache_file = self.cache_dir / f"{cache_key[:CACHE_FILENAME_MAX_LENGTH]}{cache_ext}"
+        cache_file = self.cache_dir / f"{cache_hash}{cache_ext}"
         if cache_file.exists():
             if binary:
                 return FetchResult(url=url, html=None, content_bytes=cache_file.read_bytes())
@@ -604,14 +604,16 @@ class KSVoteScraper:
             if found_votes:
                 bills_with_votes += 1
 
-            # Backfill sponsor from HTML when the API returned it empty
+            # Extract sponsor text and slugs from bill page HTML
             bill_code = _normalize_bill_code(bill_number)
             meta = self.bill_metadata.get(bill_code, {})
-            if meta and not meta.get("sponsor"):
-                sponsor = self._extract_sponsor(soup)
-                if sponsor:
-                    meta["sponsor"] = sponsor
+            sponsor_text, sponsor_slugs = self._extract_sponsor(soup)
+            if meta:
+                if not meta.get("sponsor") and sponsor_text:
+                    meta["sponsor"] = sponsor_text
                     sponsors_backfilled += 1
+                if sponsor_slugs:
+                    meta["sponsor_slugs"] = sponsor_slugs
 
         if sponsors_backfilled:
             print(f"  Backfilled {sponsors_backfilled} sponsors from bill page HTML")
@@ -634,16 +636,20 @@ class KSVoteScraper:
         return bill_path
 
     @staticmethod
-    def _extract_sponsor(soup: BeautifulSoup) -> str:
-        """Extract original sponsor from the bill page HTML.
+    def _extract_sponsor(soup: BeautifulSoup) -> tuple[str, str]:
+        """Extract original sponsor text and slugs from the bill page HTML.
 
         The sponsor is in a portlet structure:
           <div class="portlet-header">Original Sponsor</div>
           <div class="portlet-content">
-            <ul><li><a>Senator Steffen</a></li></ul>
+            <ul><li><a href="/li/.../members/sen_steffen_joe_1/">Senator Steffen</a></li></ul>
           </div>
 
-        Falls back to empty string if not found.
+        Returns (sponsor_text, sponsor_slugs) where:
+        - sponsor_text: "Senator Steffen; Senator Bowers" (semicolon-joined display names)
+        - sponsor_slugs: "sen_steffen_joe_1; sen_bowers_larry_1" (semicolon-joined slugs)
+
+        Committee links (/committees/) produce no slug. Falls back to ("", "") if not found.
         """
         header = soup.find(
             lambda tag: (
@@ -653,19 +659,29 @@ class KSVoteScraper:
             )
         )
         if not header:
-            return ""
+            return "", ""
 
         content = header.find_next_sibling("div", class_="portlet-content")
         if not content:
-            return ""
+            return "", ""
 
         sponsors = []
+        slugs = []
         for li in content.find_all("li"):
             text = li.get_text(strip=True)
             if text:
                 sponsors.append(text)
+            # Extract slug from <a href="/li/.../members/{slug}/">
+            a_tag = li.find("a", href=True)
+            if a_tag:
+                href = a_tag["href"]
+                if "/members/" in href and "/committees/" not in href:
+                    # Extract slug: last non-empty path segment
+                    parts = [p for p in href.split("/") if p]
+                    if parts:
+                        slugs.append(parts[-1])
 
-        return "; ".join(sponsors)
+        return "; ".join(sponsors), "; ".join(slugs)
 
     @staticmethod
     def _extract_bill_title(soup: BeautifulSoup) -> str:
@@ -1108,6 +1124,7 @@ class KSVoteScraper:
         meta = self.bill_metadata.get(bill_code, {})
         short_title = meta.get("short_title", "")
         sponsor = meta.get("sponsor", "")
+        sponsor_slugs = meta.get("sponsor_slugs", "")
 
         # Parse vote categories and discover new legislators
         vote_categories, new_legislators = self._parse_vote_categories(soup)
@@ -1159,6 +1176,7 @@ class KSVoteScraper:
             result=result,
             short_title=short_title,
             sponsor=sponsor,
+            sponsor_slugs=sponsor_slugs,
             yea_count=len(vote_categories["Yea"]),
             nay_count=len(vote_categories["Nay"]),
             present_passing_count=len(vote_categories["Present and Passing"]),

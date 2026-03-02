@@ -21,7 +21,6 @@ WAVE_COOLDOWN = 90  # seconds to wait between retry waves
 WAVE_WORKERS = 2  # reduced concurrency during retry waves
 WAVE_DELAY = 0.5  # slower rate limit during retry waves (vs 0.15s normal)
 
-CACHE_FILENAME_MAX_LENGTH = 200  # filesystem safety — ext4 limit is 255 chars
 BILL_TITLE_MAX_LENGTH = 500  # truncate excessively long titles for display
 
 USER_AGENT = (

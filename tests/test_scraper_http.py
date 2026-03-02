@@ -16,9 +16,10 @@ from unittest.mock import MagicMock
 import pytest
 import requests
 
+import hashlib
+
 from tallgrass.config import (
     BILL_TITLE_MAX_LENGTH,
-    CACHE_FILENAME_MAX_LENGTH,
     MAX_RETRIES,
 )
 from tallgrass.scraper import FetchResult, KSVoteScraper
@@ -87,8 +88,8 @@ class TestGetSuccess:
 
     def test_cache_hit_html(self, scraper: KSVoteScraper):
         url = "https://example.com/page"
-        cache_key = url.replace("/", "_").replace(":", "_").replace("?", "_")
-        cache_file = scraper.cache_dir / f"{cache_key[:CACHE_FILENAME_MAX_LENGTH]}.html"
+        cache_hash = hashlib.sha256(url.encode()).hexdigest()[:16]
+        cache_file = scraper.cache_dir / f"{cache_hash}.html"
         cache_file.write_text("cached content", encoding="utf-8")
 
         # No HTTP call should happen
@@ -101,8 +102,8 @@ class TestGetSuccess:
 
     def test_cache_hit_binary(self, scraper: KSVoteScraper):
         url = "https://example.com/odt"
-        cache_key = url.replace("/", "_").replace(":", "_").replace("?", "_")
-        cache_file = scraper.cache_dir / f"{cache_key[:CACHE_FILENAME_MAX_LENGTH]}.bin"
+        cache_hash = hashlib.sha256(url.encode()).hexdigest()[:16]
+        cache_file = scraper.cache_dir / f"{cache_hash}.bin"
         cache_file.write_bytes(b"cached binary")
 
         scraper.http.get = MagicMock(side_effect=AssertionError("should not be called"))
@@ -567,10 +568,6 @@ class TestCacheBehavior:
 
 class TestConfigConstants:
     """Verify config constants are importable and have expected types/values."""
-
-    def test_cache_filename_max_length(self):
-        assert isinstance(CACHE_FILENAME_MAX_LENGTH, int)
-        assert CACHE_FILENAME_MAX_LENGTH > 0
 
     def test_bill_title_max_length(self):
         assert isinstance(BILL_TITLE_MAX_LENGTH, int)

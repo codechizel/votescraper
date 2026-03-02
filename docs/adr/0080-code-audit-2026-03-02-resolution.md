@@ -47,11 +47,11 @@ All other functions the audit flagged (`plot_paradox_spotlight`, `compare_with_p
 
 **Fix:** `from_session_string()` now detects the `s` suffix and routes to `from_year(year, special=True)`. `data_dir_for_session()` also auto-detects the `"2024s"` format. 4 new tests added.
 
-**E. Cache key collision risk (low priority — DEFENSE-IN-DEPTH)**
+**E. Cache key collision risk (low priority — FIXED)**
 
-Cache filenames are derived from URLs via character replacement and truncated to 200 chars. In practice, all kslegislature.gov URLs produce cache keys of 55-92 chars — no truncation ever occurs. The risk is theoretical.
+Cache filenames were derived from URLs via character replacement and truncated to 200 chars. While no real collision was plausible with current URL patterns (max ~92 chars), the truncation approach was needlessly fragile.
 
-Action: Switch to a hash-based cache key (2-line change) to eliminate the bug class entirely. Not urgent — no known or plausible scenario triggers a collision.
+**Fix:** Replaced with SHA-256 hash (first 16 hex chars = 64 bits of entropy). Fixed-length filenames, zero collision risk, no truncation. Removed `CACHE_FILENAME_MAX_LENGTH` constant. Existing caches are invalidated (re-fetched on next run).
 
 ## Consequences
 
