@@ -52,7 +52,7 @@ cat(sprintf("  Vote matrix: %d legislators x %d votes\n", nrow(raw), ncol(raw)))
 vote_data <- as.matrix(raw)
 
 # Build pscl rollcall object
-rc <- rollcall(vote_data, yea = 1, nay = 6, missing = 9,
+rc <- rollcall(vote_data, yea = 1, nay = 6, missing = 9, notInLegis = NA,
                legis.names = rownames(raw),
                vote.names = colnames(raw))
 
@@ -60,7 +60,7 @@ rc <- rollcall(vote_data, yea = 1, nay = 6, missing = 9,
 
 cat("  Running W-NOMINATE...\n")
 wn <- tryCatch({
-  wnominate(rc, dims = dims, polarity = polarity_idx,
+  wnominate(rc, dims = dims, polarity = rep(polarity_idx, dims),
             minvotes = 20, lop = 0.025, trials = 3, verbose = FALSE)
 }, error = function(e) {
   cat(sprintf("  W-NOMINATE failed: %s\n", e$message))
@@ -111,7 +111,7 @@ fit$wnominate <- list(
 cat("  Running Optimal Classification...\n")
 oc_result <- tryCatch({
   library(oc)
-  oc(rc, dims = dims, polarity = polarity_idx,
+  oc(rc, dims = dims, polarity = rep(polarity_idx, dims),
      minvotes = 20, lop = 0.025, verbose = FALSE)
 }, error = function(e) {
   cat(sprintf("  OC failed (non-fatal): %s\n", e$message))
@@ -121,15 +121,16 @@ oc_result <- tryCatch({
 if (!is.null(oc_result)) {
   cat("  OC completed successfully\n")
 
+  oc_leg <- oc_result$legislators
   oc_coords <- data.frame(
-    coord1D = oc_result$legislators$coord1D,
-    coord2D = if (dims >= 2) oc_result$legislators$coord2D else NA,
-    correctClassification = oc_result$legislators$correctYea.1D
+    coord1D = oc_leg[, "coord1D"],
+    coord2D = if (dims >= 2 && "coord2D" %in% colnames(oc_leg)) oc_leg[, "coord2D"] else NA,
+    correctClassification = if ("correctYea.1D" %in% colnames(oc_leg)) oc_leg[, "correctYea.1D"] else NA
   )
 
   # Use 2D classification if available
-  if (dims >= 2 && !is.null(oc_result$legislators$correctYea.2D)) {
-    oc_coords$correctClassification <- oc_result$legislators$correctYea.2D
+  if (dims >= 2 && "correctYea.2D" %in% colnames(oc_leg)) {
+    oc_coords$correctClassification <- oc_leg[, "correctYea.2D"]
   }
 
   rownames(oc_coords) <- rownames(raw)

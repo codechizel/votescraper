@@ -258,6 +258,9 @@ def load_metadata(data_dir: Path) -> pl.DataFrame:
     """Load legislator CSV for metadata enrichment."""
     prefix = data_dir.name
     legislators = pl.read_csv(data_dir / f"{prefix}_legislators.csv")
+    # Rename slug → legislator_slug to match analysis convention (ADR-0066)
+    if "slug" in legislators.columns and "legislator_slug" not in legislators.columns:
+        legislators = legislators.rename({"slug": "legislator_slug"})
     legislators = legislators.with_columns(
         pl.col("full_name")
         .map_elements(strip_leadership_suffix, return_dtype=pl.Utf8)
@@ -317,7 +320,7 @@ def run_r_wnominate(
         if result.returncode != 0:
             print(f"  W-NOMINATE/OC failed (exit code {result.returncode})")
             if result.stderr:
-                for line in result.stderr.strip().split("\n")[:10]:
+                for line in result.stderr.strip().split("\n")[:20]:
                     print(f"  [R stderr] {line}")
             return False
 
@@ -564,7 +567,7 @@ def process_chamber(
         print(f"  {chamber}: W-NOMINATE output not found — skipping")
         return None
 
-    wnom_raw = pl.read_csv(wnom_path)
+    wnom_raw = pl.read_csv(wnom_path, null_values="NA")
     # Drop row-name column if present (R writes it as first unnamed column)
     if wnom_raw.columns[0] in ("", "rownames", "X"):
         wnom_raw = wnom_raw.drop(wnom_raw.columns[0])
@@ -593,7 +596,7 @@ def process_chamber(
     oc_df = None
     oc_path = r_output_dir / f"oc_coords_{ch}.csv"
     if oc_path.exists() and not skip_oc:
-        oc_raw = pl.read_csv(oc_path)
+        oc_raw = pl.read_csv(oc_path, null_values="NA")
         if oc_raw.columns[0] in ("", "rownames", "X"):
             oc_raw = oc_raw.drop(oc_raw.columns[0])
         oc_df = parse_oc_results(oc_raw, slugs)
@@ -612,7 +615,7 @@ def process_chamber(
     eigen_path = r_output_dir / f"eigenvalues_{ch}.csv"
     eigen_df = None
     if eigen_path.exists():
-        eigen_df = parse_eigenvalues(pl.read_csv(eigen_path))
+        eigen_df = parse_eigenvalues(pl.read_csv(eigen_path, null_values="NA"))
 
     # Correlations
     corr = compute_three_way_correlations(irt_df, wnom_df, oc_df)

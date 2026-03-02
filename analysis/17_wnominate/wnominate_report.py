@@ -335,13 +335,19 @@ def _add_fit_statistics(report: ReportBuilder, all_results: dict[str, dict]) -> 
             apre = fs.get(f"{method}_APRE")
             gmp = fs.get(f"{method}_GMP")
             if cc is not None:
+
+                def _to_float(v: object) -> float:
+                    if v is None or v == "NA":
+                        return float("nan")
+                    return float(v)
+
                 rows.append(
                     {
                         "Chamber": chamber,
                         "Method": "W-NOMINATE" if method == "wnominate" else "OC",
-                        "Correct Classification": cc,
-                        "APRE": apre if apre is not None else float("nan"),
-                        "GMP": gmp if gmp is not None else float("nan"),
+                        "Correct Classification": _to_float(cc),
+                        "APRE": _to_float(apre),
+                        "GMP": _to_float(gmp),
                     }
                 )
 
@@ -379,7 +385,7 @@ def _add_oc_classification(report: ReportBuilder, all_results: dict[str, dict]) 
         if valid.height == 0:
             continue
 
-        cc_vals = valid["oc_correct_class"].to_numpy()
+        cc_vals = valid["oc_correct_class"].cast(pl.Float64).to_numpy()
         rows.append(
             {
                 "Chamber": chamber,
