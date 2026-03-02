@@ -62,6 +62,7 @@ def build_bipartite_report(
         _add_bill_community_sweep(report, results[chamber], chamber)
         _add_bill_cluster_heatmap_figure(report, plots_dir, chamber)
         _add_backbone_summary(report, results[chamber], chamber)
+        _add_backbone_sparsity_caveat(report, results[chamber], chamber)
         _add_backbone_layout_figure(report, plots_dir, chamber)
 
         if not skip_phase6:
@@ -389,6 +390,23 @@ def _add_bill_communities(
         )
     )
 
+    # Modularity quality gate
+    best_modularity = chamber_results.get("best_bill_modularity")
+    if best_modularity is not None and best_modularity < 0.10:
+        report.add(
+            TextSection(
+                id=f"bill-community-modularity-{chamber.lower()}",
+                title=f"{chamber} Bill Community Structure Note",
+                html=(
+                    f"<p><strong>Note:</strong> Best modularity for {chamber} bill communities "
+                    f"is <strong>{best_modularity:.3f}</strong> (below 0.10), indicating weak "
+                    f"community structure. The bill projection is nearly homogeneous — bill "
+                    f"communities largely mirror the known party divide rather than revealing "
+                    f"independent legislative coalitions.</p>"
+                ),
+            )
+        )
+
 
 def _add_bill_community_sweep(
     report: ReportBuilder,
@@ -480,6 +498,41 @@ def _add_backbone_summary(
             id=f"backbone-summary-{chamber.lower()}",
             title=f"{chamber} — BiCM Backbone Summary",
             html=html,
+        )
+    )
+
+
+def _add_backbone_sparsity_caveat(
+    report: ReportBuilder,
+    chamber_results: dict,
+    chamber: str,
+) -> None:
+    """Add caveat when backbone is too sparse for legislator-level analysis."""
+    backbone_G = chamber_results.get("backbone_graph")
+    if backbone_G is None or backbone_G.number_of_nodes() == 0:
+        return
+
+    n_nodes = backbone_G.number_of_nodes()
+    n_isolated = sum(1 for n in backbone_G.nodes() if backbone_G.degree(n) == 0)
+    isolated_frac = n_isolated / n_nodes if n_nodes > 0 else 0
+
+    if isolated_frac <= 0.50:
+        return
+
+    report.add(
+        TextSection(
+            id=f"backbone-sparsity-{chamber.lower()}",
+            title=f"{chamber} Backbone Sparsity Note",
+            html=(
+                f"<p><strong>Caveat:</strong> {isolated_frac:.0%} of {chamber} legislators "
+                f"({n_isolated} of {n_nodes}) are isolated in the BiCM backbone — they have "
+                f"no statistically validated co-voting edges. This extreme sparsity means "
+                f"the BiCM null model (preserving degree sequences) explains nearly all "
+                f"{chamber} co-voting patterns.</p>"
+                f"<p>Backbone centrality measures are unreliable for this chamber. "
+                f"The Phase 6 Kappa-weighted network provides more useful legislator-level "
+                f"centrality rankings.</p>"
+            ),
         )
     )
 
@@ -817,6 +870,7 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
     from analysis.bipartite import (
         BACKBONE_COMPARISON_THRESHOLD,
         BICM_SIGNIFICANCE,
+        BICM_SIGNIFICANCE_SENATE,
         BILL_CLUSTER_RESOLUTIONS,
         BILL_POLARIZATION_MIN_VOTERS,
         NEWMAN_PROJECTION,
@@ -825,7 +879,8 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
     )
 
     rows = [
-        {"Parameter": "BiCM Significance", "Value": str(BICM_SIGNIFICANCE)},
+        {"Parameter": "BiCM Significance (House)", "Value": str(BICM_SIGNIFICANCE)},
+        {"Parameter": "BiCM Significance (Senate)", "Value": str(BICM_SIGNIFICANCE_SENATE)},
         {"Parameter": "Min Voters (Polarization)", "Value": str(BILL_POLARIZATION_MIN_VOTERS)},
         {"Parameter": "Newman Projection", "Value": str(NEWMAN_PROJECTION)},
         {"Parameter": "Bill Cluster Resolutions", "Value": str(BILL_CLUSTER_RESOLUTIONS)},

@@ -716,6 +716,23 @@ def _generate_hierarchical_key_findings(
             )
         break
 
+    # Small-group warning (e.g. Senate Democrats N=7-11)
+    small_group_threshold = 20
+    for chamber, res in chamber_results.items():
+        gp = res.get("group_params")
+        if gp is None:
+            continue
+        for row in gp.iter_rows(named=True):
+            n = row.get("n_legislators", 0)
+            party = row.get("party", "Unknown")
+            if 0 < n < small_group_threshold:
+                findings.append(
+                    f"<strong>Note:</strong> {chamber} {party}s ({n} legislators) fall below "
+                    f"the recommended group size for reliable hierarchical shrinkage "
+                    f"(Gelman &amp; Hill 2007). Flat IRT ideal points may be more "
+                    f"trustworthy for individual {chamber} {party} positions."
+                )
+
     return findings
 
 

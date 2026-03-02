@@ -982,21 +982,20 @@ def find_surprising_votes(
 
     # Only look at wrong predictions
     wrong_mask = y_pred != y
+    empty_schema = {
+        "legislator_slug": pl.Utf8,
+        "full_name": pl.Utf8,
+        "party": pl.Utf8,
+        "vote_id": pl.Utf8,
+        "bill_number": pl.Utf8,
+        "motion": pl.Utf8,
+        "actual": pl.Int64,
+        "predicted": pl.Int64,
+        "y_prob": pl.Float64,
+        "confidence_error": pl.Float64,
+    }
     if wrong_mask.sum() == 0:
-        return pl.DataFrame(
-            schema={
-                "legislator_slug": pl.Utf8,
-                "full_name": pl.Utf8,
-                "party": pl.Utf8,
-                "vote_id": pl.Utf8,
-                "bill_number": pl.Utf8,
-                "motion": pl.Utf8,
-                "actual": pl.Int64,
-                "predicted": pl.Int64,
-                "y_prob": pl.Float64,
-                "confidence_error": pl.Float64,
-            }
-        )
+        return pl.DataFrame(schema=empty_schema)
 
     wrong_df = features_df.filter(pl.Series(wrong_mask)).with_columns(
         pl.Series("y_prob", y_prob[wrong_mask]),
@@ -1015,19 +1014,31 @@ def find_surprising_votes(
     ip_meta = ideal_points.select("legislator_slug", "full_name", "party")
     surprising = surprising.join(ip_meta, on="legislator_slug", how="left")
 
-    keep_cols = [
-        "legislator_slug",
-        "full_name",
-        "party",
-        "vote_id",
-        "bill_number",
-        "motion",
-        "actual",
-        "predicted",
-        "y_prob",
-        "confidence_error",
-    ]
+    keep_cols = list(empty_schema.keys())
     return surprising.select([c for c in keep_cols if c in surprising.columns])
+
+
+def split_surprising_by_class(
+    surprising: pl.DataFrame,
+    top_n: int = TOP_SURPRISING_N,
+) -> dict[str, pl.DataFrame]:
+    """Split surprising votes into false positives (surprising Nay) and false negatives.
+
+    - Surprising Nay (FP): predicted=1, actual=0 — expected Yea, got Nay
+    - Surprising Yea (FN): predicted=0, actual=1 — expected Nay, got Yea
+
+    Returns dict with "surprising_nay" and "surprising_yea" DataFrames.
+    """
+    if surprising.height == 0:
+        return {"surprising_nay": surprising.clone(), "surprising_yea": surprising.clone()}
+
+    fp = surprising.filter(
+        (pl.col("predicted") == 1) & (pl.col("actual") == 0)
+    ).head(top_n)
+    fn = surprising.filter(
+        (pl.col("predicted") == 0) & (pl.col("actual") == 1)
+    ).head(top_n)
+    return {"surprising_nay": fp, "surprising_yea": fn}
 
 
 def find_surprising_bills(
@@ -1869,6 +1880,7 @@ def main() -> None:
             )
 
             # Store results for report
+            surprising_split = split_surprising_by_class(surprising)
             results[chamber] = {
                 "vote_features": vote_features,
                 "vote_result": vote_result,
@@ -1878,6 +1890,8 @@ def main() -> None:
                 "hardest": hardest,
                 "chamber_median_accuracy": chamber_median_accuracy,
                 "surprising_votes": surprising,
+                "surprising_nay": surprising_split["surprising_nay"],
+                "surprising_yea": surprising_split["surprising_yea"],
             }
 
         # ── Phase 5: Bill Passage Prediction ────────────────────────────

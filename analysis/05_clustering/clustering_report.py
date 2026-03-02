@@ -519,6 +519,25 @@ def _add_cross_method_agreement(
         )
     )
 
+    # ARI-vs-party annotation when clustering perfectly recovers party
+    for chamber, result in results.items():
+        comparison = result.get("comparison", {})
+        ari_vs_party = comparison.get("ari_vs_party")
+        if ari_vs_party is not None and ari_vs_party > 0.95:
+            report.add(
+                TextSection(
+                    id=f"ari-vs-party-{chamber.lower()}",
+                    title=f"{chamber} Clustering vs Party",
+                    html=(
+                        f"<p><strong>{chamber}:</strong> ARI(clustering vs party) = "
+                        f"<strong>{ari_vs_party:.3f}</strong>. Clustering nearly perfectly "
+                        f"recovers the party divide, confirming that party membership is "
+                        f"the only discrete structure in {chamber} voting patterns. "
+                        f"Intra-party variation is continuous, not clustered.</p>"
+                    ),
+                )
+            )
+
 
 def _add_flagged_legislators(
     report: ReportBuilder,

@@ -61,7 +61,11 @@ except ModuleNotFoundError:
 # ── Constants ────────────────────────────────────────────────────────────────
 
 BICM_SIGNIFICANCE = 0.01
-"""P-value threshold for BiCM backbone extraction (conservative for dense matrix)."""
+"""P-value threshold for BiCM backbone extraction — House (conservative for dense matrix)."""
+
+BICM_SIGNIFICANCE_SENATE = 0.05
+"""P-value threshold for Senate backbone — relaxed due to ~10x fewer legislators
+and correspondingly fewer multiple comparisons."""
 
 BILL_POLARIZATION_MIN_VOTERS = 10
 """Minimum Yea+Nay votes for a bill to receive a polarization score."""
@@ -1562,6 +1566,7 @@ def main() -> None:
                 best_partition = partitions[best_res]
                 chamber_results["best_bill_partition"] = best_partition
                 chamber_results["best_bill_resolution"] = best_res
+                chamber_results["best_bill_modularity"] = float(sweep_df["modularity"][best_idx])
 
                 # Save assignments
                 comm_df = pl.DataFrame(
@@ -1586,7 +1591,10 @@ def main() -> None:
             # ── BiCM backbone ──
             print_header(f"PHASE 6: BiCM BACKBONE — {chamber}")
             try:
-                validated, pvalues, backbone_slugs = extract_bicm_backbone(vm)
+                bicm_alpha = BICM_SIGNIFICANCE_SENATE if chamber == "Senate" else BICM_SIGNIFICANCE
+                validated, pvalues, backbone_slugs = extract_bicm_backbone(
+                    vm, significance=bicm_alpha
+                )
                 backbone_G = build_backbone_graph(validated, backbone_slugs, irt_ip)
                 chamber_results["backbone_graph"] = backbone_G
                 chamber_results["backbone_validated"] = validated

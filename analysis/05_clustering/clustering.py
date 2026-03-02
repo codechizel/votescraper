@@ -1606,10 +1606,14 @@ def run_hdbscan_pca(
 def compare_methods(
     assignments: dict[str, np.ndarray],
     chamber: str,
+    *,
+    party_labels: np.ndarray | None = None,
 ) -> dict:
     """Compute ARI between each pair of clustering methods.
 
     assignments: {"hierarchical": labels, "kmeans": labels, "gmm": labels}
+    party_labels: optional array of party labels (same length as assignment arrays)
+        for ARI-against-party diagnostic.
     Returns dict with ARI pairs and consensus info.
     """
     methods = list(assignments.keys())
@@ -1628,6 +1632,17 @@ def compare_methods(
     mean_ari = np.mean(list(ari_matrix.values())) if ari_matrix else 0.0
     print(f"  {chamber}: mean ARI across all pairs = {mean_ari:.4f}")
 
+    # ARI against party labels (diagnostic: how well does clustering recover party?)
+    ari_vs_party: float | None = None
+    if party_labels is not None:
+        # Use k-means labels (first in dict) for the comparison
+        primary_method = methods[0] if methods else None
+        if primary_method is not None:
+            primary_labels = assignments[primary_method]
+            n = min(len(primary_labels), len(party_labels))
+            ari_vs_party = float(adjusted_rand_score(primary_labels[:n], party_labels[:n]))
+            print(f"  {chamber}: ARI(kmeans vs party) = {ari_vs_party:.4f}")
+
     k_values = {m: len(set(assignments[m])) for m in methods}
     n_common = min(len(v) for v in assignments.values())
     return {
@@ -1635,6 +1650,7 @@ def compare_methods(
         "n_common": n_common,
         "mean_ari": float(mean_ari),
         "k_values": k_values,
+        "ari_vs_party": ari_vs_party,
     }
 
 
@@ -2548,7 +2564,11 @@ def main() -> None:
             if gmm_labels is not None:
                 method_assignments["gmm"] = gmm_labels
 
-            comparison = compare_methods(method_assignments, chamber)
+            # Party labels aligned to IRT slug order for ARI-vs-party diagnostic
+            party_arr = np.array(irt_ip["party"].to_list())
+            comparison = compare_methods(
+                method_assignments, chamber, party_labels=party_arr
+            )
             chamber_results["comparison"] = comparison
 
             # ── Phase 7: Cluster Characterization ──

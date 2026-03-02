@@ -162,7 +162,20 @@ def build_legislator_df(upstream: dict, chamber: str) -> pl.DataFrame:
     cent = upstream[chamber].get("centrality")
     if cent is not None:
         df = df.join(
-            cent.select("legislator_slug", "betweenness", "eigenvector", "pagerank"),
+            cent.select(
+                [
+                    c
+                    for c in [
+                        "legislator_slug",
+                        "betweenness",
+                        "eigenvector",
+                        "pagerank",
+                        "harmonic",
+                        "cross_party_fraction",
+                    ]
+                    if c in cent.columns
+                ]
+            ),
             on="legislator_slug",
             how="left",
         )

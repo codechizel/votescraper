@@ -573,6 +573,21 @@ def compute_centralities(G: nx.Graph) -> pl.DataFrame:
     # PageRank (weighted)
     pagerank = nx.pagerank(G, weight="weight")
 
+    # Harmonic centrality (handles disconnected graphs natively — finite for all nodes)
+    harmonic = nx.harmonic_centrality(G, distance="distance")
+
+    # Cross-party edge fraction: for each node, fraction of edges to other-party nodes
+    cross_party_fraction: dict[str, float] = {}
+    for n in nodes:
+        n_party = G.nodes[n].get("party", "Unknown")
+        total_edges = 0
+        cross_edges = 0
+        for _, neighbor in G.edges(n):
+            total_edges += 1
+            if G.nodes[neighbor].get("party", "Unknown") != n_party:
+                cross_edges += 1
+        cross_party_fraction[n] = cross_edges / total_edges if total_edges > 0 else 0.0
+
     # Build DataFrame
     rows = []
     for n in nodes:
@@ -589,6 +604,8 @@ def compute_centralities(G: nx.Graph) -> pl.DataFrame:
                 "eigenvector": eigenvector.get(n, 0.0),
                 "closeness": closeness.get(n, 0.0),
                 "pagerank": pagerank.get(n, 0.0),
+                "harmonic": harmonic.get(n, 0.0),
+                "cross_party_fraction": cross_party_fraction.get(n, 0.0),
             }
         )
 

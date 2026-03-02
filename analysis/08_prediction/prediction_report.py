@@ -102,6 +102,7 @@ def build_prediction_report(
     # Surprising votes
     for chamber in chambers:
         _add_surprising_votes_table(report, results[chamber], chamber)
+    _add_surprising_votes_interpretation(report, results)
 
     # Bill passage
     if not skip_bill_passage:
@@ -620,8 +621,63 @@ def _add_surprising_votes_table(
         "y_prob",
         "confidence_error",
     ]
-    display_df = surprising.select([c for c in display_cols if c in surprising.columns])
 
+    # Show split tables when available
+    surprising_nay = result.get("surprising_nay")
+    surprising_yea = result.get("surprising_yea")
+
+    if surprising_nay is not None and surprising_nay.height > 0:
+        nay_df = surprising_nay.select([c for c in display_cols if c in surprising_nay.columns])
+        html_nay = make_gt(
+            nay_df,
+            title=f"{chamber} — Surprising Nay Votes (Top {nay_df.height})",
+            subtitle="Predicted Yea, actual Nay — unexpected dissent",
+            column_labels={
+                "full_name": "Legislator",
+                "y_prob": "P(Yea)",
+                "confidence_error": "|Error|",
+            },
+            number_formats={"y_prob": ".3f", "confidence_error": ".3f"},
+            source_note=(
+                "False positives: model predicted Yea with high confidence but legislator "
+                "voted Nay. These are genuine surprises — dissent against expectations."
+            ),
+        )
+        report.add(
+            TableSection(
+                id=f"surprising-nay-{chamber.lower()}",
+                title=f"{chamber} Surprising Nay Votes",
+                html=html_nay,
+            )
+        )
+
+    if surprising_yea is not None and surprising_yea.height > 0:
+        yea_df = surprising_yea.select([c for c in display_cols if c in surprising_yea.columns])
+        html_yea = make_gt(
+            yea_df,
+            title=f"{chamber} — Surprising Yea Votes (Top {yea_df.height})",
+            subtitle="Predicted Nay, actual Yea — unexpected support",
+            column_labels={
+                "full_name": "Legislator",
+                "y_prob": "P(Yea)",
+                "confidence_error": "|Error|",
+            },
+            number_formats={"y_prob": ".3f", "confidence_error": ".3f"},
+            source_note=(
+                "False negatives: model predicted Nay with high confidence but legislator "
+                "voted Yea. Rarer than surprising Nay due to high Yea base rate."
+            ),
+        )
+        report.add(
+            TableSection(
+                id=f"surprising-yea-{chamber.lower()}",
+                title=f"{chamber} Surprising Yea Votes",
+                html=html_yea,
+            )
+        )
+
+    # Always show the combined table as well
+    display_df = surprising.select([c for c in display_cols if c in surprising.columns])
     html = make_gt(
         display_df,
         title=f"{chamber} — Most Surprising Votes (Top {display_df.height})",
@@ -636,8 +692,64 @@ def _add_surprising_votes_table(
     report.add(
         TableSection(
             id=f"surprising-votes-{chamber.lower()}",
-            title=f"{chamber} Surprising Votes",
+            title=f"{chamber} Surprising Votes (Combined)",
             html=html,
+        )
+    )
+
+
+def _add_surprising_votes_interpretation(
+    report: ReportBuilder,
+    results: dict[str, dict],
+) -> None:
+    """Text block: Interpret surprising votes with base-rate context."""
+    # Compute FP/FN stats across chambers
+    parts = []
+    for chamber, result in results.items():
+        surprising = result.get("surprising_votes")
+        if surprising is None or surprising.height == 0:
+            continue
+        if "actual" not in surprising.columns or "predicted" not in surprising.columns:
+            continue
+        n_fp = surprising.filter(
+            (pl.col("predicted") == 1) & (pl.col("actual") == 0)
+        ).height
+        n_fn = surprising.filter(
+            (pl.col("predicted") == 0) & (pl.col("actual") == 1)
+        ).height
+        total = surprising.height
+        fp_pct = n_fp / total * 100 if total > 0 else 0
+        parts.append(
+            f"<li><strong>{chamber}:</strong> {n_fp} surprising Nay ({fp_pct:.0f}%) vs "
+            f"{n_fn} surprising Yea</li>"
+        )
+
+    if not parts:
+        return
+
+    report.add(
+        TextSection(
+            id="surprising-votes-interpretation",
+            title="Interpreting Surprising Votes",
+            html=(
+                "<p>Surprising votes are high-confidence errors — cases where the model was "
+                "most confident but wrong. The split between error types reveals a base-rate "
+                "effect:</p>"
+                "<ul>" + "".join(parts) + "</ul>"
+                "<p><strong>Why the imbalance?</strong> With a ~73% Yea base rate, the model "
+                "predicts Yea on most votes. When it is wrong, the error is almost always "
+                "a false positive (predicted Yea, actual Nay). This is not a model flaw — it "
+                "reflects the legislature's strong tendency to pass bills.</p>"
+                "<p><strong>How to read the tables:</strong></p>"
+                "<ul>"
+                "<li><strong>Surprising Nay</strong> (predicted Yea, actual Nay): Unexpected "
+                "dissent. A legislator the model expected to support a bill voted against it. "
+                "These are genuine surprises worth investigating.</li>"
+                "<li><strong>Surprising Yea</strong> (predicted Nay, actual Yea): Unexpected "
+                "support. A legislator the model expected to oppose a bill voted for it. "
+                "Rarer but often more politically interesting.</li>"
+                "</ul>"
+            ),
         )
     )
 

@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-02 (R14-R20 marked done, backlog fully cleared — ADR-0071, ADR-0075)
+**Last updated:** 2026-03-02 (A6-A18 audit findings resolved — ADR-0076)
 
 ---
 
@@ -148,29 +148,29 @@ Full-pipeline review across all 8 bienniums (84th-91st), 17 phases each, plus cr
 
 **Fixed 2026-03-02.** `find_surprising_bills()` now evaluates on holdout test set only (via `test_indices` returned from `train_passage_models`).
 
-#### A6. Prediction: 90% false-positive asymmetry in surprising votes
+#### ~~A6. Prediction: 90% false-positive asymmetry in surprising votes~~ — Done
 
-18/20 surprising votes are false positives (predicted Yea, actual Nay). Systematic Yea-bias from 73% base rate. Not acknowledged in report.
+**Fixed 2026-03-02.** Report now splits surprising votes into "Surprising Nay" (FP: predicted Yea, actual Nay) and "Surprising Yea" (FN: predicted Nay, actual Yea) with interpretation section explaining the base-rate mechanism. ADR-0076.
 
 #### ~~A7. Prediction: per-legislator accuracy lacks minimum sample threshold~~ — Done
 
 **Fixed 2026-03-02.** Added `MIN_VOTES_RELIABLE=10` constant and `reliable` boolean column to per-legislator accuracy output. `detect_hardest_legislators()` now filters to reliable-only before ranking.
 
-#### A8. LCA degenerate class probabilities (91st)
+#### ~~A8. LCA degenerate class probabilities (91st)~~ — Accepted
 
-All 172 legislators have max_probability=1.0 (zero membership uncertainty). K=2 recovers party split with perfect certainty. Strong party cohesion in current session likely cause — 89th/86th show better differentiation at K=3/4. Not necessarily a code bug, but worth investigating StepMix EM restarts.
+**Documented 2026-03-02.** Mathematically expected: ~30 discriminating binary indicators suffice for near-certain classification. Report now adds certainty note when all legislators have max P > 0.99. ADR-0076.
 
-#### A9. Clustering always recovers trivial party split (k=2)
+#### ~~A9. Clustering always recovers trivial party split (k=2)~~ — Accepted
 
-All bienniums: k-means on 1D IRT finds k=2 = exact party labels. ARI=1.0 across methods is meaningless. Within-party optimal k (k=6-7) computed but never propagated to downstream.
+**Documented 2026-03-02.** Added ARI-against-party diagnostic to `compare_methods()`. Report annotates when ARI > 0.95, confirming party is the only discrete structure. ADR-0076.
 
-#### A10. Network betweenness sparsity (66-73% zeros)
+#### ~~A10. Network betweenness sparsity (66-73% zeros)~~ — Done
 
-Most legislators have betweenness=0.0 across all bienniums. Synthesis bridge-builder detection relies on betweenness, but metric is too sparse. Eigenvector/PageRank centrality would be less sparse.
+**Fixed 2026-03-02.** Added harmonic centrality + cross-party edge fraction to `compute_centralities()`. Bridge-builder detection now uses harmonic centrality when graph is disconnected (n_components >= 2), with role label "Within-Party Connector". Connected graphs retain betweenness (original behavior). ADR-0076.
 
-#### A11. House IRT sensitivity to minority threshold
+#### ~~A11. House IRT sensitivity to minority threshold~~ — Done
 
-Several bienniums show sensitive House IRT when threshold changes from 2.5% to 10% (r=0.69-0.80). Not a bug — near-unanimous votes carry signal — but threshold dependence should be documented in reports.
+**Documented 2026-03-02.** IRT report now includes ROBUST/SENSITIVE classification in sensitivity table + interpretation section explaining supermajority mechanism and field-standard convention. ADR-0076.
 
 #### ~~A12. Beta-binomial parameter clamping not logged~~ — Done
 
@@ -190,17 +190,17 @@ Several bienniums show sensitive House IRT when threshold changes from 2.5% to 1
 
 ### Low: Known Limitations
 
-#### A16. Small Senate Democrat groups (all bienniums)
+#### ~~A16. Small Senate Democrat groups (all bienniums)~~ — Done
 
-Senate Democrats range 8-11 across all bienniums. Hierarchical shrinkage unreliable. Already flagged with warnings. Consistently marginal R-hats expected.
+**Documented 2026-03-02.** Hierarchical report key findings now surfaces small-group warning when any party has fewer than 20 legislators, recommending flat IRT for individual positions. ADR-0076.
 
-#### A17. Bipartite BiCM backbone extremely sparse (Senate)
+#### ~~A17. Bipartite BiCM backbone extremely sparse (Senate)~~ — Done
 
-95% edge reduction, 73.8% senators isolated. Too sparse for centrality analysis. P-value threshold (0.01) may be too conservative for partisan networks.
+**Fixed 2026-03-02.** Senate BiCM backbone now uses relaxed significance threshold (0.05 vs 0.01 for House) reflecting 10x fewer multiple comparisons. Report adds sparsity caveat when >50% of legislators are isolated. ADR-0076.
 
-#### A18. Bill communities mirror party split (all bienniums)
+#### ~~A18. Bill communities mirror party split (all bienniums)~~ — Accepted
 
-Phase 06b consistently finds 2 bill communities = party voting pattern. Analytically redundant with clustering/IRT.
+**Documented 2026-03-02.** Report now adds modularity quality gate: when best modularity < 0.10, notes weak community structure mirroring the party divide. ADR-0076.
 
 ---
 

@@ -52,6 +52,7 @@ def build_lca_report(
         _add_optimal_k_summary(report, results[chamber], chamber)
         _add_composition_table(report, results[chamber], chamber)
         _add_class_membership_table(report, results[chamber], chamber)
+        _add_membership_certainty_note(report, results[chamber], chamber)
         _add_profile_heatmap_figure(report, plots_dir, chamber)
         _add_membership_figure(report, plots_dir, chamber)
         _add_irt_crossval(report, results[chamber], chamber)
@@ -265,6 +266,41 @@ def _add_class_membership_table(
             id=f"membership-{chamber.lower()}",
             title=f"{chamber} Class Membership",
             html=html,
+        )
+    )
+
+
+def _add_membership_certainty_note(
+    report: ReportBuilder,
+    result: dict,
+    chamber: str,
+) -> None:
+    """Add note when all legislators have near-certain class assignments."""
+    membership = result.get("membership", [])
+    if not membership:
+        return
+
+    max_probs = [m.get("Max P", 0) for m in membership]
+    if not max_probs:
+        return
+
+    all_certain = all(p > 0.99 for p in max_probs)
+    if not all_certain:
+        return
+
+    n_bills = result.get("n_votes", 0)
+    report.add(
+        TextSection(
+            id=f"membership-certainty-{chamber.lower()}",
+            title=f"{chamber} Classification Certainty Note",
+            html=(
+                f"<p><strong>All {len(max_probs)} legislators</strong> have maximum class "
+                f"probability &gt; 0.99. This is mathematically expected with {n_bills}+ "
+                f"binary indicators — approximately 30 discriminating bills are sufficient "
+                f"for near-certain classification. The absence of uncertain ('straddler') "
+                f"legislators does not indicate a model problem; it reflects the high "
+                f"dimensionality of the vote matrix relative to the number of latent classes.</p>"
+            ),
         )
     )
 

@@ -109,6 +109,7 @@ What are the trade-offs?
 | [0063](0063-ppc-loo-standalone-phase.md) | Standalone PPC + LOO-CV phase (Phase 4c) |
 | [0073](0073-wnominate-all-biennium-production-run.md) | W-NOMINATE all-biennium production run + R compatibility fixes |
 | [0075](0075-name-matcher-district-tiebreaker.md) | Name matcher district tiebreaker + shrinkage null investigation |
+| [0076](0076-audit-findings-resolution.md) | Audit findings resolution (A6-A18) |
 
 ### Infrastructure
 
@@ -215,6 +216,7 @@ What are the trade-offs?
 | [0073](0073-wnominate-all-biennium-production-run.md) | W-NOMINATE all-biennium production run + R compatibility fixes (6 bugs, 8 bienniums) | Accepted | 2026-03-02 |
 | [0074](0074-convergence-resolution.md) | Resolve 3 systematic MCMC convergence failures (joint default off, 2D IRT dropped, dynamic prior fixed) | Accepted | 2026-03-02 |
 | [0075](0075-name-matcher-district-tiebreaker.md) | Name matcher district tiebreaker + shrinkage null investigation (3 incorrect matches fixed, 6 tests) | Accepted | 2026-03-02 |
+| [0076](0076-audit-findings-resolution.md) | Audit findings resolution (A6-A18: bridge-builder, surprising votes, sensitivity, small-group, BiCM, annotations) | Accepted | 2026-03-02 |
 
 ## Creating a New ADR
 

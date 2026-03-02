@@ -130,6 +130,7 @@ def build_irt_report(
             if chamber == "Joint":
                 continue
             _add_sensitivity_figure(report, plots_dir, chamber)
+        _add_sensitivity_interpretation(report, sensitivity_findings)
 
     # Joint model sections (test equating, not MCMC)
     if "Joint" in results:
@@ -750,9 +751,12 @@ def _add_sensitivity_table(report: ReportBuilder, findings: dict) -> None:
             continue
         if not isinstance(data, dict):
             continue
+        r = data["pearson_r"]
+        status = "ROBUST" if abs(r) > 0.95 else "SENSITIVE"
         rows.append(
             {
                 "chamber": chamber,
+                "status": status,
                 "default_threshold": f"{data['default_threshold'] * 100:.1f}%",
                 "sensitivity_threshold": f"{data['sensitivity_threshold'] * 100:.0f}%",
                 "default_n_legislators": data["default_n_legislators"],
@@ -760,7 +764,7 @@ def _add_sensitivity_table(report: ReportBuilder, findings: dict) -> None:
                 "default_n_votes": data["default_n_votes"],
                 "sensitivity_n_votes": data["sensitivity_n_votes"],
                 "shared_legislators": data["shared_legislators"],
-                "pearson_r": data["pearson_r"],
+                "pearson_r": r,
             }
         )
 
@@ -774,6 +778,7 @@ def _add_sensitivity_table(report: ReportBuilder, findings: dict) -> None:
         subtitle="Comparing default (2.5%) vs. aggressive (10%) minority thresholds",
         column_labels={
             "chamber": "Chamber",
+            "status": "Status",
             "default_threshold": "Default",
             "sensitivity_threshold": "Sensitivity",
             "default_n_legislators": "N Leg. (Default)",
@@ -784,7 +789,7 @@ def _add_sensitivity_table(report: ReportBuilder, findings: dict) -> None:
             "pearson_r": "Pearson r",
         },
         number_formats={"pearson_r": ".4f"},
-        source_note="r > 0.95 indicates robust results across threshold choices.",
+        source_note="ROBUST: |r| > 0.95 — stable across threshold choices. SENSITIVE: |r| ≤ 0.95.",
     )
     report.add(
         TableSection(
@@ -813,6 +818,61 @@ def _add_sensitivity_figure(
                 ),
             )
         )
+
+
+def _add_sensitivity_interpretation(report: ReportBuilder, findings: dict) -> None:
+    """Text block: Interpret sensitivity results with ROBUST/SENSITIVE classification."""
+    parts = []
+    for chamber, data in findings.items():
+        if not isinstance(data, dict) or data.get("skipped"):
+            continue
+        r = data.get("pearson_r")
+        if r is None:
+            continue
+        raw_r = data.get("raw_pearson_r", r)
+        sign_flipped = raw_r < 0 if raw_r is not None else False
+        status = "ROBUST" if abs(r) > 0.95 else "SENSITIVE"
+        style = "color: green; font-weight: bold" if status == "ROBUST" else "color: orange; font-weight: bold"
+
+        part = (
+            f"<li><strong>{chamber}:</strong> <span style=\"{style}\">{status}</span> "
+            f"(|r| = {abs(r):.4f})"
+        )
+        if sign_flipped:
+            part += (
+                " — <em>sign flip detected</em> (raw r = "
+                f"{raw_r:.4f}). The aggressive threshold reversed the ideological "
+                "scale, which is expected when near-unanimous votes carry intra-party signal."
+            )
+        part += "</li>"
+        parts.append(part)
+
+    if not parts:
+        return
+
+    report.add(
+        TextSection(
+            id="sensitivity-interpretation",
+            title="Interpreting Sensitivity Results",
+            html=(
+                "<ul>" + "".join(parts) + "</ul>"
+                "<p><strong>What this means:</strong> Sensitivity analysis compares ideal "
+                "points estimated with two different vote-filtering thresholds — the default "
+                "(2.5% minority) and an aggressive cutoff (10%). ROBUST (r &gt; 0.95) means "
+                "ideal point estimates are stable regardless of which near-unanimous votes "
+                "are included.</p>"
+                "<p><strong>Why chambers differ:</strong> The Kansas House has a Republican "
+                "supermajority (~72%), so many votes are near-unanimous. Including or "
+                "excluding these votes changes the information available to the model, "
+                "potentially making House estimates more sensitive than Senate estimates.</p>"
+                "<p><strong>SENSITIVE does not mean incorrect.</strong> It means the "
+                "ideological scale contains meaningful intra-party signal from near-unanimous "
+                "votes. This is a well-known property of IRT in supermajority settings "
+                "(Clinton, Jackman &amp; Rivers 2004). Both W-NOMINATE and DW-NOMINATE "
+                "handle this via vote pre-selection thresholds.</p>"
+            ),
+        )
+    )
 
 
 def _add_convergence_interpretation(report: ReportBuilder) -> None:

@@ -635,7 +635,7 @@ def main() -> None:
 
         # ── Detect Notable Legislators ────────────────────────────────
         print("\nDetecting notable legislators...")
-        notables = detect_all(leg_dfs)
+        notables = detect_all(leg_dfs, network_manifest=manifests.get("06_network"))
 
         for chamber, mav in notables["mavericks"].items():
             print(f"  {chamber} maverick: {mav.full_name} ({mav.party})")

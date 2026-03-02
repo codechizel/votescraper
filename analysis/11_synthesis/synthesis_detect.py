@@ -144,18 +144,48 @@ def detect_chamber_maverick(
     )
 
 
-def detect_bridge_builder(leg_df: pl.DataFrame, chamber: str) -> NotableLegislator | None:
-    """Detect the bridge-builder: highest betweenness near the cross-party midpoint.
+def detect_bridge_builder(
+    leg_df: pl.DataFrame,
+    chamber: str,
+    *,
+    network_manifest: dict | None = None,
+) -> NotableLegislator | None:
+    """Detect the bridge-builder: highest centrality near the cross-party midpoint.
 
-    Finds the legislator with the highest betweenness whose xi_mean is within 1 SD
-    of the cross-party midpoint. Falls back to highest betweenness regardless.
-    Returns None if betweenness column is missing.
+    When the co-voting graph is connected (n_components == 1), uses betweenness
+    centrality (the standard measure). When disconnected (n_components >= 2),
+    betweenness is mostly zeros, so falls back to harmonic centrality + cross-party
+    edge fraction. Returns None if required columns are missing.
 
     Args:
-        chamber: lowercase key matching leg_dfs dict ("house" or "senate").
+        leg_df: Unified legislator DataFrame with centrality columns.
+        chamber: Lowercase key matching leg_dfs dict ("house" or "senate").
+        network_manifest: Optional network phase manifest with {chamber}_n_components.
     """
-    if "betweenness" not in leg_df.columns or "xi_mean" not in leg_df.columns:
+    if "xi_mean" not in leg_df.columns:
         return None
+
+    # Determine graph connectivity from manifest
+    n_components = 1  # assume connected unless manifest says otherwise
+    if network_manifest is not None:
+        n_components = network_manifest.get(f"{chamber}_n_components", 1) or 1
+
+    # Choose ranking metric based on connectivity
+    disconnected = n_components >= 2
+    if disconnected:
+        # Harmonic centrality is finite for disconnected graphs; cross-party fraction
+        # measures actual cross-party bridging
+        if "harmonic" not in leg_df.columns:
+            # Fall back to betweenness if harmonic not available (old data)
+            if "betweenness" not in leg_df.columns:
+                return None
+            rank_col = "betweenness"
+        else:
+            rank_col = "harmonic"
+    else:
+        if "betweenness" not in leg_df.columns:
+            return None
+        rank_col = "betweenness"
 
     parties = leg_df["party"].unique().to_list()
     if len(parties) < 2:
@@ -182,10 +212,10 @@ def detect_bridge_builder(leg_df: pl.DataFrame, chamber: str) -> NotableLegislat
     )
 
     if near_center.height > 0:
-        candidate_df = near_center.sort("betweenness", descending=True).head(1)
+        candidate_df = near_center.sort(rank_col, descending=True).head(1)
     else:
-        # Fallback: highest betweenness regardless
-        candidate_df = leg_df.sort("betweenness", descending=True).head(1)
+        # Fallback: highest centrality regardless
+        candidate_df = leg_df.sort(rank_col, descending=True).head(1)
 
     if candidate_df.height == 0:
         return None
@@ -201,18 +231,31 @@ def detect_bridge_builder(leg_df: pl.DataFrame, chamber: str) -> NotableLegislat
     # Determine party median for context
     party_median = medians.get(party, 0)
 
+    # Role label depends on connectivity
+    if disconnected:
+        role = f"{chamber.title()} Within-Party Connector"
+        subtitle = (
+            f"A {party} whose IRT score ({xi:.2f}) places them closer to "
+            f"{other_party}s than to their own party's median ({party_median:.2f}). "
+            f"Graph is disconnected ({n_components} components) — ranked by harmonic "
+            f"centrality, not betweenness."
+        )
+    else:
+        role = f"{chamber.title()} Bridge-Builder"
+        subtitle = (
+            f"A {party} whose IRT score ({xi:.2f}) places them closer to "
+            f"{other_party}s than to their own party's median ({party_median:.2f})."
+        )
+
     return NotableLegislator(
         slug=c["legislator_slug"],
         full_name=c["full_name"],
         party=party,
         district=c["district"],
         chamber=chamber,
-        role=f"{chamber.title()} Bridge-Builder",
+        role=role,
         title=f"{c['full_name']} ({party[0]}-{c['district']})",
-        subtitle=(
-            f"A {party} whose IRT score ({xi:.2f}) places them closer to "
-            f"{other_party}s than to their own party's median ({party_median:.2f})."
-        ),
+        subtitle=subtitle,
         reason="bridge",
     )
 
@@ -366,8 +409,16 @@ def _minority_parties(leg_df: pl.DataFrame) -> list[str]:
     return [p for p in leg_df["party"].unique().to_list() if p != majority and p != "Independent"]
 
 
-def detect_all(leg_dfs: dict[str, pl.DataFrame]) -> dict:
+def detect_all(
+    leg_dfs: dict[str, pl.DataFrame],
+    network_manifest: dict | None = None,
+) -> dict:
     """Run all detection on both chambers. Single entry point.
+
+    Args:
+        leg_dfs: Chamber → unified legislator DataFrame.
+        network_manifest: Optional network phase manifest (for bridge-builder
+            connectivity awareness).
 
     Returns a dict with keys:
         profiles: dict[str, NotableLegislator] — slug → notable (for profile cards)
@@ -407,7 +458,7 @@ def detect_all(leg_dfs: dict[str, pl.DataFrame]) -> dict:
                 break  # one minority maverick per chamber
 
         # Detect bridge-builder
-        bridge = detect_bridge_builder(leg_df, chamber)
+        bridge = detect_bridge_builder(leg_df, chamber, network_manifest=network_manifest)
         if bridge is not None:
             bridges[chamber] = bridge
             # Only add as profile if not already present

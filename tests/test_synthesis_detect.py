@@ -314,6 +314,55 @@ class TestDetectBridgeBuilder:
         assert result is not None
         assert "Democrat" in result.subtitle or "Republican" in result.subtitle
 
+    def test_connected_graph_uses_betweenness(self):
+        """When n_components == 1, should use betweenness (original behavior)."""
+        df = _leg_df()
+        manifest = {"house_n_components": 1}
+        result = detect_bridge_builder(df, "house", network_manifest=manifest)
+        assert result is not None
+        assert result.role == "House Bridge-Builder"
+        assert result.slug == "rep_b"
+
+    def test_disconnected_graph_uses_harmonic(self):
+        """When n_components >= 2, should use harmonic centrality and change role."""
+        # Add harmonic column (dem_y has highest harmonic near midpoint)
+        df = _leg_df().with_columns(
+            pl.when(pl.col("legislator_slug") == "dem_y")
+            .then(0.50)
+            .when(pl.col("legislator_slug") == "rep_b")
+            .then(0.45)
+            .otherwise(0.10)
+            .alias("harmonic")
+        )
+        manifest = {"house_n_components": 3}
+        result = detect_bridge_builder(df, "house", network_manifest=manifest)
+        assert result is not None
+        assert result.role == "House Within-Party Connector"
+        assert "disconnected" in result.subtitle
+        # dem_y has highest harmonic near midpoint
+        assert result.slug == "dem_y"
+
+    def test_disconnected_without_harmonic_falls_back_to_betweenness(self):
+        """Disconnected graph but no harmonic column — falls back to betweenness."""
+        df = _leg_df()  # has betweenness but no harmonic
+        manifest = {"house_n_components": 2}
+        result = detect_bridge_builder(df, "house", network_manifest=manifest)
+        assert result is not None
+        # Falls back to betweenness ranking
+        assert result.slug == "rep_b"
+
+    def test_no_manifest_defaults_to_connected(self):
+        """Without manifest, should default to connected (betweenness) behavior."""
+        df = _leg_df()
+        result_no_manifest = detect_bridge_builder(df, "house")
+        result_connected = detect_bridge_builder(
+            df, "house", network_manifest={"house_n_components": 1}
+        )
+        assert result_no_manifest is not None
+        assert result_connected is not None
+        assert result_no_manifest.slug == result_connected.slug
+        assert result_no_manifest.role == "House Bridge-Builder"
+
 
 # ── detect_metric_paradox() ──────────────────────────────────────────────────
 
