@@ -46,7 +46,7 @@ Each maps to `uv run python analysis/NN_phase/phase.py`. Example: `just profiles
 ## Code Style
 
 - Python 3.14+, modern type hints (`list[str]` not `List[str]`, `X | None` not `Optional[X]`)
-- Ruff: line-length 100, rules E/F/I/W
+- Ruff: line-length 100, rules E/F/I/W. **Known ruff bug:** `ruff format` strips parentheses from `except (A, B):`, converting it to the Python 2 form `except A, B:` (= `except A as B:`). Always add `# fmt: skip` to multi-exception `except` lines (ADR-0072).
 - ty: type checking (beta) — `src/` must pass clean; `analysis/` warnings-only for third-party stub noise
 - Frozen dataclasses for data models; type hints on all function signatures
 - Libraries with incomplete stubs configured as `replace-imports-with-any` in `pyproject.toml`
@@ -149,7 +149,7 @@ See `.claude/rules/analysis-framework.md` for the full pipeline, report system a
 
 Key references:
 - Design docs: `analysis/design/README.md`
-- ADRs: `docs/adr/README.md` (71 decisions)
+- ADRs: `docs/adr/README.md` (72 decisions)
 - Analysis primer: `docs/analysis-primer.md` (plain-English guide)
 - How IRT works: `docs/how-irt-works.md` (general-audience explanation of anchors, identification, and MCMC divergences)
 - External validation: `docs/external-validation-results.md` (5-biennium results, all 20 correlations "strong")
@@ -196,6 +196,7 @@ Key references:
 - Nutpie production migration: ADR-0051 (per-chamber hierarchical), ADR-0053 (flat IRT + joint hierarchical — all models now use nutpie)
 - 84th biennium analysis: `docs/84th-biennium-analysis.md` (full pipeline review, moderate Republican faction, 2012 purge, data quality flags)
 - Report enhancement survey: `docs/report-enhancement-survey.md` (current report inventory, gap analysis, open-source tools, 26 prioritized recommendations — R1-R13 implemented ADR-0069, R14-R20 implemented ADR-0071)
+- Pipeline audit: ADR-0072 (8-biennium review, 18 findings, 6 fixes — except syntax, prediction leakage, sample threshold, logging)
 - Analytic flags: `docs/analytic-flags.md` (living document of observations)
 - Field survey: `docs/landscape-legislative-vote-analysis.md`
 - Method evaluation: `docs/method-evaluation.md`

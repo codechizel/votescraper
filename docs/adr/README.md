@@ -131,6 +131,7 @@ What are the trade-offs?
 | [0067](0067-open-source-readiness.md) | Open-source readiness polish |
 | [0069](0069-report-enhancement-infrastructure.md) | Report enhancement infrastructure (R1-R13) |
 | [0071](0071-tier-3-report-enhancements.md) | Tier 3 report enhancements (R14-R20) |
+| [0072](0072-pipeline-audit-fixes.md) | Full pipeline audit — 8-biennium review and fixes |
 
 ## Chronological Index
 
@@ -207,6 +208,7 @@ What are the trade-offs?
 | [0069](0069-report-enhancement-infrastructure.md) | Report enhancement infrastructure (R1-R13: ITables, Plotly, PyVis, key findings, BPI, cutting lines, coalition labeler) | Accepted | 2026-03-01 |
 | [0070](0070-dynamic-irt-convergence-and-identification.md) | Dynamic IRT convergence and identification (informative prior, adaptive tau, symlink race guard) | Accepted | 2026-03-01 |
 | [0071](0071-tier-3-report-enhancements.md) | Tier 3 report enhancements (R14-R20: CSV downloads, full voting records, geographic maps, freshmen cohort, bloc stability, dashboard, scrollytelling) | Accepted | 2026-03-01 |
+| [0072](0072-pipeline-audit-fixes.md) | Full pipeline audit — 8-biennium review, 6 fixes (except syntax, data leakage, sample threshold, logging) | Accepted | 2026-03-02 |
 
 ## Creating a New ADR
 
