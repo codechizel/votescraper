@@ -891,6 +891,80 @@ def plot_polarization_trend(
     save_fig(fig, out_path)
 
 
+def plot_ridgeline_ideology(
+    trajectories: pl.DataFrame,
+    out_path: Path,
+    *,
+    x_range: tuple[float, float] = (-4.0, 4.0),
+    n_points: int = 200,
+) -> None:
+    """Ridgeline plot of ideological distributions across bienniums.
+
+    One row per biennium (84th–91st), stacked vertically with slight overlap.
+    Republicans in red, Democrats in blue, with filled KDE curves.
+
+    Args:
+        trajectories: DataFrame with columns biennium_label, party, xi_mean, served.
+        out_path: Path to save the PNG figure.
+        x_range: Ideal point range for x-axis.
+        n_points: Number of points for KDE evaluation.
+    """
+    from matplotlib.patches import Patch
+    from scipy.stats import gaussian_kde
+
+    served = trajectories.filter(pl.col("served"))
+    biennium_labels = sorted(served["biennium_label"].unique().to_list())
+    n_bienniums = len(biennium_labels)
+
+    fig, ax = plt.subplots(figsize=(10, 1.5 * n_bienniums))
+    x_grid = np.linspace(x_range[0], x_range[1], n_points)
+
+    vertical_spacing = 1.0
+    overlap_factor = 0.7
+
+    for i, label in enumerate(reversed(biennium_labels)):
+        y_offset = i * vertical_spacing
+        biennium_data = served.filter(pl.col("biennium_label") == label)
+
+        for party, color in PARTY_COLORS_DYNAMIC.items():
+            if party == "Independent":
+                continue
+            party_data = biennium_data.filter(pl.col("party") == party)
+            values = party_data["xi_mean"].to_numpy()
+
+            if len(values) < 3:
+                continue
+
+            kde = gaussian_kde(values, bw_method="silverman")
+            density = kde(x_grid)
+            density = density / density.max() * overlap_factor
+
+            ax.fill_between(
+                x_grid, y_offset, y_offset + density, alpha=0.5, color=color, linewidth=0
+            )
+            ax.plot(x_grid, y_offset + density, color=color, linewidth=1.0)
+
+        ax.text(x_range[0] - 0.3, y_offset + 0.15, label, ha="right", va="center", fontsize=9)
+
+    ax.set_xlim(x_range[0] - 2.5, x_range[1] + 0.5)
+    ax.set_ylim(-0.3, n_bienniums * vertical_spacing + 0.5)
+    ax.set_xlabel("Ideal Point (Conservative \u2192 Liberal)", fontsize=11)
+    ax.set_yticks([])
+    ax.spines["left"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.set_title("Ideological Distribution Over Time", fontsize=13, pad=15)
+
+    legend_elements = [
+        Patch(facecolor="#E81B23", alpha=0.5, label="Republican"),
+        Patch(facecolor="#0015BC", alpha=0.5, label="Democrat"),
+    ]
+    ax.legend(handles=legend_elements, loc="upper right", framealpha=0.9)
+
+    fig.tight_layout()
+    save_fig(fig, out_path)
+
+
 def plot_individual_trajectories(
     trajectories: pl.DataFrame,
     top_movers: pl.DataFrame,
@@ -1542,6 +1616,7 @@ def main() -> None:
             plot_polarization_trend(
                 trajectories, ctx.plots_dir / f"polarization_trend_{chamber}.png"
             )
+            plot_ridgeline_ideology(trajectories, ctx.plots_dir / f"ridgeline_{chamber}.png")
             plot_individual_trajectories(
                 trajectories,
                 top_movers,

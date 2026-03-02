@@ -61,6 +61,7 @@ def build_dynamic_irt_report(
         _add_sign_corrections(report, cr, chamber)
         _add_global_roster(report, cr, chamber)
         _add_polarization_trend(report, plots_dir, chamber)
+        _add_ridgeline(report, plots_dir, chamber)
         _add_trajectories(report, plots_dir, chamber)
         _add_tau_posterior(report, cr, plots_dir, chamber)
         _add_top_movers_table(report, cr, chamber)
@@ -315,6 +316,35 @@ def _add_polarization_trend(
                     f"Line chart of {chamber_cap} party mean ideal points across bienniums with "
                     "95% credible interval bands. Growing separation between party lines indicates "
                     "increasing polarization."
+                ),
+            )
+        )
+
+
+def _add_ridgeline(
+    report: ReportBuilder,
+    plots_dir: Path,
+    chamber: str,
+) -> None:
+    """Add ridgeline ideology distribution plot."""
+    chamber_cap = chamber.capitalize()
+    path = plots_dir / f"ridgeline_{chamber}.png"
+    if path.exists():
+        report.add(
+            FigureSection.from_file(
+                f"ridgeline-{chamber}",
+                f"{chamber_cap} — Ideological Ridgeline",
+                path,
+                caption=(
+                    "Kernel density estimates of ideal point distributions for each biennium. "
+                    "Republicans (red) and Democrats (blue) shown separately. "
+                    "Wider peaks indicate more within-party ideological variation. "
+                    "Increasing separation between party peaks indicates growing polarization."
+                ),
+                alt_text=(
+                    f"Ridgeline plot of {chamber_cap} ideological distributions stacked "
+                    "vertically by biennium. Republican (red) and Democrat (blue) kernel "
+                    "density curves show party ideal point distributions over time."
                 ),
             )
         )

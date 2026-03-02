@@ -16,6 +16,7 @@ from analysis.dynamic_irt import (
     SMALL_CHAMBER_THRESHOLD,
     XI_INIT_PRIOR_SIGMA,
     build_dynamic_irt_graph,
+    plot_ridgeline_ideology,
 )
 from analysis.dynamic_irt_data import (
     BIENNIUM_LABELS,
@@ -1020,6 +1021,82 @@ class TestReport:
         )
         section_ids = [s.id for _, s in report._sections]
         assert "methodology" in section_ids
+
+
+# ── Ridgeline Plot ────────────────────────────────────────────────────────────
+
+
+class TestRidgelinePlot:
+    """Tests for ridgeline ideology distribution plot.
+
+    Run: uv run pytest tests/test_dynamic_irt.py -k TestRidgelinePlot -v
+    """
+
+    def _make_trajectories(
+        self,
+        n_per_party: dict[str, int],
+        biennium_labels: list[str],
+        *,
+        seed: int = 42,
+    ) -> pl.DataFrame:
+        """Build synthetic trajectories DataFrame."""
+        rng = np.random.default_rng(seed)
+        rows: list[dict] = []
+        idx = 0
+        for label in biennium_labels:
+            for party, n in n_per_party.items():
+                center = 1.0 if party == "Republican" else -1.0
+                for j in range(n):
+                    rows.append({
+                        "global_idx": idx,
+                        "name_norm": f"{party[:3].lower()}_{idx}",
+                        "full_name": f"{party} Member {idx}",
+                        "party": party,
+                        "time_period": biennium_labels.index(label),
+                        "biennium_label": label,
+                        "xi_mean": rng.normal(center, 0.5),
+                        "xi_sd": 0.1,
+                        "xi_hdi_2.5": center - 1.0,
+                        "xi_hdi_97.5": center + 1.0,
+                        "served": True,
+                    })
+                    idx += 1
+        return pl.DataFrame(rows)
+
+    def test_produces_png(self, tmp_path) -> None:
+        """Ridgeline plot creates a PNG file."""
+        labels = ["84th", "85th", "86th"]
+        traj = self._make_trajectories(
+            {"Republican": 15, "Democrat": 5}, labels
+        )
+        out = tmp_path / "ridgeline_house.png"
+        plot_ridgeline_ideology(traj, out)
+        assert out.exists()
+        assert out.stat().st_size > 0
+
+    def test_skips_small_parties(self, tmp_path) -> None:
+        """Parties with < 3 members are skipped (KDE needs 3+ points)."""
+        traj = pl.DataFrame({
+            "biennium_label": ["84th"] * 6,
+            "party": ["Republican"] * 4 + ["Independent"] * 2,
+            "xi_mean": [1.0, 1.1, 0.9, 1.2, 0.0, 0.1],
+            "served": [True] * 6,
+        })
+        out = tmp_path / "ridgeline_house.png"
+        plot_ridgeline_ideology(traj, out)
+        assert out.exists()
+
+    def test_filters_unserved(self, tmp_path) -> None:
+        """Only served=True legislators included in density."""
+        traj = pl.DataFrame({
+            "biennium_label": ["84th"] * 10,
+            "party": ["Republican"] * 10,
+            "xi_mean": list(np.linspace(-2, 2, 10)),
+            "served": [True] * 5 + [False] * 5,
+        })
+        out = tmp_path / "ridgeline_house.png"
+        plot_ridgeline_ideology(traj, out)
+        assert out.exists()
 
 
 # ── Edge Cases ───────────────────────────────────────────────────────────────
