@@ -4,8 +4,6 @@ Uses a synthetic 8-legislator fixture: 4 Republicans with high intra-agreement,
 4 Democrats with high intra-agreement, low cross-party agreement.
 """
 
-from __future__ import annotations
-
 import networkx as nx
 import numpy as np
 import polars as pl

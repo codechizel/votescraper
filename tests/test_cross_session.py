@@ -4,8 +4,6 @@ Run:
     uv run pytest tests/test_cross_session.py -v
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 import numpy as np

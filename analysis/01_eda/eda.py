@@ -2147,7 +2147,10 @@ def main() -> None:
             from analysis.geographic import create_district_maps, download_kansas_districts
         except ModuleNotFoundError:
             try:
-                from geographic import create_district_maps, download_kansas_districts  # type: ignore[no-redef]
+                from geographic import (  # type: ignore[no-redef]
+                    create_district_maps,
+                    download_kansas_districts,
+                )
             except ModuleNotFoundError:
                 create_district_maps = None  # type: ignore[assignment]
                 download_kansas_districts = None  # type: ignore[assignment]

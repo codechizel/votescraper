@@ -901,14 +901,14 @@ def cross_reference_veto_overrides(
             from datetime import date
 
             cp_date = date.fromisoformat(cp_date_str[:10])
-        except (ValueError, TypeError):  # fmt: skip
+        except ValueError, TypeError:
             continue
 
         for ov_row in overrides.iter_rows(named=True):
             ov_date_str = str(ov_row.get(date_col, ""))[:10]
             try:
                 ov_date = date.fromisoformat(ov_date_str)
-            except (ValueError, TypeError):  # fmt: skip
+            except ValueError, TypeError:
                 continue
 
             days = abs((cp_date - ov_date).days)

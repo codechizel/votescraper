@@ -4,8 +4,6 @@ Provides hemicycle (semicircle parliament) charts for visualizing chamber
 composition by party or by vote category on specific roll calls.
 """
 
-from __future__ import annotations
-
 import math
 
 import plotly.graph_objects as go

@@ -6,8 +6,6 @@ Usage:
     uv run pytest tests/test_nlp_features.py -v
 """
 
-from __future__ import annotations
-
 import polars as pl
 import pytest
 from analysis.nlp_features import (

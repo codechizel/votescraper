@@ -6,8 +6,6 @@ handle the scraper/analysis schema split (ADR-0066): scraper CSVs use "slug",
 analysis phases use "legislator_slug".
 """
 
-from __future__ import annotations
-
 import numpy as np
 import polars as pl
 

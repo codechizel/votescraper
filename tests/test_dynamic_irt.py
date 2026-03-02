@@ -4,8 +4,6 @@ Run:
     uv run pytest tests/test_dynamic_irt.py -v
 """
 
-from __future__ import annotations
-
 from functools import partial
 
 import numpy as np

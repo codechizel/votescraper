@@ -43,3 +43,8 @@ The project requires Python >=3.14 (`pyproject.toml`), but several legacy patter
   The `N` counter from commit tags is not included (package version tracks the date, not
   individual commits within a day).
 - Test count updated from 1,096 to 1,125 across docs (stale count predated recent additions).
+
+**Update (2026-03-02):** 12 remaining `from __future__ import annotations` imports removed
+during Python 3.14.3 upgrade (these had accumulated in files added after the original cleanup).
+Also removed all 15 `# fmt: skip` workarounds on multi-exception `except` lines — PEP 758
+makes bracketless `except A, B:` valid Python 3.14 syntax, eliminating the ruff format bug.

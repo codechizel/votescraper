@@ -4,8 +4,6 @@ Run:
     uv run pytest tests/test_beta_binomial.py -v
 """
 
-from __future__ import annotations
-
 import numpy as np
 import polars as pl
 from analysis.beta_binomial import (

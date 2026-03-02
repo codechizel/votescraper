@@ -255,7 +255,7 @@ if __name__ == "__main__":
         )
         if result.returncode == 0:
             git_hash = result.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired):  # fmt: skip
+    except FileNotFoundError, subprocess.TimeoutExpired:
         pass
 
     generate_dashboard(session_dir, run_id, git_hash)

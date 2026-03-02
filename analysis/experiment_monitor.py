@@ -244,7 +244,7 @@ class ExperimentLifecycle:
         if self._original_sigterm is not None:
             try:
                 signal.signal(signal.SIGTERM, self._original_sigterm)
-            except (OSError, ValueError):  # fmt: skip
+            except OSError, ValueError:
                 pass
 
         # Restore process title

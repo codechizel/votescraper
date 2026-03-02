@@ -295,7 +295,7 @@ def _build_network_from_vote_subset(
                 k = cohen_kappa_score(vi[mask], vj[mask])
                 kappa_mat[i, j] = k
                 kappa_mat[j, i] = k
-            except (ValueError, ZeroDivisionError):  # fmt: skip
+            except ValueError, ZeroDivisionError:
                 pass
 
     ip_dict = _build_ip_lookup(ideal_points)
@@ -461,7 +461,7 @@ def compute_network_summary(G: nx.Graph) -> dict:
     # Party assortativity
     try:
         assortativity_party = nx.attribute_assortativity_coefficient(G, "party")
-    except (ValueError, ZeroDivisionError):  # fmt: skip
+    except ValueError, ZeroDivisionError:
         assortativity_party = None
 
     return {
@@ -534,7 +534,7 @@ def compute_centralities(G: nx.Graph) -> pl.DataFrame:
                 else:
                     for n in component:
                         eigenvector[n] = 0.0
-    except (nx.NetworkXError, nx.AmbiguousSolution, np.linalg.LinAlgError):  # fmt: skip
+    except nx.NetworkXError, nx.AmbiguousSolution, np.linalg.LinAlgError:
         eigenvector = {n: 0.0 for n in nodes}
 
     # Closeness centrality (distance = 1/kappa; per component for disconnected graphs)
@@ -2565,13 +2565,21 @@ def main() -> None:
             print_header(f"PHASE 3: CENTRALITY MEASURES — {chamber}")
             centralities = compute_centralities(G)
             centralities.write_parquet(ctx.data_dir / f"centrality_{chamber.lower()}.parquet")
-            ctx.export_csv(centralities, f"centrality_{chamber.lower()}.csv", f"Network centrality measures for {chamber} legislators")
+            ctx.export_csv(
+                centralities,
+                f"centrality_{chamber.lower()}.csv",
+                f"Network centrality measures for {chamber} legislators",
+            )
             print(f"  Saved: centrality_{chamber.lower()}.parquet")
             chamber_results["centralities"] = centralities
 
             bridges = identify_bridge_legislators(centralities, G)
             bridges.write_parquet(ctx.data_dir / f"bridge_legislators_{chamber.lower()}.parquet")
-            ctx.export_csv(bridges, f"bridge_legislators_{chamber.lower()}.csv", f"Cross-party bridge legislators in {chamber}")
+            ctx.export_csv(
+                bridges,
+                f"bridge_legislators_{chamber.lower()}.csv",
+                f"Cross-party bridge legislators in {chamber}",
+            )
             print(f"  Saved: bridge_legislators_{chamber.lower()}.parquet")
             chamber_results["bridges"] = bridges
 
@@ -2610,7 +2618,11 @@ def main() -> None:
                     [{"legislator_slug": n, "community": c} for n, c in best_partition.items()]
                 )
                 comm_df.write_parquet(ctx.data_dir / f"communities_{chamber.lower()}.parquet")
-                ctx.export_csv(comm_df, f"communities_{chamber.lower()}.csv", f"Network community assignments for {chamber} legislators")
+                ctx.export_csv(
+                    comm_df,
+                    f"communities_{chamber.lower()}.csv",
+                    f"Network community assignments for {chamber} legislators",
+                )
                 print(f"  Saved: communities_{chamber.lower()}.parquet")
 
                 # Composition

@@ -167,7 +167,7 @@ def merge_bai_perron_with_pelt(
     for pelt_str in pelt_dates:
         try:
             pelt_d = date.fromisoformat(pelt_str[:10])
-        except (ValueError, TypeError):  # fmt: skip
+        except ValueError, TypeError:
             continue
 
         best_match = None

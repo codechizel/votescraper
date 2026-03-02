@@ -130,7 +130,7 @@ def _git_commit_hash() -> str:
         )
         if result.returncode == 0:
             return result.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired):  # fmt: skip
+    except FileNotFoundError, subprocess.TimeoutExpired:
         pass
     return "unknown"
 
@@ -363,8 +363,7 @@ class RunContext:
 
         # Drop columns with nested types (List, Struct, Array) that CSV cannot serialize
         nested = [
-            c for c in out.columns
-            if out[c].dtype.base_type() in (pl.List, pl.Struct, pl.Array)
+            c for c in out.columns if out[c].dtype.base_type() in (pl.List, pl.Struct, pl.Array)
         ]
         if nested:
             out = out.drop(nested)

@@ -5,8 +5,6 @@ item/person fit, Q3 local dependence, LOO-CV model comparison, and Pareto k
 diagnostics.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any
 

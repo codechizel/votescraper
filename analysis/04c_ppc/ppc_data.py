@@ -7,8 +7,6 @@ Log-likelihood uses manual numpy computation (not PyMC model rebuild) to avoid
 model reconstruction complexity and PyTensor compilation (~30-60s per model).
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 import arviz as az

@@ -13,7 +13,7 @@ After completing a full pipeline run across all 8 bienniums (84th-91st, 2011-202
 
 | ID | Category | Fix | Files |
 |----|----------|-----|-------|
-| A1 | Critical | **Python 2 `except` syntax**: ruff formatter stripped parens from multi-exception `except` clauses, silently converting `except (A, B):` to `except A, B:` (= `except A as B:`). Fixed 9 call sites across 6 files with `# fmt: skip`. | `network.py` (3), `geographic.py` (3), `tsa_r_data.py` (1), `experiment_monitor.py` (1), `dynamic_irt_report.py` (1) |
+| A1 | Critical | **Python 2 `except` syntax**: ruff formatter stripped parens from multi-exception `except` clauses. Originally fixed with `# fmt: skip`; now resolved permanently by PEP 758 (Python 3.14) which makes bracketless `except A, B:` valid syntax meaning "catch both." All `# fmt: skip` workarounds removed. | `network.py` (3), `geographic.py` (3), `tsa_r_data.py` (1), `experiment_monitor.py` (1), `dynamic_irt_report.py` (1) |
 | A5 | High | **Prediction in-sample leakage**: `find_surprising_bills()` evaluated bill passage surprises on the full dataset instead of holdout test set. Fixed by threading `test_indices` through `train_passage_models()` return value. | `prediction.py` |
 | A7 | High | **Prediction minimum sample threshold**: per-legislator accuracy reported legislators with 1-2 votes as "hardest to predict." Added `MIN_VOTES_RELIABLE=10` constant and `reliable` boolean column. | `prediction.py` |
 | A12 | Medium | **Beta-binomial clamping warning**: `estimate_beta_params()` silently clamped alpha/beta to 0.5 when method-of-moments produced sub-0.5 values. Now emits `warnings.warn()`. | `beta_binomial.py` |

@@ -911,7 +911,7 @@ obs ~ Bernoulli(logit(beta * xi - alpha))
 # Import constants from the main module for report sections
 try:
     from analysis.dynamic_irt import ESS_THRESHOLD, MAX_DIVERGENCES, RHAT_THRESHOLD
-except (ModuleNotFoundError, ImportError):  # fmt: skip
+except ModuleNotFoundError, ImportError:
     MAX_DIVERGENCES = 50  # type: ignore[assignment]
     RHAT_THRESHOLD = 1.05  # type: ignore[assignment]
     ESS_THRESHOLD = 400  # type: ignore[assignment]
