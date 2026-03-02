@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-02 (M3 accessibility — WCAG 2.1 AA alt-text rollout)
+**Last updated:** 2026-03-02 (M6: ridgeline ideology plots in dynamic IRT report)
 
 ---
 
@@ -63,6 +63,10 @@ What's been done, what's next, and what's on the horizon for the Tallgrass analy
 | — | Name Matcher District Tiebreaker | 2026-03-02 | Phase 14 (SM) + Phase 14b (DIME) name matching now uses district-based disambiguation for ambiguous last-name matches. 3 incorrect matches corrected. 6 new tests. |
 | — | Shrinkage Null Investigation | 2026-03-02 | Deep dive confirmed `SHRINKAGE_MIN_DISTANCE=0.5` is statistically justified (24.8% null rate across all bienniums). Accepted as working-as-designed. |
 | — | Report Enhancements (R14-R20) | 2026-03-02 | Folium district choropleths, full voting record in Profiles, iframe dashboard, CSV downloads (28+ exports), freshmen cohort analysis, bloc stability Sankey, scrollytelling synthesis. 4 new deps (folium, geopandas, scrollama via IntersectionObserver). ADR-0071. |
+| — | WCAG Accessibility (R25) | 2026-03-02 | alt_text on 132 FigureSections, aria_label on 8 InteractiveSections across 23 report builders. WCAG 2.1 AA compliance. ADR-0079. |
+| — | Scraper Refactoring (M2) | 2026-03-02 | Extracted `_extract_bill_title()`, `_extract_chamber_motion_date()`, `_parse_vote_categories()`, `_extract_party_and_district()` as static methods from `_parse_vote_page()` and `enrich_legislators()`. |
+| — | Bill Lifecycle (M5) | 2026-03-02 | `BillAction` dataclass, KLISS HISTORY capture, `_bill_actions.csv` export. Sankey lifecycle diagram in EDA report. 17 new tests. |
+| — | Ridgeline Plots (M6) | 2026-03-02 | `plot_ridgeline_ideology()` — stacked KDE curves by biennium in dynamic IRT report. Republicans/Democrats shown separately. 3 new tests (73 total in Phase 16). |
 
 ---
 
@@ -322,7 +326,7 @@ Marker registered in `pyproject.toml` and `just test-fast` skips it, but no test
 | Error handling (H1-H3) | 3/3 | 3 | Crash prevention |
 | Tests (T1-T2) | 1/2 | 2 | T1 deferred |
 
-1822 tests passing, lint clean, typecheck clean.
+1909 tests passing, lint clean, typecheck clean.
 
 ---
 
@@ -402,7 +406,7 @@ All Tier 4 items plus remaining code audit items have detailed implementation do
 | # | Enhancement | Milestone | Notes |
 |---|-------------|-----------|-------|
 | R21 | **Parliament/hemicircle charts** | **Done** — `analysis/viz_helpers.py`, hemicycle in EDA report per chamber | Plotly scatter on polar coords |
-| R22 | **Sankey diagrams** for bill flow | [M5](milestones/m5-bill-lifecycle.md) | Scraper captures KLISS HISTORY + EDA Sankey |
+| R22 | **Sankey diagrams** for bill flow | [M5](milestones/m5-bill-lifecycle.md) | **Done** — `BillAction` dataclass, `_bill_actions.csv`, lifecycle Sankey in EDA report |
 | R23 | **Ridgeline plots** for ideology | [M6](milestones/m6-ridgeline-plots.md) | **Done** — `plot_ridgeline_ideology()` in dynamic IRT report |
 | R24 | **Animated scatter** (Gapminder) | [M7](milestones/m7-animated-scatter.md) | Plotly `animation_frame` in dynamic IRT report |
 | R25 | **Descriptive alt text** | [M3](milestones/m3-accessibility-alt-text.md) | **Done.** WCAG 2.1 AA — alt_text on all FigureSections + aria_label on InteractiveSections across 23 report files |
@@ -413,9 +417,9 @@ Additional milestones from code audit:
 | Milestone | Scope | Document |
 |-----------|-------|----------|
 | M1 | `@pytest.mark.slow` + test helper consolidation | [M1](milestones/m1-test-infrastructure.md) |
-| M2 | Extract `_parse_vote_page()` + `enrich_legislators()` helpers | [M2](milestones/m2-scraper-refactoring.md) |
+| M2 | ~~Extract `_parse_vote_page()` + `enrich_legislators()` helpers~~ | **Done** |
 
-**Recommended order:** M1 → M2 → M5 → M4 → M6 → M7 → M3 → M8 (all independent, can be done in any order).
+**Recommended order:** M1 → M4 → M7 → M8 (all independent, can be done in any order). M2, M3, M5, M6 completed.
 
 ### Key Library Additions (All Integrated)
 
@@ -437,7 +441,7 @@ All 18 phases define `*_PRIMER` strings (150-200 lines of Markdown each) that Ru
 
 ### ~~Test Suite Expansion~~ — Done
 
-1805 tests across scraper and analysis modules. All passing. Three gaps closed:
+1909 tests across scraper and analysis modules. All passing. Three gaps closed:
 - **Integration tests**: `test_integration_pipeline.py` — synthetic data → EDA → PCA pipeline chain, RunContext lifecycle, upstream resolution (26 tests)
 - **HTML report structural tests**: `test_report_structure.py` — TOC anchors, section ordering, numbering, container types, empty report, CSS embedding, make_gt integration (22 tests)
 - **Pytest markers**: `@pytest.mark.scraper` (264 tests), `@pytest.mark.integration` (29 tests), `@pytest.mark.slow` (24 tests). Registered in `pyproject.toml`. Recipes: `just test-scraper`, `just test-fast`

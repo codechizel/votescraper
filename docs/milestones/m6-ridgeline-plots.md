@@ -1,9 +1,9 @@
-# M6: Ridgeline Plots
+# M6: Ridgeline Plots — COMPLETED
 
 Add ridgeline (joy) plots showing temporal ideology distributions across 8 bienniums in the dynamic IRT report.
 
 **Roadmap item:** R23 (ridgeline plots for temporal ideology distributions)
-**Estimated effort:** 1 session
+**Status:** Completed 2026-03-02
 **Dependencies:** None (uses existing `trajectories_{chamber}.parquet` data)
 
 ---

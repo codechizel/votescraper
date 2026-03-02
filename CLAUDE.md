@@ -22,7 +22,7 @@ just lint-check                              # → ruff check + ruff format --ch
 just typecheck                               # → ty check src/ + ty check analysis/
 just sessions                                # → uv run tallgrass --list-sessions
 just check                                   # → lint-check + typecheck + test (quality gate)
-just test                                    # → uv run pytest tests/ -v (~1803 tests)
+just test                                    # → uv run pytest tests/ -v (~1909 tests)
 just test-scraper                            # → pytest -m scraper (~264 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just monitor                                 # → check running experiment status
@@ -248,7 +248,7 @@ All hierarchical experiments (whether using `ExperimentRunner` or standalone scr
 ## Testing
 
 ```bash
-just test                    # 1803 tests
+just test                    # 1909 tests
 just test-scraper            # scraper tests only (-m scraper)
 just test-fast               # skip slow/integration tests (-m "not slow")
 just check                   # full check (lint + typecheck + tests)
