@@ -573,14 +573,33 @@ XGBoost adds almost nothing over logistic regression on xi x beta. The IRT ideal
 - **Impact:** Low — 1 incorrect match in 112 House legislators. The correlation (r=0.975) is minimally affected.
 - **Downstream:** Implement district-based disambiguation when multiple candidates share a last name. See roadmap backlog item #1.
 
-### 87th House Sign Flip in Dynamic IRT (Phase 16, Run 260301.1)
+### 87th Sign Flip in Dynamic IRT (Phase 16)
 
 - **Phase:** Dynamic IRT
-- **Observation:** 87th biennium (2013-14) House ideal points were inverted: r = -0.937 with static IRT. Democrats showed positive xi, Republicans negative. The Senate was unaffected.
-- **Root cause:** The 88th biennium (2019-20) data was unavailable at runtime, creating a gap with 0 bridge legislators on both sides of period 4. This severed the Markov chain, allowing the sampler to find a sign-flipped mode for the 87th. Positive beta prior (`HalfNormal(2.5)`) alone is insufficient for sign identification with a broken chain. The Senate's 4-year staggered terms provide higher continuity, maintaining sufficient bridges.
-- **Downstream consequences:** The sign flip inflated House random walk tau (D=1.46, R=0.81) to absorb artificial ±3-unit jumps at the 87th boundary, producing scale drift (dynamic/static range ratio: 0.66x at 84th, 1.51x at 91st).
-- **Fix:** Post-hoc per-period sign correction added (ADR-0068). Compares each period's dynamic xi with static IRT; negates xi if r < 0. All corrections are transparently documented in the HTML report with named reference legislators.
-- **Re-run expectation:** With 88th biennium data available, the sign flip should not occur, making the correction a no-op.
+- **Observation:** 87th biennium (2017-18) ideal points are inverted relative to static IRT. Persists across both runs:
+  - **Run 260301.1** (88th missing): House r = -0.937, Senate unaffected
+  - **Run 260301.2** (all 8 bienniums): House r = -0.959, Senate r = -0.657
+- **Root cause (updated):** Originally attributed to missing 88th data severing the Markov chain. Re-run with all 8 bienniums (87th→88th bridge: 94 shared, 74% overlap) confirms the sign flip is **intrinsic to the 86th→87th transition**, not a data gap artifact. The state-space random walk finds a sign-flipped mode at this boundary despite adequate bridge coverage. This is a known limitation of Martin-Quinn state-space IRT: the `HalfNormal(2.5)` positive beta prior provides soft identification but cannot prevent sign switching at individual time periods when the likelihood landscape has a competing mode.
+- **Magnitude:** |r| = 0.959 (House) and |r| = 0.657 (Senate), confirming the model captures the correct structure — just with inverted polarity. House |r| is high enough that post-hoc correction fully recovers the signal; Senate |r| is lower, suggesting additional instability beyond simple sign inversion.
+- **Fix:** Post-hoc per-period sign correction (ADR-0068) handles this robustly. Compares each period's dynamic xi with static IRT; negates xi if r < 0. All corrections are transparently documented in the HTML report with named reference legislators.
+- **Senate convergence failure:** Run 260301.2 Senate failed convergence (R-hat 1.84, ESS 3) — severe mode-splitting. The 87th and 88th both show sign flips in Senate (r = -0.657, r = -0.425). May require longer chains or stronger identification constraints in future work.
+
+### Dynamic IRT `latest` Symlink Race Condition (Run 260301.1)
+
+- **Phase:** Dynamic IRT, DIME/CFscores
+- **Observation:** First dynamic IRT run (260301.1) skipped the 88th biennium entirely. The `latest` symlink in `results/kansas/88th_2019-2020/` pointed to `88-260301.3` (a DIME validation run) instead of `88-260301.1` (the pipeline run). The DIME run directory contained no EDA data, so dynamic IRT's `resolve_upstream_dir()` found no vote matrix.
+- **Root cause:** Independent analyses (external-validation, DIME) ran against individual bienniums, each creating its own run ID and updating the `latest` symlink. This overwrote the pipeline run's symlink.
+- **Fix (manual):** Repointed all 8 `latest` symlinks to pipeline run IDs (`ln -sfn {num}-260301.1 {dir}/latest`). Re-ran dynamic IRT as 260301.2 — all 8 bienniums loaded successfully.
+- **Systemic recommendation:** Independent analyses should not update `latest` symlinks when run against existing pipeline data. Consider a `--no-latest` flag or restricting symlink updates to `just pipeline` runs only.
+
+### Full Pipeline Run Summary (2026-03-01)
+
+- **Scope:** All 8 bienniums (84th-91st), 17 phases each, plus 5 independent analyses
+- **Per-chamber hierarchical IRT:** All 16 chamber-sessions converged (0 divergences each). This is the production method.
+- **Joint hierarchical IRT:** Failed convergence in all 8 bienniums (consistent with known joint model limitations). Per-chamber + Stocking-Lord linking remains the production alternative.
+- **TSA bug fix:** `aggregate_weekly()` in `analysis/15_tsa/tsa.py:780` crashed on null dates during 85th session. Fixed by adding `.filter(pl.col(date_col).is_not_null())` before date casting (committed in v2026.03.01.1).
+- **Notable finding:** Rep. Marvin Robinson (D, 90th) had 11.8% party unity — lowest across all 8 bienniums.
+- **W-NOMINATE:** Skipped (R not installed on this machine).
 
 ## Template
 
