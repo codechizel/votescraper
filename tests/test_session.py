@@ -196,6 +196,19 @@ class TestFromSessionString:
         s = KSSession.from_session_string("2023-24")
         assert s.start_year == 2023
 
+    def test_special_session(self):
+        s = KSSession.from_session_string("2024s")
+        assert s.start_year == 2024
+        assert s.special is True
+
+    def test_special_session_output_name(self):
+        s = KSSession.from_session_string("2024s")
+        assert s.output_name == "2024s"
+
+    def test_special_session_label(self):
+        s = KSSession.from_session_string("2024s")
+        assert s.label == "2024 Special"
+
 
 # ── data_dir_for_session() ───────────────────────────────────────────────────
 
@@ -211,6 +224,9 @@ class TestDataDirForSession:
 
     def test_special(self):
         assert KSSession.data_dir_for_session("2024", special=True) == Path("data/kansas/2024s")
+
+    def test_special_string(self):
+        assert KSSession.data_dir_for_session("2024s") == Path("data/kansas/2024s")
 
 
 # ── uses_odt ────────────────────────────────────────────────────────────────

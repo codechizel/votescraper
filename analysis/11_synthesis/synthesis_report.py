@@ -154,7 +154,7 @@ def _maverick_name_list(notables: dict) -> str:
 
 def _add_intro(report: object, manifests: dict, notables: dict) -> None:
     """Section 1: What This Report Tells You."""
-    eda = manifests.get("eda", {})
+    eda = manifests.get("01_eda", {})
     total_votes = eda.get("All", {}).get("votes_before", 882)
     contested = eda.get("All", {}).get("votes_after", 491)
     n_legislators = eda.get("All", {}).get("legislators_before", 172)
@@ -250,7 +250,7 @@ def _add_pipeline_figure(report: object, plots_dir: Path) -> None:
 
 def _add_party_line_narrative(report: object, manifests: dict) -> None:
     """Section 3: The Party Line Is Everything."""
-    clust = manifests.get("clustering", {})
+    clust = manifests.get("05_clustering", {})
     mean_ari = clust.get("house_mean_ari", 0.96)
 
     report.add(
@@ -688,7 +688,7 @@ def _add_paradox_profile(report: object, plots_dir: Path, notables: dict) -> Non
 
 def _add_veto_narrative(report: object, manifests: dict) -> None:
     """Section 20: Veto Overrides Tell You Nothing New."""
-    indices = manifests.get("indices", {})
+    indices = manifests.get("07_indices", {})
     h_veto = indices.get("house_veto_overrides", {})
     s_veto = indices.get("senate_veto_overrides", {})
     n_h = h_veto.get("n_overrides", 17)
@@ -1222,7 +1222,7 @@ def build_scrolly_synthesis_report(
         )
 
     # ── Chapter 1: The Kansas Legislature at a Glance ─────────────────────
-    eda = manifests.get("eda", {})
+    eda = manifests.get("01_eda", {})
     total_votes = eda.get("All", {}).get("votes_before", 882)
     contested = eda.get("All", {}).get("votes_after", 491)
     n_legislators = eda.get("All", {}).get("legislators_before", 172)
@@ -1277,7 +1277,7 @@ def build_scrolly_synthesis_report(
     if net_path and net_path.exists():
         ch2_visuals["network"] = _embed_img(net_path, "Network")
 
-    clust = manifests.get("clustering", {})
+    clust = manifests.get("05_clustering", {})
     mean_ari = clust.get("house_mean_ari", 0.96)
 
     ch2_steps = [

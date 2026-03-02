@@ -22,7 +22,7 @@ just lint-check                              # → ruff check + ruff format --ch
 just typecheck                               # → ty check src/ + ty check analysis/
 just sessions                                # → uv run tallgrass --list-sessions
 just check                                   # → lint-check + typecheck + test (quality gate)
-just test                                    # → uv run pytest tests/ -v (~1912 tests)
+just test                                    # → uv run pytest tests/ -v (~1942 tests)
 just test-scraper                            # → pytest -m scraper (~282 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just monitor                                 # → check running experiment status
@@ -128,6 +128,7 @@ These are real bugs that were found and fixed. Do NOT regress on them:
 - Legislator slugs: `sen_` = Senate, `rep_` = House
 - Column naming: scraper CSVs use `slug` and `vote`; analysis phases rename to `legislator_slug` and expect `vote` (not `vote_category`). Each phase handles the rename at load time (ADR-0066).
 - Independent party handling: scraper outputs empty string; all analysis fills to "Independent" at load time (ADR-0021)
+- `sponsor_slugs`: semicolon-joined legislator slugs extracted from bill page `<a>` hrefs (e.g. `"sen_tyson_caryn_1; sen_alley_larry_1"`). Empty for committee sponsors, pre-89th sessions, and data scraped before this feature. Used by Phase 08 to build `sponsor_party_R` feature for passage prediction; text-based fallback via `phase_utils.match_sponsor_to_party()` when slugs unavailable.
 - `BillAction`: KLISS API HISTORY data — `action_code`, `chamber`, `committee_names` (tuple, semicolon-joined in CSV), `occurred_datetime`, `session_date`, `status`, `journal_page_number`. Available for sessions with KLISS API (89th+); pre-KLISS sessions (84th-88th) may have limited or no HISTORY data.
 
 ## Output
@@ -159,13 +160,13 @@ Experiments in `results/experimental_lab/YYYY-MM-DD_short-description/`. Each co
 
 ## Analysis Pipeline
 
-Phases live in numbered subdirectories (`analysis/01_eda/`, `analysis/07_indices/`, etc.). A PEP 302 meta-path finder in `analysis/__init__.py` redirects `from analysis.eda import X` to `analysis/01_eda/eda.py` — zero import changes needed (ADR-0030). Shared infrastructure (`run_context.py`, `report.py`, `phase_utils.py`) stays at the root. `phase_utils.py` provides `print_header()`, `save_fig()`, `load_metadata()`, `load_legislators()`, and `normalize_name()` — all phases import from here instead of defining locally. Phase `04b_irt_2d` is experimental (2D Bayesian IRT with PLT identification, relaxed thresholds — ADR-0054; removed from pipeline, available standalone — ADR-0074). Phase `16_dynamic_irt` is a cross-session phase (Martin-Quinn state-space IRT, runs standalone like Phase 13 — ADR-0058; post-hoc sign correction via static IRT correlation — ADR-0068). Phase `14b_external_validation_dime` validates IRT against DIME/CFscores (campaign-finance ideology, 84th-89th bienniums — ADR-0062). Phase `04c_ppc` is a standalone PPC + LOO-CV model comparison phase — loads InferenceData from all three IRT phases, runs posterior predictive checks, Yen's Q3, and PSIS-LOO (ADR-0063). Phase `17_wnominate` is a standalone validation phase comparing IRT to W-NOMINATE + Optimal Classification via R subprocess (ADR-0059). Phase `05b_lca` is Latent Class Analysis (Bernoulli mixture on binary vote matrix via StepMix, BIC model selection, Salsa effect detection, class membership tables with IRT ideal points). Phase `06b_network_bipartite` is bipartite bill-legislator network analysis (bill polarization, bridge bills, BiCM backbone extraction, bill communities — ADR-0065).
+Phases live in numbered subdirectories (`analysis/01_eda/`, `analysis/07_indices/`, etc.). A PEP 302 meta-path finder in `analysis/__init__.py` redirects `from analysis.eda import X` to `analysis/01_eda/eda.py` — zero import changes needed (ADR-0030). Shared infrastructure (`run_context.py`, `report.py`, `phase_utils.py`) stays at the root. `phase_utils.py` provides `print_header()`, `save_fig()`, `load_metadata()`, `load_legislators()`, `normalize_name()`, `parse_sponsor_name()`, and `match_sponsor_to_party()` — all phases import from here instead of defining locally. Phase `04b_irt_2d` is experimental (2D Bayesian IRT with PLT identification, relaxed thresholds — ADR-0054; removed from pipeline, available standalone — ADR-0074). Phase `16_dynamic_irt` is a cross-session phase (Martin-Quinn state-space IRT, runs standalone like Phase 13 — ADR-0058; post-hoc sign correction via static IRT correlation — ADR-0068). Phase `14b_external_validation_dime` validates IRT against DIME/CFscores (campaign-finance ideology, 84th-89th bienniums — ADR-0062). Phase `04c_ppc` is a standalone PPC + LOO-CV model comparison phase — loads InferenceData from all three IRT phases, runs posterior predictive checks, Yen's Q3, and PSIS-LOO (ADR-0063). Phase `17_wnominate` is a standalone validation phase comparing IRT to W-NOMINATE + Optimal Classification via R subprocess (ADR-0059). Phase `05b_lca` is Latent Class Analysis (Bernoulli mixture on binary vote matrix via StepMix, BIC model selection, Salsa effect detection, class membership tables with IRT ideal points). Phase `06b_network_bipartite` is bipartite bill-legislator network analysis (bill polarization, bridge bills, BiCM backbone extraction, bill communities — ADR-0065).
 
 See `.claude/rules/analysis-framework.md` for the full pipeline, report system architecture, and design doc index. See `.claude/rules/analytic-workflow.md` for methodology rules, validation requirements, and audience guidance.
 
 Key references:
 - Design docs: `analysis/design/README.md`
-- ADRs: `docs/adr/README.md` (79 decisions)
+- ADRs: `docs/adr/README.md` (80 decisions)
 - Analysis primer: `docs/analysis-primer.md` (plain-English guide)
 - How IRT works: `docs/how-irt-works.md` (general-audience explanation of anchors, identification, and MCMC divergences)
 - External validation: `docs/external-validation-results.md` (5-biennium results, all 20 correlations "strong")
@@ -214,6 +215,7 @@ Key references:
 - Report enhancement survey: `docs/report-enhancement-survey.md` (current report inventory, gap analysis, open-source tools, 26 prioritized recommendations — R1-R13 implemented ADR-0069, R14-R20 implemented ADR-0071)
 - Pipeline audit: ADR-0072 (8-biennium review, 18 findings, 6 fixes — except syntax, prediction leakage, sample threshold, logging)
 - Code audit: ADR-0078 (phase_utils extraction, 3 bug fixes, vectorized bipartite, dead code removal, ~400 lines deduped)
+- Code audit resolution: ADR-0080 (synthesis manifest key fix, 4 remaining cleanup items — monitoring, dead helpers, special sessions, cache keys)
 - WCAG accessibility: ADR-0079 (alt-text on 132 figures, aria-labels on 8 interactive sections, 23 report builders)
 - W-NOMINATE all-biennium run: ADR-0073 (6 R compatibility bugs fixed, all 8 bienniums validated, PPC expanded to 6/8)
 - Convergence resolution: ADR-0074 (joint model off by default, 2D IRT dropped from pipeline, dynamic IRT prior fixed)
@@ -248,7 +250,7 @@ All hierarchical experiments (whether using `ExperimentRunner` or standalone scr
 ## Testing
 
 ```bash
-just test                    # 1912 tests
+just test                    # 1942 tests
 just test-scraper            # scraper tests only (-m scraper)
 just test-fast               # skip slow/integration tests (-m "not slow")
 just check                   # full check (lint + typecheck + tests)

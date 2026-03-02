@@ -167,12 +167,14 @@ class KSSession:
 
     @classmethod
     def from_session_string(cls, session: str) -> "KSSession":
-        """Create a session from a CLI-style session string like '2025-26' or '2025_26'.
+        """Create a session from a CLI-style session string.
 
-        Special sessions (e.g., '2024s') are NOT handled here — use from_year() with
-        special=True for those.
+        Accepts biennium strings ('2025-26', '2025_26') and special session
+        strings ('2024s').
         """
-        normalized = session.replace("_", "-")
+        normalized = session.strip().replace("_", "-")
+        if normalized.endswith("s"):
+            return cls.from_year(int(normalized[:-1]), special=True)
         parts = normalized.split("-")
         return cls.from_year(int(parts[0]))
 
@@ -183,8 +185,11 @@ class KSSession:
         Examples:
             "2025-26" -> Path("data/kansas/91st_2025-2026")
             "2023-24" -> Path("data/kansas/90th_2023-2024")
+            "2024s"   -> Path("data/kansas/2024s")
         """
-        normalized = session.replace("_", "-")
+        normalized = session.strip().replace("_", "-")
+        if normalized.endswith("s") or special:
+            year = int(normalized.rstrip("s"))
+            return KSSession.from_year(year, special=True).data_dir
         parts = normalized.split("-")
-        ks = KSSession.from_year(int(parts[0]), special=special)
-        return ks.data_dir
+        return KSSession.from_year(int(parts[0])).data_dir

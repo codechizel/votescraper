@@ -480,9 +480,9 @@ def plot_pipeline_summary(
     upstream: dict | None = None,
 ) -> Path:
     """Pipeline summary infographic: five boxes connected by arrows."""
-    eda = manifests.get("eda", {})
-    indices = manifests.get("indices", {})
-    clustering = manifests.get("clustering", {})
+    eda = manifests.get("01_eda", {})
+    indices = manifests.get("07_indices", {})
+    clustering = manifests.get("05_clustering", {})
 
     total_votes = eda.get("All", {}).get("votes_before", "?")
     contested = eda.get("All", {}).get("votes_after", "?")
