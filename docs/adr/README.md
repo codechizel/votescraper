@@ -38,6 +38,7 @@ What are the trade-offs?
 | [0083](0083-bill-text-retrieval.md) | Bill text retrieval — multi-state-ready architecture |
 | [0084](0084-bill-text-analysis-phase-18.md) | Bill text analysis — Phase 18 (BERTopic + CAP classification) |
 | [0085](0085-openstates-legislator-identity.md) | OpenStates OCD person IDs for stable legislator identity |
+| [0086](0086-text-ideal-points-embedding-vote.md) | Text-based ideal points via embedding-vote approach (Phase 18b) |
 
 ### Dimensionality Reduction
 
@@ -235,6 +236,7 @@ What are the trade-offs?
 | [0083](0083-bill-text-retrieval.md) | Bill text retrieval — multi-state-ready architecture (StateAdapter Protocol, shared bill discovery, pdfplumber) | Accepted | 2026-03-02 |
 | [0084](0084-bill-text-analysis-phase-18.md) | Bill text analysis — Phase 18 (BERTopic + CAP classification, FastEmbed, vote cross-reference) | Accepted | 2026-03-02 |
 | [0085](0085-openstates-legislator-identity.md) | OpenStates OCD person IDs for stable legislator identity (slug→ocd_id mapping, 3-phase matching) | Accepted | 2026-03-02 |
+| [0086](0086-text-ideal-points-embedding-vote.md) | Text-based ideal points via embedding-vote approach (Phase 18b, TBIP alternative for committee-sponsored bills) | Accepted | 2026-03-03 |
 
 ## Creating a New ADR
 

@@ -225,10 +225,15 @@ allowed-unresolved-imports = [
     "bill_text_data",
     "bill_text_classify",
     "bill_text_report",
+    "tbip_data",
+    "tbip_report",
     "analysis.bill_text",
     "analysis.bill_text_data",
     "analysis.bill_text_classify",
     "analysis.bill_text_report",
+    "analysis.tbip",
+    "analysis.tbip_data",
+    "analysis.tbip_report",
 ]
 
 # Analysis code: suppress noise from third-party stubs while ty matures.

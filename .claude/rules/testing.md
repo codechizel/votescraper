@@ -59,6 +59,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_text_output.py` — bill_texts.csv export: headers, content, roundtrip, multiline text (~8 tests)
 - `tests/test_text_cli.py` — tallgrass-text argument parsing, list-sessions, entry point (~9 tests)
 - `tests/test_bill_text.py` — Phase 18 bill text analysis: data loading, preprocessing, embedding cache, CAP classification (mocked), similarity, topic-party cohesion, report builder, plotting smoke tests, CLI args (~53 tests)
+- `tests/test_tbip.py` — Phase 18b text-based ideal points: vote-embedding profiles, PCA, sign alignment, matching, correlations (quality labels, Fisher CI), intra-party, outliers, constants (~36 tests)
 
 ## Analysis Test Files
 

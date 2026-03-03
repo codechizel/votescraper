@@ -38,7 +38,7 @@ uv run tallgrass-text 2025             # bill text retrieval (direct)
 
 Analysis recipes (all pass `*args` through to the underlying script):
 
-`just eda`, `just pca`, `just mca`, `just umap`, `just irt`, `just irt-2d`, `just ppc`, `just clustering`, `just lca`, `just network`, `just bipartite`, `just indices`, `just betabinom`, `just hierarchical`, `just synthesis`, `just profiles`, `just tsa`, `just cross-session`, `just external-validation`, `just dime`, `just dynamic-irt`, `just wnominate`, `just text-analysis`.
+`just eda`, `just pca`, `just mca`, `just umap`, `just irt`, `just irt-2d`, `just ppc`, `just clustering`, `just lca`, `just network`, `just bipartite`, `just indices`, `just betabinom`, `just hierarchical`, `just synthesis`, `just profiles`, `just tsa`, `just cross-session`, `just external-validation`, `just dime`, `just dynamic-irt`, `just wnominate`, `just text-analysis`, `just tbip`.
 
 Each maps to `uv run python analysis/NN_phase/phase.py`. Example: `just profiles --names "Masterson"` runs `uv run python analysis/12_profiles/profiles.py --names "Masterson"`.
 
@@ -187,6 +187,8 @@ Phases live in numbered subdirectories (`analysis/01_eda/`, `analysis/07_indices
 
 Phase `18_bill_text` is bill text NLP analysis — BERTopic topic modeling (FastEmbed + HDBSCAN + c-TF-IDF), optional CAP classification via Claude API, bill similarity from embeddings, and vote cross-reference (Rice index per topic × party, caucus-splitting scores). Runs standalone with `just text-analysis`; not in pipeline (requires bill text data from BT1 + optional API key for CAP). Design: `analysis/design/bill_text.md`.
 
+Phase `18b_tbip` is text-based ideal points — embedding-vote approach (not true TBIP due to ~92% committee sponsorship). Multiplies vote matrix by Phase 18 bill embeddings, PCA on legislator text profiles, PC1 = text-derived ideal point. Validates against IRT (flat + hierarchical). Standalone with `just tbip`; not in pipeline (requires BT1 + IRT results). Design: `analysis/design/tbip.md`, ADR-0086.
+
 See `.claude/rules/analysis-framework.md` for the full pipeline, report system architecture, and design doc index. See `.claude/rules/analytic-workflow.md` for methodology rules, validation requirements, and audience guidance.
 
 Key references:
@@ -232,6 +234,8 @@ Key references:
 - Legislator identity: ADR-0085 (OpenStates OCD person IDs, slug→ocd_id mapping, 3-phase matching, same-name disambiguation)
 - Bill text NLP deep dive: `docs/bill-text-nlp-deep-dive.md` (BERTopic, CAP classification, TBIP, embeddings — BT2 done, BT3-BT5 planned)
 - Bill text analysis design: `analysis/design/bill_text.md` (BERTopic config, FastEmbed embedding, CAP taxonomy, Rice cohesion, caucus-splitting)
+- Text-based ideal points: ADR-0086 (embedding-vote approach, TBIP alternative for committee-sponsored bills)
+- Text-based ideal points design: `analysis/design/tbip.md` (methodology, assumptions, lower quality thresholds, limitations)
 - Future bill text analysis: `docs/future-bill-text-analysis.md` (original notes, superseded by deep dive)
 - Apple Silicon MCMC tuning: `docs/apple-silicon-mcmc-tuning.md` (P/E core scheduling, thread pool caps, parallel chains, batch job rules)
 - Ward linkage article: `docs/ward-linkage-non-euclidean.md` (why Ward on Kappa distances is impure, the fix)

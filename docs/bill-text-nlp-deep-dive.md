@@ -356,7 +356,7 @@ The academic literature shows five main patterns for combining text with roll-ca
 |---------|-------------|---------|-------------------|
 | **1. Joint generative** | Text generates topics via LDA; topics parameterize bill positions; ideal points and positions jointly predict votes | Gerrish & Blei 2011 | Complex inference, diminishing returns over Pattern 4 |
 | **2. Embedding prediction** | Bill text → averaged word embeddings; legislator ideal vectors; bilinear vote prediction | Kraft et al. 2016 | Simpler than Pattern 1, still complex |
-| **3. Text-based ideal points** | Ideal points from text alone, compared post-hoc to vote-based | TBIP (Vafa et al. 2020) | Validation of IRT — Phase 18b |
+| **3. Text-based ideal points** | Ideal points from text alone, compared post-hoc to vote-based | TBIP (Vafa et al. 2020) | Validation of IRT — Phase 18b (embedding-vote approach, ADR-0086) |
 | **4. Two-stage pipeline** | Extract text features independently, use as covariates in vote/ideal point models | Most common in practice | **Primary approach** — extends Phase 08 |
 | **5. Issue-specific IRT** | Topic labels feed into hierarchical IRT for per-policy-area ideal points | Shin 2024 (`issueirt` R package) | Bridges text and IRT — future extension |
 
@@ -391,9 +391,9 @@ Joins to existing data on `session` + `bill_number`. This is a 5th CSV output al
 
 Report: 13 sections (conditional CAP), topic distribution, party × topic heatmap, caucus-splitting ranking, similarity clusters, bill summaries. 53 tests.
 
-#### Phase 18b: Text-Based Ideal Points (experimental)
+#### Phase 18b: Text-Based Ideal Points ✓ DONE 2026-03-03
 
-Standalone validation phase (like 14/14b). Runs TBIP via NumPyro on bill text + sponsor mapping. Compares text-derived ideal points with IRT xi_mean. Reports correlation alongside SM and DIME validations.
+Standalone validation phase (like 14/14b). Classic TBIP (Vafa et al. 2020) requires individual authorship — Kansas bills are ~92% committee-sponsored, ruling out authorship-based estimation. Instead uses an **embedding-vote approach**: multiplies vote matrix (+1 Yea, -1 Nay, 0 absent) by Phase 18 bill embeddings, normalizes per legislator, then extracts PC1 via PCA as a text-derived ideal point. Validates against IRT xi_mean (flat + hierarchical) with lower quality thresholds (strong ≥ 0.80 vs Phase 14's 0.90). 36 tests. ADR-0086.
 
 ### Dependency graph
 
@@ -404,9 +404,9 @@ Phase 18 (Bill Text Analysis) ✓ DONE 2026-03-02
     depends on: Phase 01 (EDA), bill_texts.csv
     produces: topics, classifications, similarity, embeddings
                 ↓
-Phase 18b (TBIP — experimental)
-    depends on: Phase 18 embeddings, Phase 04 IRT results
-    produces: text-based ideal points, validation correlations
+Phase 18b (Text-Based Ideal Points) ✓ DONE 2026-03-03
+    depends on: Phase 18 embeddings, Phase 04/10 IRT results
+    produces: text-derived ideal points, validation correlations
 ```
 
 ### Phase numbering
@@ -434,7 +434,7 @@ The pipeline currently has phases through 17. Phase 18 follows naturally. The `b
 - PDF extraction: I/O-bound, ~1 sec/bill, ~10-15 min per biennium
 - Embedding: ~2 sec/bill on CPU, ~5-10 min per biennium
 - BERTopic fitting: ~30-60 sec per biennium on CPU
-- TBIP (NumPyro MCMC): ~5-20 min depending on corpus size
+- Phase 18b (embedding-vote PCA): ~10 sec (no MCMC — matrix multiply + PCA)
 
 All within Apple Silicon M3 Pro budget. No GPU needed.
 
@@ -456,7 +456,7 @@ The four original open questions from `docs/future-bill-text-analysis.md` are no
 1. **Supplemental notes vs. bill text** — Are supplemental notes available for pre-89th sessions? They may not exist for all historical bienniums.
 2. **Version at time of vote** — For text-informed vote prediction, we need the bill version that was on the floor when the roll call occurred. The `bill_actions.csv` HISTORY data could map vote dates to versions, but only for 89th+ sessions.
 3. **Cross-biennium topic stability** — If BERTopic discovers different topics per biennium, cross-session comparison becomes harder. BERTopic's `.merge_models()` may help, or a fixed taxonomy (CAP) avoids the problem entirely.
-4. **TBIP author mapping** — Bills have sponsors but are staff-drafted. Is sponsor mapping sufficient for TBIP, or does the model need true author attribution? This may limit TBIP to speeches/testimony rather than bill text.
+4. **~~TBIP author mapping~~** — Resolved: classic TBIP rejected due to ~92% committee sponsorship. Phase 18b uses embedding-vote approach instead (ADR-0086).
 5. **Model legislation** — Cross-state bill similarity requires LegiScan or OpenStates data from other states. Defer unless the project scope expands.
 
 ---
@@ -481,11 +481,12 @@ The four original open questions from `docs/future-bill-text-analysis.md` are no
 - Consistency analysis: same-topic vote variance
 - Framing effects: similar-content, different-framing bill pairs
 
-### Phase 4: Text-based ideal points (experimental)
+### Phase 4: Text-based ideal points ✓ DONE 2026-03-03
 
-- Implement Phase 18b (TBIP via NumPyro)
-- Cross-validate text-derived ideal points against IRT
-- Report alongside SM and DIME external validations
+- ~~Implement Phase 18b (TBIP via NumPyro)~~ → Implemented as embedding-vote approach (ADR-0086)
+- Classic TBIP inapplicable: ~92% committee sponsorship, only ~27 individual sponsors
+- Vote-weighted bill embeddings + PCA → text-derived ideal points
+- Cross-validated against IRT (flat + hierarchical), 36 tests
 
 ---
 
@@ -494,8 +495,8 @@ The four original open questions from `docs/future-bill-text-analysis.md` are no
 ### Tools
 - [BERTopic](https://github.com/MaartenGr/BERTopic) — v0.17.4, MIT license, ~7,400 stars
 - [sentence-transformers](https://www.sbert.net/) — Hugging Face, well-maintained
-- [TBIP (NumPyro)](https://num.pyro.ai/en/stable/tutorials/tbip.html) — Official NumPyro tutorial
-- [TBIP (original)](https://github.com/keyonvafa/tbip) — TensorFlow, ACL 2020
+- [TBIP (NumPyro)](https://num.pyro.ai/en/stable/tutorials/tbip.html) — Official NumPyro tutorial (not used — see ADR-0086)
+- [TBIP (original)](https://github.com/keyonvafa/tbip) — TensorFlow, ACL 2020 (not used — see ADR-0086)
 - [LegiScan API](https://legiscan.com/legiscan) — v1.91, free tier 30K queries/month
 - [legcop](https://pypi.org/project/legcop/) — Python LegiScan client
 - [OpenStates / Plural](https://docs.openstates.org/api-v3/) — All-state legislative data

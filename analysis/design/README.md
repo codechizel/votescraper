@@ -33,6 +33,7 @@ Read these sequentially. Each phase inherits data from the previous one, so assu
 | 13. W-NOMINATE + OC | [wnominate.md](wnominate.md) | Validation-only; R subprocess, polarity via PCA, sign alignment, 3×3 correlation matrix |
 | 14. PPC + LOO-CV | [ppc.md](ppc.md) | Validation-only; manual log-likelihood, Q3 local dependence, PSIS-LOO model comparison, graceful degradation |
 | 15. Bill Text Analysis | [bill_text.md](bill_text.md) | BERTopic topics (FastEmbed + HDBSCAN), CAP classification (Claude API, optional), bill similarity, caucus-splitting scores |
+| 16. Text-Based Ideal Points | [tbip.md](tbip.md) | Embedding-vote approach (not TBIP), vote-weighted bill embeddings + PCA, lower quality thresholds, IRT validation |
 
 ## Pipeline Phase (Experimental)
 

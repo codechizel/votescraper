@@ -155,6 +155,10 @@ wnominate *args:
 text-analysis *args:
     uv run python analysis/18_bill_text/bill_text.py {{args}}
 
+# Run text-based ideal points (embedding-vote approach)
+tbip *args:
+    uv run python analysis/18b_tbip/tbip.py {{args}}
+
 # Run full analysis pipeline for a session (all phases grouped under one run ID)
 pipeline session="2025-26" *args:
     #!/usr/bin/env bash

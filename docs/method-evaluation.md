@@ -161,7 +161,7 @@ If the scraper is ever extended to capture cosponsor data, this becomes a natura
 
 **Source**: Vafa, Naidu, and Blei (ACL 2020). Unsupervised probabilistic topic model that estimates ideal points from text alone.
 
-**Why we rejected it**: Requires substantial text per legislator. Our scraper captures `short_title` (a few words per bill) but not full bill text or floor speeches. We already use NMF topic features on `short_title` for prediction. TBIP would require a new data source (floor debate transcripts, committee testimony, or full bill text), which is a data engineering project beyond the current scraper's scope.
+**Why we rejected it**: Requires individual authorship. Kansas bills are ~92% committee-sponsored — only ~27 individual sponsors across ~38 bills in the 91st Legislature, insufficient for stable TBIP estimates. **Replaced by Phase 18b** (ADR-0086): embedding-vote approach multiplies vote matrix by Phase 18 bill embeddings, extracts PC1 via PCA as text-derived ideal point. Validates against IRT (flat + hierarchical).
 
 ### emIRT (Fast EM-Based Ideal Points)
 
@@ -184,7 +184,7 @@ If the scraper is ever extended to capture cosponsor data, this becomes a natura
 | Cosponsorship networks | Deferred | Requires new scraping infrastructure |
 | GGUM unfolding | Rejected | No extreme-alliance voting pattern in Kansas |
 | LLM agents | Rejected | Too experimental; XGBoost already at 0.98 AUC |
-| TBIP text-based scaling | Rejected | No bill text available |
+| TBIP text-based scaling | Replaced | Phase 18b uses embedding-vote approach (ADR-0086) |
 | emIRT | Rejected | R-only; PyMC gives posteriors; speed not a bottleneck |
 
 The pipeline's methodology is sound. The gap is not in our methods — it's in proving our results are valid against independent measurement.
