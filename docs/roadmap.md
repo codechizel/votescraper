@@ -55,12 +55,12 @@ What's been done, what's next, and what's on the horizon for the Tallgrass analy
 | 5b | Latent Class Analysis | 2026-02-28 | Bernoulli mixture (LCA) on binary vote matrix via StepMix. BIC model selection (K=1..8), Salsa effect detection (profile correlations), IRT cross-validation, Phase 5 ARI comparison, within-party LCA. Correct generative model for binary data. Deep dive: `docs/latent-class-deep-dive.md`, design: `analysis/design/lca.md`. |
 | 6b | Bipartite Bill-Legislator Network | 2026-02-28 | Two-mode network (legislators × bills). Bill polarization, bridge bills, bill communities (Leiden on Newman projection), BiCM backbone extraction (statistical validation via maximum-entropy null model), Phase 6 comparison. Deep dive: `docs/bipartite-network-deep-dive.md`, design: `analysis/design/bipartite.md`, ADR-0065. |
 | — | 84th Biennium Pipeline Stress Test | 2026-03-01 | Full 17-phase pipeline + PPC + External Validation + DIME on 2011-12 data. 8 bug fixes (column naming, IRT sensitivity sign flip, arviz/matplotlib deprecations, DIME party type). LCA class membership tables added. ADR-0066. |
-| — | Open-Source Readiness | 2026-03-01 | MIT LICENSE, README, CONTRIBUTING, pyproject metadata, CI expansion (lint+typecheck+test). 9 bug fixes (except syntax, Jinja2 autoescape, sign-flip DuplicateError, circular import, PID race). Phase 04b tests (16 new). 1701 total tests. ADR-0067. |
+| — | Open-Source Readiness | 2026-03-01 | MIT LICENSE, README, CONTRIBUTING, pyproject metadata, CI expansion (lint+typecheck+test). 9 bug fixes (except syntax, Jinja2 autoescape, sign-flip DuplicateError, circular import, PID race). Phase 06 tests (16 new). 1701 total tests. ADR-0067. |
 | — | Report Enhancements (R1-R13) | 2026-03-01 | 3 new section types (KeyFindings, InteractiveTable, Interactive), ITables for 10+ large tables, Plotly interactive scatters (IRT, PCA, indices), PyVis network graphs, key findings in all 22+ reports, party density + ICC in flat IRT, cutting lines + swing votes, BPI + plus-minus indices, coalition labeler, absenteeism analysis. 39 new tests (1716 total). ADR-0069. |
 | — | Full Pipeline Audit | 2026-03-02 | 8-biennium × 17-phase review. 18 findings catalogued, 6 code fixes shipped (except syntax, prediction data leakage, sample threshold, logging). ADR-0072. |
 | — | W-NOMINATE All-Biennium Run | 2026-03-02 | All 8 bienniums (84th-91st) validated against W-NOMINATE + OC. 6 R compatibility bugs fixed (rollcall codes, polarity vector, OC matrix access, CSV "NA" parsing, fit stat casting, slug rename). R installed via Homebrew. ADR-0073. |
 | — | PPC All-Biennium Expansion | 2026-03-02 | Phase 4c expanded from 2 to 6 bienniums (85th, 86th, 88th, 90th added). 87th/89th excluded: ArviZ LOO observation mismatch between hierarchical and flat IRT vote matrices. ADR-0073. |
-| — | Name Matcher District Tiebreaker | 2026-03-02 | Phase 14 (SM) + Phase 14b (DIME) name matching now uses district-based disambiguation for ambiguous last-name matches. 3 incorrect matches corrected. 6 new tests. |
+| — | Name Matcher District Tiebreaker | 2026-03-02 | Phase 14 (SM) + Phase 18 (DIME) name matching now uses district-based disambiguation for ambiguous last-name matches. 3 incorrect matches corrected. 6 new tests. |
 | — | Shrinkage Null Investigation | 2026-03-02 | Deep dive confirmed `SHRINKAGE_MIN_DISTANCE=0.5` is statistically justified (24.8% null rate across all bienniums). Accepted as working-as-designed. |
 | — | Report Enhancements (R14-R20) | 2026-03-02 | Folium district choropleths, full voting record in Profiles, iframe dashboard, CSV downloads (28+ exports), freshmen cohort analysis, bloc stability Sankey, scrollytelling synthesis. 4 new deps (folium, geopandas, scrollama via IntersectionObserver). ADR-0071. |
 | — | WCAG Accessibility (R25) | 2026-03-02 | alt_text on 132 FigureSections, aria_label on 8 InteractiveSections across 23 report builders. WCAG 2.1 AA compliance. ADR-0079. |
@@ -80,7 +80,7 @@ What's been done, what's next, and what's on the horizon for the Tallgrass analy
 
 Completed 2026-02-28. See Completed Phases table above.
 
-### 2. DIME/CFscores External Validation → Phase 14b
+### 2. DIME/CFscores External Validation → Phase 18
 
 Completed 2026-02-28. Campaign-finance-based ideology from Bonica's DIME project (V4.0, ODC-BY). Validates 84th-89th bienniums (6 bienniums, one beyond Shor-McCarty). Reuses Phase 14 infrastructure (correlations, outliers, name normalization). See `docs/dime-cfscore-deep-dive.md`, ADR-0062.
 
@@ -137,7 +137,7 @@ Full survey and technical design: [`docs/bill-text-nlp-deep-dive.md`](bill-text-
 **Output:** `bill_topics.csv`, `cap_classifications.csv`, topic distribution plots, policy-area heatmaps, similarity clusters
 **Enriches:** Phase 08 (prediction features), Phase 11 (per-topic voting patterns), Phase 12 ("how did legislator X vote on education bills?"), Phase 07 (policy-area-specific indices)
 
-### ~~BT3. Text-Based Ideal Points — Phase 18b (experimental)~~
+### ~~BT3. Text-Based Ideal Points — Phase 21 (experimental)~~
 
 **Completed (2026-03-03).** Embedding-vote approach: multiplies vote matrix by Phase 18 bill embeddings (384-dim BGE), PCA on legislator text profiles, PC1 = text-derived ideal point. Validates against IRT (flat + hierarchical). Not true TBIP (Vafa, Naidu & Blei, ACL 2020) due to ~92% committee sponsorship — no meaningful author mapping. Standalone with `just tbip`; not in pipeline. Design: `analysis/design/tbip.md`, ADR-0086.
 
@@ -145,7 +145,7 @@ Full survey and technical design: [`docs/bill-text-nlp-deep-dive.md`](bill-text-
 
 **Completed (2026-03-03).** Topic-stratified flat IRT: runs Phase 04 2PL IRT model on per-topic vote subsets from Phase 18 BERTopic/CAP topic assignments. Answers "how conservative is each legislator on education vs taxes?" Two taxonomies: BERTopic (data-driven) + CAP (standardized). Relaxed convergence thresholds (R-hat < 1.05, ESS > 200) for smaller per-topic models. Cross-topic correlation heatmap, ideological profile matrix, outlier detection. Reuses `build_irt_graph()` / `build_and_sample()` — zero new model code, zero new dependencies. Standalone with `just issue-irt`; not in pipeline. Design: `analysis/design/issue_irt.md`, ADR-0087.
 
-**Why not `issueirt`?** Shin 2024 R package estimates 2D ideal points per topic, but Phase 04b proved Kansas voting is fundamentally 1D. Package is GitHub-only (4 stars, pre-1.0, rstan dependency, uncertain maintenance).
+**Why not `issueirt`?** Shin 2024 R package estimates 2D ideal points per topic, but Phase 06 proved Kansas voting is fundamentally 1D. Package is GitHub-only (4 stars, pre-1.0, rstan dependency, uncertain maintenance).
 
 ### BT5. Model Legislation Detection (future extension)
 
@@ -179,9 +179,9 @@ Full-pipeline review across all 8 bienniums (84th-91st), 17 phases each, plus cr
 
 **Resolved 2026-03-02.** Joint model switched from default to opt-in (`--run-joint`). Stocking-Lord linking is the production cross-chamber alignment method. Report includes linking coefficients + linked ideal points. ADR-0074.
 
-#### ~~A3. 2D IRT (Phase 04b) fails convergence in most bienniums~~ — Done
+#### ~~A3. 2D IRT (Phase 06) fails convergence in most bienniums~~ — Done
 
-**Resolved 2026-03-02.** Phase 04b removed from `just pipeline` and dashboard. Kansas voting is fundamentally 1D — Dim 2 is noise. Standalone `just irt-2d` preserved for research. ADR-0074.
+**Resolved 2026-03-02.** Phase 06 removed from `just pipeline` and dashboard. Kansas voting is fundamentally 1D — Dim 2 is noise. Standalone `just irt-2d` preserved for research. ADR-0074.
 
 #### ~~A4. Dynamic IRT Senate convergence failure (cross-session)~~ — Done
 
@@ -399,7 +399,7 @@ Three tests in `TestManifestKeyConsistency` parse `manifests.get()` calls from s
 
 ### ~~1. External Validation Name Matcher: District Tiebreaker~~ — Done
 
-**Fixed 2026-03-02.** Both Phase 14 (Shor-McCarty) and Phase 14b (DIME) now use district-based disambiguation when multiple external candidates share a last name. SM version extracts year-specific `hdistrict{YYYY}`/`sdistrict{YYYY}` columns; DIME version parses the `district` string (e.g., `"KS-113"`). If multiple candidates match on last name: prefer the district match; if no district match, reject entirely (no match is better than a wrong match). Single-candidate matches are unaffected. 3 confirmed incorrect matches corrected (Bethell 84th, Dannebohm 86th, Weber 86th). 6 new tests across both test files.
+**Fixed 2026-03-02.** Both Phase 14 (Shor-McCarty) and Phase 18 (DIME) now use district-based disambiguation when multiple external candidates share a last name. SM version extracts year-specific `hdistrict{YYYY}`/`sdistrict{YYYY}` columns; DIME version parses the `district` string (e.g., `"KS-113"`). If multiple candidates match on last name: prefer the district match; if no district match, reject entirely (no match is better than a wrong match). Single-candidate matches are unaffected. 3 confirmed incorrect matches corrected (Bethell 84th, Dannebohm 86th, Weber 86th). 6 new tests across both test files.
 
 ### ~~2. Null `hier_shrinkage_pct` in Synthesis~~ — Accepted (Working as Designed)
 
@@ -628,7 +628,7 @@ DB1-DB3 are the critical path — they get data into PostgreSQL. DB4 and DB5 are
 | Dynamic IRT within biennium | 2-year window too short; cross-session handles between-biennium |
 | GGUM unfolding models | No extreme-alliance voting pattern in Kansas data |
 | LLM legislative agents | Too experimental; XGBoost already at 0.98 AUC |
-| TBIP text-based ideal points | ~~No full bill text available~~ — **Unrejected.** Bill text retrieval planned (BT1), TBIP planned as Phase 18b (BT3). See `docs/bill-text-nlp-deep-dive.md`. |
+| TBIP text-based ideal points | ~~No full bill text available~~ — **Unrejected.** Bill text retrieval planned (BT1), TBIP planned as Phase 21 (BT3). See `docs/bill-text-nlp-deep-dive.md`. |
 
 See `docs/method-evaluation.md` for detailed rationale on each rejection.
 
@@ -679,13 +679,13 @@ See `docs/method-evaluation.md` for detailed rationale on each rejection.
 | 27 | Changepoint Detection | TSA | Completed (TSA, Phase 15) |
 | 28 | Latent Class Mixture Models | CLU | Completed (LCA, Phase 5b) |
 | 29 | Dynamic Ideal Points (Martin-Quinn) | TSA | Completed (Dynamic IRT, Phase 16) |
-| 30 | DIME/CFscores External Validation | VAL | Completed — Phase 14b (ADR-0062) |
+| 30 | DIME/CFscores External Validation | VAL | Completed — Phase 18 (ADR-0062) |
 | 31 | Standalone Posterior Predictive Checks | BAY | **Done** — Phase 4c (ADR-0063), 6/8 bienniums (ADR-0073) |
 | 32 | TSA Hardening (Desposato, CROPS, validation) | TSA | Completed — item #7 above |
 
 | 33 | Bill Text Topic Modeling (BERTopic) | NLP | Completed — Phase 18 (BT2) |
 | 34 | Bill Text Policy Classification (CAP) | NLP | Completed — Phase 18 (BT2) |
-| 35 | Text-Based Ideal Points (TBIP) | NLP | Completed — Phase 18b (BT3, embedding-vote approach, ADR-0086) |
+| 35 | Text-Based Ideal Points (TBIP) | NLP | Completed — Phase 21 (BT3, embedding-vote approach, ADR-0086) |
 | 36 | Issue-Specific Ideal Points | BAY | Completed — Phase 19 (BT4, topic-stratified IRT, ADR-0087) |
 | 37 | Model Legislation Detection | NLP | **Planned** — BT5 (future) |
 

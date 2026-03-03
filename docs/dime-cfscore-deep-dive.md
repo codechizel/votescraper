@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document surveys the Database on Ideology, Money in Politics, and Elections (DIME) as a second external validation source for Tallgrass IRT ideal points. Where Phase 14 validates against Shor-McCarty (roll-call-based ideology), Phase 14b validates against CFscores (campaign-finance-based ideology) — a completely independent construct. The combination provides the strongest possible external validation story: our scores agree with both how legislators *vote* and who *funds* them.
+This document surveys the Database on Ideology, Money in Politics, and Elections (DIME) as a second external validation source for Tallgrass IRT ideal points. Where Phase 14 validates against Shor-McCarty (roll-call-based ideology), Phase 18 validates against CFscores (campaign-finance-based ideology) — a completely independent construct. The combination provides the strongest possible external validation story: our scores agree with both how legislators *vote* and who *funds* them.
 
 ## What CFscores Measure
 
@@ -16,7 +16,7 @@ Three flavors of ideological score are available in the recipient database:
 |------|--------|-------------|
 | **Static** (career) | `recipient.cfscore` | Single score across all election cycles. Analogous to Shor-McCarty's career-fixed `np_score`. Primary comparison target. |
 | **Dynamic** (per-cycle) | `recipient.cfscore.dyn` | Per-cycle score re-estimated each election cycle while holding contributor scores constant. Captures ideological drift. Secondary comparison. |
-| **DW-DIME** | `dwdime` | Supervised ML prediction of roll-call scores from campaign contributions (Bonica 2018). Available for federal candidates. Not used for Phase 14b (state legislators lack roll-call-predicted scores). |
+| **DW-DIME** | `dwdime` | Supervised ML prediction of roll-call scores from campaign contributions (Bonica 2018). Available for federal candidates. Not used for Phase 18 (state legislators lack roll-call-predicted scores). |
 
 The static CFscore is the more widely used and validated measure. It is estimated from the full donor-recipient matrix across all cycles. The dynamic CFscore provides temporal resolution but may be noisier for candidates with few donors in a given cycle. V4 also adds a `composite.score` combining multiple sources, but we use the raw CFscore for cleaner construct separation.
 
@@ -71,7 +71,7 @@ Finds that the CFscore-to-roll-call correlation at the state level is lower than
 
 **File:** `data/external/dime_recipients_1979_2024.csv` (144 MB, uncompressed)
 
-The DIME dataset contains 56 columns. Key columns for Phase 14b:
+The DIME dataset contains 56 columns. Key columns for Phase 18:
 
 | Column | Type | Example | Notes |
 |--------|------|---------|-------|

@@ -28,7 +28,7 @@ Key findings:
 
 4. **IRT circularity caveat:** Added to the HTML report's vote interpretation section. Explains that the high AUC reflects explanatory power, not true out-of-sample prediction.
 
-5. **Phase number fix:** Docstring updated from "Phase 7" to "Phase 8" to match directory `08_prediction`.
+5. **Phase number fix:** Docstring updated from "Phase 7" to "Phase 8" to match directory `15_prediction`.
 
 6. **16 new tests** covering: `evaluate_holdout()`, `_compute_day_of_session()`, baselines, proper scoring rules, test indices, surprising votes empty schema, and `_temporal_split_eval()`.
 

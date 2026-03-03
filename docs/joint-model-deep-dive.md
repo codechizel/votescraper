@@ -14,7 +14,7 @@ This article examines the joint model's architecture, diagnoses the root causes 
 
 ## The Joint Model's Architecture
 
-The joint model (`build_joint_graph()` in `analysis/10_hierarchical/hierarchical.py`, line 562) is a three-level Bayesian hierarchy:
+The joint model (`build_joint_graph()` in `analysis/07_hierarchical/hierarchical.py`, line 562) is a three-level Bayesian hierarchy:
 
 ```
 Level 3 (global):    mu_global ~ Normal(0, 2)
@@ -237,7 +237,7 @@ This is Neal's funnel problem applied to a three-level model: the top-level vari
 
 ### Implementation
 
-We implemented all four IRT linking methods in `analysis/10_hierarchical/irt_linking.py`:
+We implemented all four IRT linking methods in `analysis/07_hierarchical/irt_linking.py`:
 
 - **Stocking-Lord**: Minimizes squared difference between test characteristic curves (TCCs) over a standard-normal-weighted theta grid.
 - **Haebara**: Minimizes squared ICC differences per item — more robust to individual outlier items.
@@ -331,5 +331,5 @@ The key insight from these experiments: concurrent calibration (one big MCMC) is
 - External validation: `docs/external-validation-results.md` (per-chamber models validated)
 - Hierarchical shrinkage: `docs/hierarchical-shrinkage-deep-dive.md`
 - PCA init experiment: `docs/hierarchical-pca-init-experiment.md`
-- Model specification: `analysis/10_hierarchical/model_spec.py`
-- IRT linking: `analysis/10_hierarchical/irt_linking.py` (Stocking-Lord, Haebara, Mean-Sigma, Mean-Mean)
+- Model specification: `analysis/07_hierarchical/model_spec.py`
+- IRT linking: `analysis/07_hierarchical/irt_linking.py` (Stocking-Lord, Haebara, Mean-Sigma, Mean-Mean)

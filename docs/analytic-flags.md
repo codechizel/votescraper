@@ -597,7 +597,7 @@ XGBoost adds almost nothing over logistic regression on xi x beta. The IRT ideal
 - **Scope:** All 8 bienniums (84th-91st), 17 phases each, plus 5 independent analyses
 - **Per-chamber hierarchical IRT:** All 16 chamber-sessions converged (0 divergences each). This is the production method.
 - **Joint hierarchical IRT:** Failed convergence in all 8 bienniums (consistent with known joint model limitations). Per-chamber + Stocking-Lord linking remains the production alternative.
-- **TSA bug fix:** `aggregate_weekly()` in `analysis/15_tsa/tsa.py:780` crashed on null dates during 85th session. Fixed by adding `.filter(pl.col(date_col).is_not_null())` before date casting (committed in v2026.03.01.1).
+- **TSA bug fix:** `aggregate_weekly()` in `analysis/19_tsa/tsa.py:780` crashed on null dates during 85th session. Fixed by adding `.filter(pl.col(date_col).is_not_null())` before date casting (committed in v2026.03.01.1).
 - **Notable finding:** Rep. Marvin Robinson (D, 90th) had 11.8% party unity — lowest across all 8 bienniums.
 - **W-NOMINATE:** Skipped (R not installed on this machine).
 

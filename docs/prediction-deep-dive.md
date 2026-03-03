@@ -1,7 +1,7 @@
 # Prediction Deep Dive: Implementation Review & Literature Comparison
 
 **Date:** 2026-02-25
-**Scope:** `analysis/08_prediction/prediction.py` (~1,988 lines), `analysis/08_prediction/prediction_report.py` (~960 lines), `analysis/08_prediction/nlp_features.py` (~238 lines), `tests/test_prediction.py` (~943 lines)
+**Scope:** `analysis/15_prediction/prediction.py` (~1,988 lines), `analysis/15_prediction/prediction_report.py` (~960 lines), `analysis/15_prediction/nlp_features.py` (~238 lines), `tests/test_prediction.py` (~943 lines)
 **Status:** All recommendations implemented (2026-02-25). ADR-0031. 958 tests passing.
 
 This document steps back from the implementation to ask: are we doing prediction right? It surveys the political science and machine learning literature, evaluates open-source alternatives, audits our code for correctness and completeness, and identifies concrete improvements.
@@ -176,7 +176,7 @@ With an 82% Yea base rate, the minority class (Nay) is underrepresented. None of
 
 ### 2.3 Phase Number Discrepancy
 
-The module docstring says "Phase 7" but the directory is `08_prediction`. The internal phase numbering (Phase 1-9 within the module) is a separate concept from the pipeline phase number, but the docstring header should match the pipeline. This also appears in the design doc path references.
+The module docstring says "Phase 7" but the directory is `15_prediction`. The internal phase numbering (Phase 1-9 within the module) is a separate concept from the pipeline phase number, but the docstring header should match the pipeline. This also appears in the design doc path references.
 
 **Recommendation:** Update the docstring header from "Phase 7" to "Phase 8" to match the directory structure.
 

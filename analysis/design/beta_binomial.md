@@ -1,7 +1,7 @@
 # Beta-Binomial Party Loyalty Design Choices
 
-**Script:** `analysis/09_beta_binomial/beta_binomial.py`
-**Constants defined at:** `analysis/09_beta_binomial/beta_binomial.py` (top of file)
+**Script:** `analysis/14_beta_binomial/beta_binomial.py`
+**Constants defined at:** `analysis/14_beta_binomial/beta_binomial.py` (top of file)
 
 ## Assumptions
 

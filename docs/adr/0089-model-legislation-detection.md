@@ -29,7 +29,7 @@ Three new modules:
 |--------|---------|
 | `src/tallgrass/alec/` | ALEC corpus scraper (models, scraper, output, cli) |
 | `src/tallgrass/text/openstates.py` | OpenStates multi-state adapter |
-| `analysis/20_model_legislation/` | Phase 20 analysis (data, main, report) |
+| `analysis/23_model_legislation/` | Phase 20 analysis (data, main, report) |
 
 ### Similarity Method
 
@@ -49,7 +49,7 @@ Local alignment (Smith-Waterman) would identify exact shared passages but is O(n
 
 ### Why Not True TBIP
 
-We already tried text-based ideal points in Phase 18b (ADR-0086) and found limitations due to ~92% committee sponsorship. Model legislation detection is a different question — it identifies provenance, not ideology. The embedding approach is appropriate for both.
+We already tried text-based ideal points in Phase 21 (ADR-0086) and found limitations due to ~92% committee sponsorship. Model legislation detection is a different question — it identifies provenance, not ideology. The embedding approach is appropriate for both.
 
 ## Consequences
 

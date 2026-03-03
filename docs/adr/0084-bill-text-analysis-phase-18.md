@@ -18,7 +18,7 @@ Key design decisions:
 
 ### Hybrid architecture: FastEmbed + Claude API (optional)
 
-Phase 18 (`analysis/18_bill_text/`) implements bill text NLP as four modules:
+Phase 18 (`analysis/20_bill_text/`) implements bill text NLP as four modules:
 
 | Module | Purpose |
 |--------|---------|

@@ -16,7 +16,7 @@ The question is not "what sounds interesting?" but "what would actually improve 
 
 ## The Recommendation: External Validation with Shor-McCarty Scores
 
-**Status:** Implemented and validated (2026-02-24). See `analysis/14_external_validation/external_validation.py`, ADR-0025, and `analysis/design/external_validation.md`. Results: flat IRT House r=0.981, flat IRT Senate r=0.929, hierarchical House r=0.984 (all "Strong"). Hierarchical Senate r=-0.541 due to J=2 over-shrinkage with 11 Democrats — documented in `docs/hierarchical-shrinkage-deep-dive.md`. General-audience writeup in `docs/external-validation-results.md`.
+**Status:** Implemented and validated (2026-02-24). See `analysis/17_external_validation/external_validation.py`, ADR-0025, and `analysis/design/external_validation.md`. Results: flat IRT House r=0.981, flat IRT Senate r=0.929, hierarchical House r=0.984 (all "Strong"). Hierarchical Senate r=-0.541 due to J=2 over-shrinkage with 11 Democrats — documented in `docs/hierarchical-shrinkage-deep-dive.md`. General-audience writeup in `docs/external-validation-results.md`.
 
 ### The Gap
 
@@ -56,7 +56,7 @@ The comparison also tests our PCA-informed initialization and non-centered hiera
 
 ### Proposed Implementation
 
-A lightweight new phase: `analysis/14_external_validation/external_validation.py`. No MCMC, no heavy computation — just data download, name matching, correlation analysis, and a few plots:
+A lightweight new phase: `analysis/17_external_validation/external_validation.py`. No MCMC, no heavy computation — just data download, name matching, correlation analysis, and a few plots:
 
 1. **Download** Shor-McCarty `.tab` file from Harvard Dataverse (one-time, cached)
 2. **Filter** to Kansas (`st == "KS"`) and relevant bienniums
@@ -161,7 +161,7 @@ If the scraper is ever extended to capture cosponsor data, this becomes a natura
 
 **Source**: Vafa, Naidu, and Blei (ACL 2020). Unsupervised probabilistic topic model that estimates ideal points from text alone.
 
-**Why we rejected it**: Requires individual authorship. Kansas bills are ~92% committee-sponsored — only ~27 individual sponsors across ~38 bills in the 91st Legislature, insufficient for stable TBIP estimates. **Replaced by Phase 18b** (ADR-0086): embedding-vote approach multiplies vote matrix by Phase 18 bill embeddings, extracts PC1 via PCA as text-derived ideal point. Validates against IRT (flat + hierarchical).
+**Why we rejected it**: Requires individual authorship. Kansas bills are ~92% committee-sponsored — only ~27 individual sponsors across ~38 bills in the 91st Legislature, insufficient for stable TBIP estimates. **Replaced by Phase 21** (ADR-0086): embedding-vote approach multiplies vote matrix by Phase 18 bill embeddings, extracts PC1 via PCA as text-derived ideal point. Validates against IRT (flat + hierarchical).
 
 ### emIRT (Fast EM-Based Ideal Points)
 
@@ -184,7 +184,7 @@ If the scraper is ever extended to capture cosponsor data, this becomes a natura
 | Cosponsorship networks | Deferred | Requires new scraping infrastructure |
 | GGUM unfolding | Rejected | No extreme-alliance voting pattern in Kansas |
 | LLM agents | Rejected | Too experimental; XGBoost already at 0.98 AUC |
-| TBIP text-based scaling | Replaced | Phase 18b uses embedding-vote approach (ADR-0086) |
+| TBIP text-based scaling | Replaced | Phase 21 uses embedding-vote approach (ADR-0086) |
 | emIRT | Rejected | R-only; PyMC gives posteriors; speed not a bottleneck |
 
 The pipeline's methodology is sound. The gap is not in our methods — it's in proving our results are valid against independent measurement.

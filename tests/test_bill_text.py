@@ -712,10 +712,10 @@ class TestParseArgs:
 class TestFilteringManifest:
     def test_saves_manifest(self, tmp_path: Path) -> None:
         save_filtering_manifest(
-            {"phase": "18_bill_text", "n_bills": 100},
+            {"phase": "20_bill_text", "n_bills": 100},
             tmp_path,
         )
         path = tmp_path / "filtering_manifest.json"
         assert path.exists()
         data = json.loads(path.read_text())
-        assert data["phase"] == "18_bill_text"
+        assert data["phase"] == "20_bill_text"

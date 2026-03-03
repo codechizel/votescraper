@@ -10,7 +10,7 @@ Enhance Phase 8 bill passage prediction with sponsor party features, SHAP for pa
 
 ## Current State
 
-Phase 8 (`analysis/08_prediction/prediction.py`) already has two prediction tasks:
+Phase 8 (`analysis/15_prediction/prediction.py`) already has two prediction tasks:
 
 1. **Vote prediction** — per-legislator vote (Yea/Nay) using IRT ideal points, party, network centrality, PCA scores. AUC ~0.98.
 2. **Bill passage prediction** — per-bill outcome (passed/failed) using bill discrimination, vote type, bill prefix, optional NLP topics.
@@ -167,7 +167,7 @@ def plot_passage_feature_importance(
 
 ## Report Updates
 
-In `analysis/08_prediction/prediction_report.py`, the bill passage section starts at line ~108. Add new sections after the existing passage model table/ROC:
+In `analysis/15_prediction/prediction_report.py`, the bill passage section starts at line ~108. Add new sections after the existing passage model table/ROC:
 
 ```python
 # After existing passage sections:

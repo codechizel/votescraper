@@ -846,7 +846,7 @@ class TestReportBuilder:
     """Model legislation report builder tests."""
 
     def test_generate_key_findings_with_matches(self):
-        sys.path.insert(0, str(Path(__file__).parent.parent / "analysis" / "20_model_legislation"))
+        sys.path.insert(0, str(Path(__file__).parent.parent / "analysis" / "23_model_legislation"))
         from analysis.model_legislation_report import _generate_key_findings
 
         results = {

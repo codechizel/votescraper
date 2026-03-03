@@ -16,7 +16,7 @@ We already have 384-dimensional bill embeddings from Phase 18 (bge-small-en-v1.5
 
 ## Decision
 
-Implement an **embedding-vote approach** as Phase 18b:
+Implement an **embedding-vote approach** as Phase 21:
 
 1. Load Phase 18 bill embeddings (384-dim, cached).
 2. Build a vote matrix: legislator × bill (+1 Yea, -1 Nay, 0 absent).
@@ -45,4 +45,4 @@ Quality thresholds are lower than Phase 14 external validation (strong ≥ 0.80 
 ### Neutral
 
 - Standalone phase (not in pipeline) — requires bill text data from BT1 (`just text`) plus IRT results.
-- Available via `just tbip` or `uv run python analysis/18b_tbip/tbip.py`.
+- Available via `just tbip` or `uv run python analysis/21_tbip/tbip.py`.

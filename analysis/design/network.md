@@ -1,7 +1,7 @@
 # Network Analysis Design Choices
 
-**Script:** `analysis/06_network/network.py`
-**Constants defined at:** `analysis/06_network/network.py:45-55`
+**Script:** `analysis/11_network/network.py`
+**Constants defined at:** `analysis/11_network/network.py:45-55`
 
 ## Assumptions
 

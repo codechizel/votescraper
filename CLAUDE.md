@@ -32,7 +32,8 @@ just monitor                                 # → check running experiment stat
 just roster-sync                             # → sync OpenStates legislator roster (slug→ocd_id)
 just merge-special 2020                      # → merge 2020 special into 88th biennium
 just merge-special all                       # → merge all 5 specials into parent bienniums
-just pipeline 2025-26                        # → full analysis pipeline (all phases grouped)
+just pipeline 2025-26                        # → single-biennium pipeline (phases 01-25)
+just cross-pipeline                          # → cross-biennium pipeline (phases 26-27)
 uv run tallgrass 2023                  # historical session (direct)
 uv run tallgrass 2024 --special        # special session (direct)
 uv run tallgrass-text 2025             # bill text retrieval (direct)
@@ -44,9 +45,11 @@ Analysis recipes (all pass `*args` through to the underlying script):
 
 `just eda`, `just pca`, `just mca`, `just umap`, `just irt`, `just irt-2d`, `just ppc`, `just clustering`, `just lca`, `just network`, `just bipartite`, `just indices`, `just betabinom`, `just hierarchical`, `just synthesis`, `just profiles`, `just tsa`, `just cross-session`, `just external-validation`, `just dime`, `just dynamic-irt`, `just wnominate`, `just text-analysis`, `just tbip`, `just issue-irt`, `just model-legislation`.
 
-Each maps to `uv run python analysis/NN_phase/phase.py`. Example: `just profiles --names "Masterson"` runs `uv run python analysis/12_profiles/profiles.py --names "Masterson"`.
+Each maps to `uv run python analysis/NN_phase/phase.py`. Example: `just profiles --names "Masterson"` runs `uv run python analysis/25_profiles/profiles.py --names "Masterson"`.
 
-`just pipeline 2025-26` runs all 16 phases in order under a single run ID (ADR-0052). Each phase gets `--run-id` automatically. Phase 04b (2D IRT) is excluded from the pipeline but available standalone (ADR-0074).
+`just pipeline 2025-26` runs phases 01-25 in order under a single run ID (ADR-0052, ADR-0091). Each phase gets `--run-id` automatically. Phases 06, 08, 16-23 gracefully skip when prerequisites are missing (no R, no bill texts, biennium out of range for SM/DIME).
+
+`just cross-pipeline` runs phases 26-27 (cross-session + dynamic IRT). Separate because they require data from multiple bienniums.
 
 Database recipes (require `uv sync --group web` + Docker):
 
@@ -185,9 +188,9 @@ These are real bugs that were found and fixed. Do NOT regress on them:
 - Legislator slugs: `sen_` = Senate, `rep_` = House
 - Column naming: scraper CSVs use `slug` and `vote`; analysis phases rename to `legislator_slug` and expect `vote` (not `vote_category`). Each phase handles the rename at load time (ADR-0066).
 - Independent party handling: scraper outputs empty string; all analysis fills to "Independent" at load time (ADR-0021)
-- `sponsor_slugs`: semicolon-joined legislator slugs extracted from bill page `<a>` hrefs (e.g. `"sen_tyson_caryn_1; sen_alley_larry_1"`). Empty for committee sponsors, pre-89th sessions, and data scraped before this feature. Used by Phase 08 (`sponsor_party_R` for prediction), Phase 11 (`n_bills_sponsored` in scorecard), and Phase 12 (per-legislator sponsorship section + defection sponsor display). Text-based fallback via `phase_utils.match_sponsor_to_party()` when slugs unavailable.
+- `sponsor_slugs`: semicolon-joined legislator slugs extracted from bill page `<a>` hrefs (e.g. `"sen_tyson_caryn_1; sen_alley_larry_1"`). Empty for committee sponsors, pre-89th sessions, and data scraped before this feature. Used by Phase 15 (`sponsor_party_R` for prediction), Phase 24 (`n_bills_sponsored` in scorecard), and Phase 25 (per-legislator sponsorship section + defection sponsor display). Text-based fallback via `phase_utils.match_sponsor_to_party()` when slugs unavailable.
 - `BillAction`: KLISS API HISTORY data — `action_code`, `chamber`, `committee_names` (tuple, semicolon-joined in CSV), `occurred_datetime`, `session_date`, `status`, `journal_page_number`. Available for sessions with KLISS API (89th+); pre-KLISS sessions (84th-88th) may have limited or no HISTORY data.
-- `ocd_id`: OpenStates OCD person ID (`ocd-person/{uuid}`) — stable cross-biennium legislator identifier. Populated by `enrich_legislators()` from cached `ks_slug_to_ocd.json` (run `just roster-sync` first). Empty if roster not synced. Used by Phase 13 (cross-session matching) and Phase 16 (dynamic IRT global roster) for identity resolution that handles same-name legislators and redistricting. See ADR-0085.
+- `ocd_id`: OpenStates OCD person ID (`ocd-person/{uuid}`) — stable cross-biennium legislator identifier. Populated by `enrich_legislators()` from cached `ks_slug_to_ocd.json` (run `just roster-sync` first). Empty if roster not synced. Used by Phase 26 (cross-session matching) and Phase 27 (dynamic IRT global roster) for identity resolution that handles same-name legislators and redistricting. See ADR-0085.
 
 ## Output
 
@@ -223,21 +226,27 @@ Experiments in `results/experimental_lab/YYYY-MM-DD_short-description/`. Each co
 
 ## Analysis Pipeline
 
-Phases live in numbered subdirectories (`analysis/01_eda/`, `analysis/07_indices/`, etc.). A PEP 302 meta-path finder in `analysis/__init__.py` redirects `from analysis.eda import X` to `analysis/01_eda/eda.py` — zero import changes needed (ADR-0030). Shared infrastructure (`run_context.py`, `report.py`, `phase_utils.py`) stays at the root. `phase_utils.py` provides `print_header()`, `save_fig()`, `load_metadata()`, `load_legislators()`, `normalize_name()`, `parse_sponsor_name()`, `match_sponsor_to_slug()`, and `match_sponsor_to_party()` — all phases import from here instead of defining locally. Phase `04b_irt_2d` is experimental (2D Bayesian IRT with PLT identification, relaxed thresholds — ADR-0054; removed from pipeline, available standalone — ADR-0074). Phase `16_dynamic_irt` is a cross-session phase (Martin-Quinn state-space IRT, runs standalone like Phase 13 — ADR-0058; post-hoc sign correction via static IRT correlation — ADR-0068). Phase `14b_external_validation_dime` validates IRT against DIME/CFscores (campaign-finance ideology, 84th-89th bienniums — ADR-0062). Phase `04c_ppc` is a standalone PPC + LOO-CV model comparison phase — loads InferenceData from all three IRT phases, runs posterior predictive checks, Yen's Q3, and PSIS-LOO (ADR-0063). Phase `17_wnominate` is a standalone validation phase comparing IRT to W-NOMINATE + Optimal Classification via R subprocess (ADR-0059). Phase `05b_lca` is Latent Class Analysis (Bernoulli mixture on binary vote matrix via StepMix, BIC model selection, Salsa effect detection, class membership tables with IRT ideal points). Phase `06b_network_bipartite` is bipartite bill-legislator network analysis (bill polarization, bridge bills, BiCM backbone extraction, bill communities — ADR-0065).
+27 phases in numbered subdirectories (`analysis/01_eda/` through `analysis/27_dynamic_irt/`), organized by logical stage (ADR-0091). A PEP 302 meta-path finder in `analysis/__init__.py` redirects `from analysis.eda import X` to `analysis/01_eda/eda.py` — zero import changes needed (ADR-0030). Shared infrastructure (`run_context.py`, `report.py`, `phase_utils.py`) stays at the root. `phase_utils.py` provides `print_header()`, `save_fig()`, `load_metadata()`, `load_legislators()`, `normalize_name()`, `parse_sponsor_name()`, `match_sponsor_to_slug()`, and `match_sponsor_to_party()` — all phases import from here instead of defining locally.
 
-Phase `18_bill_text` is bill text NLP analysis — BERTopic topic modeling (FastEmbed + HDBSCAN + c-TF-IDF), optional CAP classification via Claude API, bill similarity from embeddings, and vote cross-reference (Rice index per topic × party, caucus-splitting scores). Runs standalone with `just text-analysis`; not in pipeline (requires bill text data from BT1 + optional API key for CAP). Design: `analysis/design/bill_text.md`.
+**Single-biennium pipeline** (`just pipeline`, phases 01-25): EDA → PCA → MCA → UMAP → IRT → 2D IRT → Hierarchical IRT → PPC → Clustering → LCA → Network → Bipartite → Indices → Beta-Binomial → Prediction → W-NOMINATE → External Validation → DIME → TSA → Bill Text → TBIP → Issue IRT → Model Legislation → Synthesis → Profiles. Phases 06, 08, 16-23 gracefully skip when prerequisites are missing.
 
-Phase `18b_tbip` is text-based ideal points — embedding-vote approach (not true TBIP due to ~92% committee sponsorship). Multiplies vote matrix by Phase 18 bill embeddings, PCA on legislator text profiles, PC1 = text-derived ideal point. Validates against IRT (flat + hierarchical). Standalone with `just tbip`; not in pipeline (requires BT1 + IRT results). Design: `analysis/design/tbip.md`, ADR-0086.
+**Cross-biennium pipeline** (`just cross-pipeline`, phases 26-27): Cross-Session → Dynamic IRT. Requires data from multiple bienniums.
 
-Phase `19_issue_irt` is issue-specific ideal points — topic-stratified flat IRT on per-topic vote subsets from Phase 18 BERTopic/CAP topics. Reuses Phase 04 `build_irt_graph()` / `build_and_sample()` — zero new model code. Two taxonomies: BERTopic (data-driven) + CAP (standardized). Relaxed thresholds (R-hat < 1.05, ESS > 200). Cross-topic correlation heatmap, ideological profile matrix, outlier detection. Standalone with `just issue-irt`; not in pipeline (requires Phase 18 topics + IRT results). Design: `analysis/design/issue_irt.md`, ADR-0087.
+Phase `06_irt_2d` is 2D Bayesian IRT with PLT identification, relaxed thresholds (ADR-0054; gracefully skips in pipeline when Phase 05 output missing — ADR-0074). Phase `27_dynamic_irt` is Martin-Quinn state-space IRT across bienniums (ADR-0058; post-hoc sign correction via static IRT correlation — ADR-0068). Phase `18_dime` validates IRT against DIME/CFscores (campaign-finance ideology, 84th-89th bienniums — ADR-0062). Phase `08_ppc` is PPC + LOO-CV model comparison — loads InferenceData from all three IRT phases, runs posterior predictive checks, Yen's Q3, and PSIS-LOO (ADR-0063). Phase `16_wnominate` compares IRT to W-NOMINATE + Optimal Classification via R subprocess (ADR-0059). Phase `10_lca` is Latent Class Analysis (Bernoulli mixture on binary vote matrix via StepMix, BIC model selection, Salsa effect detection, class membership tables with IRT ideal points). Phase `12_bipartite` is bipartite bill-legislator network analysis (bill polarization, bridge bills, BiCM backbone extraction, bill communities — ADR-0065).
 
-Phase `20_model_legislation` is model legislation detection (BT5) — cosine similarity between Kansas bill embeddings and ALEC model policy corpus + neighbor state bills (MO, OK, NE, CO via OpenStates API). Three-tier matching (near-identical >= 0.95, strong >= 0.85, related >= 0.70). N-gram overlap confirmation for strong matches. Cross-references with Phase 18 topics. Standalone with `just model-legislation`; not in pipeline (requires BT1 bill texts + ALEC corpus from `just alec`). Design: `analysis/design/model_legislation.md`, ADR-0089.
+Phase `20_bill_text` is bill text NLP analysis — BERTopic topic modeling (FastEmbed + HDBSCAN + c-TF-IDF), optional CAP classification via Claude API, bill similarity from embeddings, and vote cross-reference (Rice index per topic × party, caucus-splitting scores). Gracefully skips when `bill_texts.csv` missing. Design: `analysis/design/bill_text.md`.
+
+Phase `21_tbip` is text-based ideal points — embedding-vote approach (not true TBIP due to ~92% committee sponsorship). Multiplies vote matrix by Phase 20 bill embeddings, PCA on legislator text profiles, PC1 = text-derived ideal point. Validates against IRT (flat + hierarchical). Gracefully skips when Phase 20 output missing. Design: `analysis/design/tbip.md`, ADR-0086.
+
+Phase `22_issue_irt` is issue-specific ideal points — topic-stratified flat IRT on per-topic vote subsets from Phase 20 BERTopic/CAP topics. Reuses Phase 05 `build_irt_graph()` / `build_and_sample()` — zero new model code. Two taxonomies: BERTopic (data-driven) + CAP (standardized). Relaxed thresholds (R-hat < 1.05, ESS > 200). Gracefully skips when Phase 20 output missing. Design: `analysis/design/issue_irt.md`, ADR-0087.
+
+Phase `23_model_legislation` is model legislation detection (BT5) — cosine similarity between Kansas bill embeddings and ALEC model policy corpus + neighbor state bills (MO, OK, NE, CO via OpenStates API). Three-tier matching (near-identical >= 0.95, strong >= 0.85, related >= 0.70). N-gram overlap confirmation for strong matches. Cross-references with Phase 20 topics. Gracefully skips when bill texts + ALEC corpus both missing. Design: `analysis/design/model_legislation.md`, ADR-0089.
 
 See `.claude/rules/analysis-framework.md` for the full pipeline, report system architecture, and design doc index. See `.claude/rules/analytic-workflow.md` for methodology rules, validation requirements, and audience guidance.
 
 Key references:
 - Design docs: `analysis/design/README.md`
-- ADRs: `docs/adr/README.md` (89 decisions)
+- ADRs: `docs/adr/README.md` (91 decisions)
 - Analysis primer: `docs/analysis-primer.md` (plain-English guide)
 - How IRT works: `docs/how-irt-works.md` (general-audience explanation of anchors, identification, and MCMC divergences)
 - External validation: `docs/external-validation-results.md` (5-biennium results, all 20 correlations "strong")
@@ -262,7 +271,7 @@ Key references:
 - Profiles deep dive: `docs/profiles-deep-dive.md` (code audit, ecosystem survey, name-based lookup)
 - Cross-session deep dive: `docs/cross-session-deep-dive.md` (ecosystem survey, code audit, 3 bugs fixed, 18 new tests)
 - Scraper deep dive: `docs/scraper-deep-dive.md` (ecosystem comparison, code audit, data quality review, test gap analysis)
-- 2D IRT deep dive: `docs/2d-irt-deep-dive.md` (ecosystem survey, PLT identification, Tyson paradox resolution, pipeline phase 04b)
+- 2D IRT deep dive: `docs/2d-irt-deep-dive.md` (ecosystem survey, PLT identification, Tyson paradox resolution, pipeline phase 06)
 - TSA deep dive: `docs/tsa-deep-dive.md` (literature survey, ecosystem comparison, code audit, 7 recommendations — all resolved)
 - TSA R enrichment: ADR-0061 (CROPS penalty selection + Bai-Perron CIs via R subprocess)
 - Dynamic ideal points: `docs/dynamic-ideal-points-deep-dive.md` (ecosystem survey, Martin-Quinn model, state-space IRT, decomposition)
@@ -315,8 +324,8 @@ Key references:
 
 Four components eliminate code duplication in MCMC experiments (ADR-0048):
 
-- **`analysis/10_hierarchical/model_spec.py`** — `BetaPriorSpec` frozen dataclass + `PRODUCTION_BETA`, `JOINT_BETA`. Both `build_per_chamber_model()` and `build_joint_model()` accept `beta_prior=` parameter (defaults to production). Joint model uses `JOINT_BETA` (`lognormal_reparam`: exp(Normal(0,1)) for positive discrimination without boundary geometry). Experiments pass alternative specs — no code duplication. `build_per_chamber_graph()` returns the PyMC model without sampling (importable by experiments).
-- **`analysis/10_hierarchical/irt_linking.py`** — IRT scale linking for cross-chamber alignment. Implements Stocking-Lord, Haebara, Mean-Sigma, and Mean-Mean linking using shared (anchor) bills. Sign-aware anchor extraction handles unconstrained per-chamber betas. Production alternative to concurrent calibration (joint model).
+- **`analysis/07_hierarchical/model_spec.py`** — `BetaPriorSpec` frozen dataclass + `PRODUCTION_BETA`, `JOINT_BETA`. Both `build_per_chamber_model()` and `build_joint_model()` accept `beta_prior=` parameter (defaults to production). Joint model uses `JOINT_BETA` (`lognormal_reparam`: exp(Normal(0,1)) for positive discrimination without boundary geometry). Experiments pass alternative specs — no code duplication. `build_per_chamber_graph()` returns the PyMC model without sampling (importable by experiments).
+- **`analysis/07_hierarchical/irt_linking.py`** — IRT scale linking for cross-chamber alignment. Implements Stocking-Lord, Haebara, Mean-Sigma, and Mean-Mean linking using shared (anchor) bills. Sign-aware anchor extraction handles unconstrained per-chamber betas. Production alternative to concurrent calibration (joint model).
 - **`analysis/experiment_monitor.py`** — `PlatformCheck` (validates Apple Silicon constraints before sampling), `ExperimentLifecycle` (PID lock, process group, cleanup). `just monitor` checks if an experiment process is alive (nutpie shows its own terminal progress bar).
 - **`analysis/experiment_runner.py`** — `ExperimentConfig` frozen dataclass + `run_experiment()`. Orchestrates: platform check → data load → per-chamber models → optional joint → HTML report → metrics.json. 799-line experiment scripts become ~25-line configs.
 
@@ -328,8 +337,8 @@ All hierarchical experiments (whether using `ExperimentRunner` or standalone scr
 - **MCMC (all models)**: nutpie Rust NUTS sampler — single process, Rust threads for parallel chains (ADR-0051, ADR-0053). Graph-building functions (`build_per_chamber_graph()`, `build_joint_graph()`, `build_irt_graph()`) return PyMC models without sampling. Sampling functions compile with `nutpie.compile_pymc_model()` and sample with `nutpie.sample()`. PCA-informed init via `initial_points`; `jitter_rvs` excludes the PCA-initialized variable.
 - **Apple Silicon (M3 Pro, 6P+6E)**: run bienniums sequentially; cap thread pools (`OMP_NUM_THREADS=6`); never use `taskpolicy -c background`. See ADR-0022.
 - **PyTensor C compiler**: PyTensor requires `clang++`/`g++` for C-compiled kernels. Without it, falls back to pure Python (~18x slower). Common failure: Xcode update requires opening Xcode.app to accept license. Justfile exports `PATH` with `/usr/bin` to prevent stripped-PATH failures.
-- **R (optional)**: Required for Phase 17 (W-NOMINATE/OC: `wnominate`, `oc`, `pscl`, `jsonlite`) and Phase 15 TSA enrichment (`changepoint`, `strucchange`). Install via `brew install r` then `install.packages()`. Not managed by uv. Core pipeline works without R. R CSV files use literal "NA" for missing values — always pass `null_values="NA"` to `pl.read_csv()` when reading R output (ADR-0073).
-- **StepMix / scikit-learn shim (Phase 5b)**: StepMix 2.2.1 uses sklearn's private `_validate_data` and deprecated `force_all_finite` kwarg — both removed in scikit-learn 1.8. A monkey-patch in `analysis/05b_lca/lca.py` (lines 45-57) restores compatibility. **TODO: remove shim when StepMix ships a fix** (check `hasattr(StepMix, "_validate_data")` — shim is already guarded and will no-op once fixed upstream).
+- **R (optional)**: Required for Phase 16 (W-NOMINATE/OC: `wnominate`, `oc`, `pscl`, `jsonlite`) and Phase 19 TSA enrichment (`changepoint`, `strucchange`). Install via `brew install r` then `install.packages()`. Not managed by uv. Core pipeline works without R. R CSV files use literal "NA" for missing values — always pass `null_values="NA"` to `pl.read_csv()` when reading R output (ADR-0073).
+- **StepMix / scikit-learn shim (Phase 10 LCA)**: StepMix 2.2.1 uses sklearn's private `_validate_data` and deprecated `force_all_finite` kwarg — both removed in scikit-learn 1.8. A monkey-patch in `analysis/10_lca/lca.py` (lines 45-57) restores compatibility. **TODO: remove shim when StepMix ships a fix** (check `hasattr(StepMix, "_validate_data")` — shim is already guarded and will no-op once fixed upstream).
 
 ## Testing
 

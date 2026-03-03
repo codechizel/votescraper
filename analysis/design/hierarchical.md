@@ -1,7 +1,7 @@
 # Hierarchical Bayesian IRT Design Choices
 
-**Script:** `analysis/10_hierarchical/hierarchical.py`
-**Constants defined at:** `analysis/10_hierarchical/hierarchical.py` (top of file)
+**Script:** `analysis/07_hierarchical/hierarchical.py`
+**Constants defined at:** `analysis/07_hierarchical/hierarchical.py` (top of file)
 **Deep dive:** `docs/hierarchical-irt-deep-dive.md` (ecosystem survey, code audit, recommendations)
 
 ## Assumptions

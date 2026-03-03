@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-26 (experiment); 2026-02-28 (pipeline integration)
 **Status:** Pipeline phase 04b (experimental)
-**Script:** `analysis/04b_irt_2d/irt_2d.py`
+**Script:** `analysis/06_irt_2d/irt_2d.py`
 **Design doc:** `analysis/design/irt_2d.md`
 **ADRs:** `docs/adr/0046-2d-irt-experimental.md` (original), `docs/adr/0054-2d-irt-pipeline-integration.md` (pipeline)
 
@@ -225,11 +225,11 @@ Same approach as the hierarchical IRT model: after sampling, verify that the Rep
 
 ## 7. Integration Design
 
-### Pipeline Phase 04b (2026-02-28)
+### Pipeline Phase 06 (2026-02-28)
 
-The 2D IRT model is integrated as pipeline phase `04b_irt_2d` with experimental status (ADR-0054):
+The 2D IRT model is integrated as pipeline phase `06_irt_2d` with experimental status (ADR-0054):
 
-- **Pipeline script:** `analysis/04b_irt_2d/irt_2d.py` (RunContext, HTML report, auto-primer)
+- **Pipeline script:** `analysis/06_irt_2d/irt_2d.py` (RunContext, HTML report, auto-primer)
 - **Original experiment:** `analysis/experimental/irt_2d_experiment.py` (preserved for reference)
 - **Runs both chambers** (House and Senate) — consistent with all other phases
 - **Sampler:** nutpie (Rust NUTS), consistent with all production MCMC (ADR-0051, ADR-0053)

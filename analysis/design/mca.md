@@ -2,7 +2,7 @@
 
 ## Phase Placement
 
-Phase 02c, between PCA (02) and UMAP (03). Directory: `analysis/02c_mca/`. Follows the UMAP "Phase 2b" naming precedent for additional dimensionality reduction views.
+Phase 03, between PCA (02) and UMAP (03). Directory: `analysis/03_mca/`. Follows the UMAP "Phase 2b" naming precedent for additional dimensionality reduction views.
 
 ## Key Design Decisions
 

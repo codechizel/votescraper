@@ -56,7 +56,7 @@ The mathematical implementation is correct:
 
 ### 2.2 Issue 1: Method of Moments Uses Population Variance (Substantive)
 
-**File:** `analysis/09_beta_binomial/beta_binomial.py:171`
+**File:** `analysis/14_beta_binomial/beta_binomial.py:171`
 
 ```python
 var = float(np.var(rates, ddof=0))
@@ -72,7 +72,7 @@ The method of moments estimates use `ddof=0` (population variance, dividing by N
 
 ### 2.3 Issue 2: Posterior Distributions Plot Reconstructs Alpha/Beta from Floats (Minor Bug)
 
-**File:** `analysis/09_beta_binomial/beta_binomial.py:463-464`
+**File:** `analysis/14_beta_binomial/beta_binomial.py:463-464`
 
 ```python
 alpha_post = row["alpha_prior"] + row["n_party_votes"] * row["raw_loyalty"]
@@ -87,7 +87,7 @@ This is a minor numerical hygiene issue, not a visible bug. But the real fix is 
 
 ### 2.4 Issue 3: Duplicated Constants in Report Module
 
-**File:** `analysis/09_beta_binomial/beta_binomial_report.py:29-30`
+**File:** `analysis/14_beta_binomial/beta_binomial_report.py:29-30`
 
 ```python
 # Constants duplicated to avoid circular import

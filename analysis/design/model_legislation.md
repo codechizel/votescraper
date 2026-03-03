@@ -56,7 +56,7 @@ Text preprocessing reuses `preprocess_for_embedding()` from Phase 18 bill_text_d
 ```
 src/tallgrass/alec/          — ALEC corpus scraper (new CLI: tallgrass-alec)
 src/tallgrass/text/openstates.py  — OpenStates StateAdapter (multi-state discovery)
-analysis/20_model_legislation/    — Phase 20 analysis
+analysis/23_model_legislation/    — Phase 20 analysis
   model_legislation_data.py       — pure data functions
   model_legislation.py            — main script
   model_legislation_report.py     — HTML report builder

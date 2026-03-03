@@ -1,4 +1,4 @@
-# ADR-0062: DIME/CFscore External Validation (Phase 14b)
+# ADR-0062: DIME/CFscore External Validation (Phase 18)
 
 **Date:** 2026-02-28
 **Status:** Accepted
@@ -11,7 +11,7 @@ DIME (Database on Ideology, Money in Politics, and Elections) provides campaign-
 
 ## Decision
 
-Implement Phase 14b as a sibling phase to Phase 14, reusing shared infrastructure (name normalization, correlation computation, outlier detection) while adding DIME-specific logic:
+Implement Phase 18 as a sibling phase to Phase 14, reusing shared infrastructure (name normalization, correlation computation, outlier detection) while adding DIME-specific logic:
 
 1. **Coverage:** 84th-89th bienniums (6 bienniums, extending one beyond SM).
 2. **Data source:** Pre-downloaded DIME CSV at `data/external/dime_recipients_1979_2024.csv` (ODC-BY license).

@@ -15,7 +15,7 @@ Scrape or retrieve full bill text from kslegislature.gov, then use it to:
 1. **Topic modeling** — Categorize bills by policy area (education, tax, criminal justice, etc.) and cross-reference with voting patterns. Which policy areas split the caucus? Which are rubber-stamps?
 2. **Text-informed vote prediction** — Add bill content features to the prediction model (currently AUC=0.98 on IRT features alone). Full text should improve predictions on novel bills where legislator priors are weak.
 3. **Bill similarity** — Measure how textually similar bills are to each other. Do legislators vote consistently on similar legislation, or does framing matter?
-4. **Text-based ideal points** — Classic TBIP rejected (~92% committee sponsorship). **Implemented as Phase 18b** (ADR-0086): embedding-vote approach using vote-weighted bill embeddings + PCA. Validates against IRT. **Issue-specific ideal points implemented as Phase 19** (ADR-0087): topic-stratified flat IRT on per-topic vote subsets from Phase 18's BERTopic/CAP assignments.
+4. **Text-based ideal points** — Classic TBIP rejected (~92% committee sponsorship). **Implemented as Phase 21** (ADR-0086): embedding-vote approach using vote-weighted bill embeddings + PCA. Validates against IRT. **Issue-specific ideal points implemented as Phase 19** (ADR-0087): topic-stratified flat IRT on per-topic vote subsets from Phase 18's BERTopic/CAP assignments.
 5. **Interactive exploration** — "Show me how Sen. X voted on bills about Y" requires a search/retrieval layer over the bill corpus.
 
 ---
@@ -61,7 +61,7 @@ All four original questions have been resolved by BT1 implementation (2026-03-02
 ## Related
 
 - **BT1 implementation**: `src/tallgrass/text/` subpackage — `StateAdapter` Protocol, `KansasAdapter`, `pdfplumber` extraction (ADR-0083)
-- Phase 6+ (NLP Bill Text Features): Uses `short_title` only, NMF topics. See `analysis/08_prediction/`.
+- Phase 6+ (NLP Bill Text Features): Uses `short_title` only, NMF topics. See `analysis/15_prediction/`.
 - Bill text NLP deep dive: `docs/bill-text-nlp-deep-dive.md` — comprehensive survey (supersedes this document)
-- Text-based ideal points: Phase 18b (ADR-0086) — embedding-vote approach, replacing classic TBIP
+- Text-based ideal points: Phase 21 (ADR-0086) — embedding-vote approach, replacing classic TBIP
 - Roadmap: `docs/roadmap.md` — BT1 complete, BT2-BT5 planned

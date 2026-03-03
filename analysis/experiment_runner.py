@@ -394,7 +394,7 @@ def run_experiment(config: ExperimentConfig, output_base: Path) -> dict:
         ks = KSSession.from_session_string(config.session)
         eda_dir = ks.results_dir / "01_eda" / "latest"
         pca_dir = ks.results_dir / "02_pca" / "latest"
-        irt_dir = ks.results_dir / "04_irt" / "latest"
+        irt_dir = ks.results_dir / "05_irt" / "latest"
 
         house_matrix, senate_matrix, _ = load_eda_matrices(eda_dir)
         house_pca, senate_pca = load_pca_scores(pca_dir)

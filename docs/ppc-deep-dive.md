@@ -221,7 +221,7 @@ There is no Python package that computes IRT-specific fit statistics. All exist 
 
 ### 4.1 Existing PPC Implementation (Phase 04)
 
-**Location**: `analysis/04_irt/irt.py`, lines 2085-2232
+**Location**: `analysis/05_irt/irt.py`, lines 2085-2232
 
 The existing `run_ppc()` function:
 - Extracts posterior arrays (`xi`, `alpha`, `beta`) directly from InferenceData
@@ -230,7 +230,7 @@ The existing `run_ppc()` function:
 - Returns a dict with observed/replicated means, SD, and Bayesian p-value
 - Companion `plot_ppc_yea_rate()` produces a histogram with observed value overlaid
 
-**Report integration**: `analysis/04_irt/irt_report.py` has three PPC-related functions:
+**Report integration**: `analysis/05_irt/irt_report.py` has three PPC-related functions:
 - `_add_ppc_figure()` (lines 466-479) — loads the Yea rate histogram
 - `_add_ppc_summary_table()` (lines 593-641) — great_tables summary with p-values
 - `_add_ppc_interpretation()` (lines 835-863) — plain-English explanation
@@ -252,9 +252,9 @@ The existing `run_ppc()` function:
 
 | Phase | File | Status | Difficulty to Add |
 |-------|------|--------|------------------|
-| **04b: 2D IRT** | `analysis/04b_irt_2d/irt_2d.py` | No PPC | Low — same Bernoulli likelihood, just xi is 2D |
-| **10: Hierarchical** | `analysis/10_hierarchical/hierarchical.py` | No PPC | Low — posterior variables named identically to flat IRT |
-| **16: Dynamic IRT** | `analysis/16_dynamic_irt/dynamic_irt.py` | No PPC | Medium — time-varying abilities need adapted statistics |
+| **04b: 2D IRT** | `analysis/06_irt_2d/irt_2d.py` | No PPC | Low — same Bernoulli likelihood, just xi is 2D |
+| **10: Hierarchical** | `analysis/07_hierarchical/hierarchical.py` | No PPC | Low — posterior variables named identically to flat IRT |
+| **16: Dynamic IRT** | `analysis/27_dynamic_irt/dynamic_irt.py` | No PPC | Medium — time-varying abilities need adapted statistics |
 
 ### 4.3 Code Reuse Potential
 
@@ -352,7 +352,7 @@ Unlike Phase 17 (W-NOMINATE/OC), where the R packages implement algorithms with 
 
 Based on our existing external validation and the literature:
 
-- **Flat 1D IRT**: Should achieve PCP 85-90%, GMP 0.7-0.8. May show Q3 violations for related bills (e.g., tax votes correlating beyond what ideology explains). This would empirically justify the 2D model in Phase 04b.
+- **Flat 1D IRT**: Should achieve PCP 85-90%, GMP 0.7-0.8. May show Q3 violations for related bills (e.g., tax votes correlating beyond what ideology explains). This would empirically justify the 2D model in Phase 06.
 - **Hierarchical 1D IRT**: Should have better LOO than flat IRT (partial pooling improves prediction for legislators with few votes). Per-person PPC should show fewer outliers than flat IRT.
 - **2D IRT**: Should have better LOO than flat 1D if the second dimension captures real variation. Q3 violations should be reduced. But if the second dimension is noise, LOO will penalize the extra complexity.
 - **Republican intra-party variation**: PPCs focused on within-Republican prediction should be the most informative diagnostic, since that is where the interesting variation lives.

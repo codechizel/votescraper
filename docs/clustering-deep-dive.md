@@ -3,7 +3,7 @@
 A literature survey, code audit, and set of recommendations for the clustering phase of the Kansas Legislature vote analysis pipeline.
 
 **Date:** 2026-02-24
-**Scope:** `analysis/05_clustering/clustering.py` (2527 lines), `analysis/05_clustering/clustering_report.py` (1031 lines), `tests/test_clustering.py` (413 lines), `analysis/design/clustering.md`, ADR-0007, ADR-0014
+**Scope:** `analysis/09_clustering/clustering.py` (2527 lines), `analysis/09_clustering/clustering_report.py` (1031 lines), `tests/test_clustering.py` (413 lines), `analysis/design/clustering.md`, ADR-0007, ADR-0014
 
 ---
 

@@ -58,8 +58,8 @@ Updated the project's technology preference from "Python-only, no rpy2" to "Pyth
 - Weekly aggregation smooths over within-week variation. Alternative windows (3-day, 10-day) could be explored.
 
 **Files created:**
-- `analysis/15_tsa/tsa.py` — Main script (~1464 lines)
-- `analysis/15_tsa/tsa_report.py` — HTML report builder
+- `analysis/19_tsa/tsa.py` — Main script (~1464 lines)
+- `analysis/19_tsa/tsa_report.py` — HTML report builder
 - `analysis/design/tsa.md` — Design document
 - `tests/test_tsa.py` — 64 tests
 

@@ -206,7 +206,7 @@ def classify_action(status_text: str) -> str:
 
 ### Sankey Construction
 
-Follow the existing Plotly Sankey pattern from `analysis/13_cross_session/cross_session.py:573-631`:
+Follow the existing Plotly Sankey pattern from `analysis/26_cross_session/cross_session.py:573-631`:
 
 ```python
 import plotly.graph_objects as go

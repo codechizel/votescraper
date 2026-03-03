@@ -15,7 +15,7 @@ Several modeling choices required decisions.
 
 We chose PyMC with nutpie for the dynamic model, keeping emIRT as an optional exploration tier:
 
-- **Consistency**: The pipeline already uses PyMC/nutpie for flat IRT (Phase 04), hierarchical IRT (Phase 10), and 2D IRT (Phase 04b). Adding another model in the same framework avoids context-switching and infrastructure duplication.
+- **Consistency**: The pipeline already uses PyMC/nutpie for flat IRT (Phase 04), hierarchical IRT (Phase 10), and 2D IRT (Phase 06). Adding another model in the same framework avoids context-switching and infrastructure duplication.
 - **nutpie performance**: The Rust NUTS sampler matches or exceeds Stan's speed on our model scale (~10K params). Normalizing flow mass matrix adaptation helps with the random walk geometry.
 - **Transparency**: Full model specification in Python, not behind R package APIs. Every prior, constraint, and parameterization is explicit and testable.
 - **emIRT as validation**: emIRT::dynIRT provides fast EM point estimates for comparison. If R is unavailable, it is skipped automatically.
@@ -75,10 +75,10 @@ R-hat threshold relaxed from 1.01 (standard) to 1.05 for the dynamic model. With
 - Convergence may require experimentation with tuning parameters.
 
 **Files created:**
-- `analysis/16_dynamic_irt/dynamic_irt.py` — Main script
-- `analysis/16_dynamic_irt/dynamic_irt_data.py` — Data preparation (pure logic)
-- `analysis/16_dynamic_irt/dynamic_irt_report.py` — HTML report builder
-- `analysis/16_dynamic_irt/dynamic_irt_emirt.R` — emIRT exploration tier
+- `analysis/27_dynamic_irt/dynamic_irt.py` — Main script
+- `analysis/27_dynamic_irt/dynamic_irt_data.py` — Data preparation (pure logic)
+- `analysis/27_dynamic_irt/dynamic_irt_report.py` — HTML report builder
+- `analysis/27_dynamic_irt/dynamic_irt_emirt.R` — emIRT exploration tier
 - `analysis/design/dynamic_irt.md` — Design document
 - `tests/test_dynamic_irt.py` — Test suite
 

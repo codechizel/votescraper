@@ -42,7 +42,7 @@ Dynamic IRT Phase 16 already produces the trajectories data:
 
 ## Implementation
 
-### New Function in `analysis/16_dynamic_irt/dynamic_irt.py`
+### New Function in `analysis/27_dynamic_irt/dynamic_irt.py`
 
 ```python
 from scipy.stats import gaussian_kde
@@ -126,7 +126,7 @@ def plot_ridgeline_ideology(
 
 ### Integration in `main()`
 
-In `analysis/16_dynamic_irt/dynamic_irt.py`, after the existing trajectory plots (around the call to `plot_trajectories()`):
+In `analysis/27_dynamic_irt/dynamic_irt.py`, after the existing trajectory plots (around the call to `plot_trajectories()`):
 
 ```python
 # After existing trajectory plotting:
@@ -142,7 +142,7 @@ for chamber in chambers:
 
 ### Report Integration
 
-In `analysis/16_dynamic_irt/dynamic_irt_report.py`, add after `_add_polarization_trend()` (line 292) and before `_add_tau_posterior()` (line 336):
+In `analysis/27_dynamic_irt/dynamic_irt_report.py`, add after `_add_polarization_trend()` (line 292) and before `_add_tau_posterior()` (line 336):
 
 ```python
 def _add_ridgeline(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:

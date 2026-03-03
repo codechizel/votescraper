@@ -10,38 +10,33 @@ Read these sequentially. Each phase inherits data from the previous one, so assu
 
 | Phase | Document | Key Downstream Effects |
 |-------|----------|----------------------|
-| 1. EDA | [eda.md](eda.md) | Binary encoding, filtering thresholds, chamber separation |
-| 2. PCA | [pca.md](pca.md) | Imputation method, scaling, PC1 sign convention |
-| 3. IRT | [irt.md](irt.md) | Priors, anchor selection, missing data handling |
-| 4. Clustering | [clustering.md](clustering.md) | Three methods for robustness, party loyalty metric, Ward on Kappa, 3 dendrogram alternatives |
-| 4b. LCA | [lca.md](lca.md) | Bernoulli mixture on binary votes, BIC model selection, Salsa effect detection, StepMix FIML |
-| 5. Network | [network.md](network.md) | Kappa threshold, Leiden community detection, centrality measures, NaN = no edge |
-| 5b. Bipartite Network | [bipartite.md](bipartite.md) | BiCM backbone, Newman projection, bill polarization, bridge bills, Leiden bill communities |
-| 6. Prediction | [prediction.md](prediction.md) | XGBoost primary, skip cluster/community labels, IRT features dominate, NLP topic features (NMF on short_title), 82% base rate |
-| 7. Indices | [indices.md](indices.md) | CQ-standard party votes, Rice on all votes, Carey UNITY, weighted maverick by chamber margin |
-| 8. Synthesis | [synthesis.md](synthesis.md) | Data-driven detection thresholds, graceful degradation, template narratives |
-| 9. Profiles | [profiles.md](profiles.md) | Per-legislator deep-dives: 0-1 scorecard metrics, bill discrimination tiers, defection sorting, agreement vs Kappa |
-| 2b. UMAP | [umap.md](umap.md) | Cosine metric, n_neighbors default, Procrustes sensitivity, Spearman validation |
-| 2c. MCA | [mca.md](mca.md) | Categorical encoding (Yea/Nay/Absent), Greenacre correction, prince library, horseshoe detection, PCA validation |
-| 7b. Beta-Binomial | [beta_binomial.md](beta_binomial.md) | Empirical Bayes, per-party-per-chamber priors, method of moments, shrinkage factor |
-| 8. Hierarchical IRT | [hierarchical.md](hierarchical.md) | 2-level partial pooling, ordering constraint, non-centered parameterization, ICC, shrinkage vs flat |
-| 9. Cross-Session | [cross_session.md](cross_session.md) | Affine IRT alignment, name matching, shift thresholds, prediction transfer, detection validation |
-| 10. External Validation | [external_validation.md](external_validation.md) | SM name matching, correlation methodology, career-fixed vs session-specific, outlier z-scores |
-| 10b. DIME External Validation | [external_validation_dime.md](external_validation_dime.md) | DIME/CFscore matching, min-givers filter, incumbent-only, cycle-to-biennium mapping |
-| 11. TSA | [tsa.md](tsa.md) | Rolling PCA drift, PELT changepoint detection, weekly Rice aggregation, penalty sensitivity |
-| 12. Dynamic IRT | [dynamic_irt.md](dynamic_irt.md) | State-space IRT, random walk evolution, per-party tau, polarization decomposition, bridge coverage, post-hoc sign correction (ADR-0068) |
-| 13. W-NOMINATE + OC | [wnominate.md](wnominate.md) | Validation-only; R subprocess, polarity via PCA, sign alignment, 3×3 correlation matrix |
-| 14. PPC + LOO-CV | [ppc.md](ppc.md) | Validation-only; manual log-likelihood, Q3 local dependence, PSIS-LOO model comparison, graceful degradation |
-| 15. Bill Text Analysis | [bill_text.md](bill_text.md) | BERTopic topics (FastEmbed + HDBSCAN), CAP classification (Claude API, optional), bill similarity, caucus-splitting scores |
-| 16. Text-Based Ideal Points | [tbip.md](tbip.md) | Embedding-vote approach (not TBIP), vote-weighted bill embeddings + PCA, lower quality thresholds, IRT validation |
-| 17. Issue-Specific Ideal Points | [issue_irt.md](issue_irt.md) | Topic-stratified flat IRT on per-topic vote subsets, two taxonomies (BERTopic/CAP), relaxed convergence, anchor stability |
-| 18. Model Legislation Detection | [model_legislation.md](model_legislation.md) | ALEC corpus matching, cross-state diffusion (MO/OK/NE/CO), cosine similarity, n-gram overlap confirmation |
-
-## Pipeline Phase (Experimental)
-
-| Document | Summary |
-|----------|---------|
-| [irt_2d.md](irt_2d.md) | 2D M2PL IRT with PLT identification. Pipeline phase 04b with relaxed convergence thresholds (ADR-0046, ADR-0054). |
+| 01. EDA | [eda.md](eda.md) | Binary encoding, filtering thresholds, chamber separation |
+| 02. PCA | [pca.md](pca.md) | Imputation method, scaling, PC1 sign convention |
+| 03. MCA | [mca.md](mca.md) | Categorical encoding (Yea/Nay/Absent), Greenacre correction, prince library, horseshoe detection, PCA validation |
+| 04. UMAP | [umap.md](umap.md) | Cosine metric, n_neighbors default, Procrustes sensitivity, Spearman validation |
+| 05. IRT | [irt.md](irt.md) | Priors, anchor selection, missing data handling |
+| 06. 2D IRT | [irt_2d.md](irt_2d.md) | 2D M2PL IRT with PLT identification. Relaxed convergence thresholds (ADR-0046, ADR-0054). |
+| 07. Hierarchical IRT | [hierarchical.md](hierarchical.md) | 2-level partial pooling, ordering constraint, non-centered parameterization, ICC, shrinkage vs flat |
+| 08. PPC + LOO-CV | [ppc.md](ppc.md) | Validation-only; manual log-likelihood, Q3 local dependence, PSIS-LOO model comparison, graceful degradation |
+| 09. Clustering | [clustering.md](clustering.md) | Three methods for robustness, party loyalty metric, Ward on Kappa, 3 dendrogram alternatives |
+| 10. LCA | [lca.md](lca.md) | Bernoulli mixture on binary votes, BIC model selection, Salsa effect detection, StepMix FIML |
+| 11. Network | [network.md](network.md) | Kappa threshold, Leiden community detection, centrality measures, NaN = no edge |
+| 12. Bipartite Network | [bipartite.md](bipartite.md) | BiCM backbone, Newman projection, bill polarization, bridge bills, Leiden bill communities |
+| 13. Indices | [indices.md](indices.md) | CQ-standard party votes, Rice on all votes, Carey UNITY, weighted maverick by chamber margin |
+| 14. Beta-Binomial | [beta_binomial.md](beta_binomial.md) | Empirical Bayes, per-party-per-chamber priors, method of moments, shrinkage factor |
+| 15. Prediction | [prediction.md](prediction.md) | XGBoost primary, skip cluster/community labels, IRT features dominate, NLP topic features (NMF on short_title), 82% base rate |
+| 16. W-NOMINATE + OC | [wnominate.md](wnominate.md) | Validation-only; R subprocess, polarity via PCA, sign alignment, 3×3 correlation matrix |
+| 17. External Validation | [external_validation.md](external_validation.md) | SM name matching, correlation methodology, career-fixed vs session-specific, outlier z-scores |
+| 18. DIME External Validation | [external_validation_dime.md](external_validation_dime.md) | DIME/CFscore matching, min-givers filter, incumbent-only, cycle-to-biennium mapping |
+| 19. TSA | [tsa.md](tsa.md) | Rolling PCA drift, PELT changepoint detection, weekly Rice aggregation, penalty sensitivity |
+| 20. Bill Text Analysis | [bill_text.md](bill_text.md) | BERTopic topics (FastEmbed + HDBSCAN), CAP classification (Claude API, optional), bill similarity, caucus-splitting scores |
+| 21. Text-Based Ideal Points | [tbip.md](tbip.md) | Embedding-vote approach (not TBIP), vote-weighted bill embeddings + PCA, lower quality thresholds, IRT validation |
+| 22. Issue-Specific Ideal Points | [issue_irt.md](issue_irt.md) | Topic-stratified flat IRT on per-topic vote subsets, two taxonomies (BERTopic/CAP), relaxed convergence, anchor stability |
+| 23. Model Legislation Detection | [model_legislation.md](model_legislation.md) | ALEC corpus matching, cross-state diffusion (MO/OK/NE/CO), cosine similarity, n-gram overlap confirmation |
+| 24. Synthesis | [synthesis.md](synthesis.md) | Data-driven detection thresholds, graceful degradation, template narratives |
+| 25. Profiles | [profiles.md](profiles.md) | Per-legislator deep-dives: 0-1 scorecard metrics, bill discrimination tiers, defection sorting, agreement vs Kappa |
+| 26. Cross-Session | [cross_session.md](cross_session.md) | Affine IRT alignment, name matching, shift thresholds, prediction transfer, detection validation |
+| 27. Dynamic IRT | [dynamic_irt.md](dynamic_irt.md) | State-space IRT, random walk evolution, per-party tau, polarization decomposition, bridge coverage, post-hoc sign correction (ADR-0068) |
 
 ## Investigations
 

@@ -237,7 +237,7 @@ Returns `result$legislators` (coordinates, SEs, fit) and `result$rollcalls` (mid
 The practical options for Python integration are:
 
 1. **`rpy2` bridge**: Call R's `wnominate` from Python. Technically feasible; adds R as a runtime dependency. No published examples of this specific integration exist.
-2. **R subprocess**: Write CSV → call `Rscript` → read CSV. Simpler, looser coupling. Our dynamic IRT phase already has an R script (`analysis/16_dynamic_irt/dynamic_irt_emirt.R`) using this pattern.
+2. **R subprocess**: Write CSV → call `Rscript` → read CSV. Simpler, looser coupling. Our dynamic IRT phase already has an R script (`analysis/27_dynamic_irt/dynamic_irt_emirt.R`) using this pattern.
 3. **Native Python implementation**: Would require porting the alternating optimization algorithm. Significant effort with diminishing returns given r = 0.99 agreement with our existing IRT.
 
 ### 4.4 Voteview.com
@@ -307,7 +307,7 @@ Even with two dimensions, NOMINATE misclassifies approximately 15% of votes. Thi
 
 ### 6.4 Dimensional Collapse
 
-Since 1987, the second dimension in U.S. Congressional data has become negligible (~2% additional variance). Post-polarization, 1D fits better than 2D. For Kansas, our PCA already shows PC1 captures ~57% of variance with PC2 at a much lower level. The empirical question is whether a second W-NOMINATE dimension adds anything beyond what our 2D IRT (Phase 04b) already captures.
+Since 1987, the second dimension in U.S. Congressional data has become negligible (~2% additional variance). Post-polarization, 1D fits better than 2D. For Kansas, our PCA already shows PC1 captures ~57% of variance with PC2 at a much lower level. The empirical question is whether a second W-NOMINATE dimension adds anything beyond what our 2D IRT (Phase 06) already captures.
 
 ---
 
@@ -327,7 +327,7 @@ Since 1987, the second dimension in U.S. Congressional data has become negligibl
 
 ### 7.4 Multi-Dimensionality
 
-**Assessment: Comparable.** Our 2D IRT (Phase 04b) with PLT identification is methodologically more principled than NOMINATE's polarity-based 2D identification, though our convergence thresholds are relaxed (R-hat < 1.05, ESS > 200) reflecting the experimental status of this phase.
+**Assessment: Comparable.** Our 2D IRT (Phase 06) with PLT identification is methodologically more principled than NOMINATE's polarity-based 2D identification, though our convergence thresholds are relaxed (R-hat < 1.05, ESS > 200) reflecting the experimental status of this phase.
 
 ### 7.5 External Validation
 
@@ -414,7 +414,7 @@ The `oc` package uses the same `rollcall` input format and `polarity` interface.
 | **OC** | Nonparametric | Seconds | None | 1–10 | No | Planned (with W-NOMINATE) |
 | **Bayesian IRT (2PL)** | MCMC, quadratic utility | Minutes | Full posterior | 1–2 | No | **Implemented** (Phase 04) |
 | **Hierarchical IRT** | MCMC, party priors | Minutes | Full posterior | 1 | No | **Implemented** (Phase 10) |
-| **2D IRT (M2PL)** | MCMC, PLT identification | Minutes | Full posterior | 2 | No | **Implemented** (Phase 04b) |
+| **2D IRT (M2PL)** | MCMC, PLT identification | Minutes | Full posterior | 2 | No | **Implemented** (Phase 06) |
 | **Dynamic IRT** | MCMC, random walk | Hours | Full posterior | 1 | Yes (random walk) | **Implemented** (Phase 16) |
 | **emIRT** | EM algorithm | Seconds | Point only | 1 | Yes (variational) | Available via R script |
 | **Alpha-NOMINATE** | Bayesian MCMC | Hours | Posterior | 1–2 | No | Lower priority |

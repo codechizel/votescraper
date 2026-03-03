@@ -133,7 +133,7 @@ Validated against:
 
 ### 2.2 Issue 1: No Small-Group Warning (Substantive)
 
-**File:** `analysis/10_hierarchical/hierarchical.py`, `prepare_hierarchical_data()`, lines 279-282
+**File:** `analysis/07_hierarchical/hierarchical.py`, `prepare_hierarchical_data()`, lines 279-282
 
 The code prints party composition but never warns when a group is dangerously small:
 
@@ -166,7 +166,7 @@ for i, name in enumerate(PARTY_NAMES):
 
 ### 2.3 Issue 2: Shrinkage Scatter Uses Raw Scales (Code Quality)
 
-**File:** `analysis/10_hierarchical/hierarchical.py`, `plot_shrinkage_scatter()`, lines 978-979
+**File:** `analysis/07_hierarchical/hierarchical.py`, `plot_shrinkage_scatter()`, lines 978-979
 
 The scatter plot uses raw flat and hierarchical ideal points, which are on different scales (flat ~ [-4, 3], hier ~ [-11, 9]). The Pearson r in the title is scale-invariant and correct, but the identity line (line 998) is visually misleading — points cluster far from the diagonal because of the scale difference, not because of shrinkage.
 
@@ -176,7 +176,7 @@ The `extract_hierarchical_ideal_points` function computes `flat_xi_rescaled` (vi
 
 ### 2.4 Issue 3: `flat_xi_rescaled` Dropped from Output (Code Quality)
 
-**File:** `analysis/10_hierarchical/hierarchical.py`, line 689
+**File:** `analysis/07_hierarchical/hierarchical.py`, line 689
 
 ```python
 df = df.drop("flat_xi_rescaled")
@@ -188,7 +188,7 @@ The rescaled flat values are computed for `delta_from_flat` and `shrinkage_pct` 
 
 ### 2.5 Issue 4: Hardcoded `0.5` Threshold for Shrinkage Stability (Code Quality)
 
-**File:** `analysis/10_hierarchical/hierarchical.py`, line 681
+**File:** `analysis/07_hierarchical/hierarchical.py`, line 681
 
 ```python
 pl.when((pl.col("flat_xi_sd") > 0.01) & (flat_dist > 0.5))
@@ -200,7 +200,7 @@ The `0.5` threshold for `flat_dist` (distance from party mean below which `shrin
 
 ### 2.6 Issue 5: Convergence Variable Lists Hardcoded (Code Quality)
 
-**File:** `analysis/10_hierarchical/hierarchical.py`, `check_hierarchical_convergence()`, line 526
+**File:** `analysis/07_hierarchical/hierarchical.py`, `check_hierarchical_convergence()`, line 526
 
 ```python
 var_names = ["xi", "mu_party", "sigma_within", "alpha", "beta"]
@@ -212,7 +212,7 @@ Joint-specific variables are added dynamically (lines 530-532). Both lists could
 
 ### 2.7 Issue 6: No PCA-Informed Init for Hierarchical (Substantive Gap)
 
-**File:** `analysis/10_hierarchical/hierarchical.py`, `build_per_chamber_graph()` + `build_per_chamber_model()`
+**File:** `analysis/07_hierarchical/hierarchical.py`, `build_per_chamber_graph()` + `build_per_chamber_model()`
 
 **Resolved:** PCA-informed initialization was implemented (ADR-0044) and both per-chamber and flat models now use nutpie with PCA init (ADR-0051, ADR-0053). The joint model accepts optional `xi_offset_initvals` for future PCA init.
 
@@ -220,7 +220,7 @@ Joint-specific variables are added dynamically (lines 530-532). Both lists could
 
 ### 2.8 Issue 7: ICC Credible Interval Labeled as HDI (Code Quality)
 
-**File:** `analysis/10_hierarchical/hierarchical.py`, `compute_variance_decomposition()`, line 781
+**File:** `analysis/07_hierarchical/hierarchical.py`, `compute_variance_decomposition()`, line 781
 
 ```python
 icc_lower, icc_upper = np.percentile(icc_samples, [2.5, 97.5])
@@ -232,7 +232,7 @@ The result columns are named `icc_hdi_2.5` and `icc_hdi_97.5`, implying a highes
 
 ### 2.9 Issue 8: `extract_group_params` Crashes on Joint Model Data (Code Defect)
 
-**File:** `analysis/10_hierarchical/hierarchical.py`, `extract_group_params()`, line 712
+**File:** `analysis/07_hierarchical/hierarchical.py`, `extract_group_params()`, line 712
 
 The function hardcodes `mu_party` as the variable to extract:
 
@@ -246,7 +246,7 @@ The joint model uses `mu_group` (4 groups: House-D, House-R, Senate-D, Senate-R)
 
 ### 2.10 Issue 9: Shrinkage Scatter Mixed Scale Methodology (Code Quality)
 
-**File:** `analysis/10_hierarchical/hierarchical.py`, `plot_shrinkage_scatter()`, lines 978-1008
+**File:** `analysis/07_hierarchical/hierarchical.py`, `plot_shrinkage_scatter()`, lines 978-1008
 
 The scatter plot axes use raw flat and hierarchical ideal points (different scales), but the "top 5 movers" annotation labels at lines 1001-1008 are ranked by `delta_from_flat`, which uses the scale-corrected `flat_xi_rescaled`. This means the point positions are raw-scale but the labels highlight scale-corrected outliers — an internal inconsistency within the same plot.
 

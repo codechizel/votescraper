@@ -14,7 +14,7 @@ Phase 04 produces a single overall 1D Bayesian IRT ideal point per legislator. B
 
 Two approaches were considered:
 
-1. **`issueirt` R package** (Shin 2024): Estimates 2D ideal points with Bingham directional priors per topic. Principled but: Phase 04b proved Kansas voting is fundamentally 1D (Dim 2 is noise); `issueirt` is GitHub-only (4 stars, 0 forks, pre-1.0), requires rstan (fragile R dependency), author moved to industry.
+1. **`issueirt` R package** (Shin 2024): Estimates 2D ideal points with Bingham directional priors per topic. Principled but: Phase 06 proved Kansas voting is fundamentally 1D (Dim 2 is noise); `issueirt` is GitHub-only (4 stars, 0 forks, pre-1.0), requires rstan (fragile R dependency), author moved to industry.
 
 2. **Topic-stratified flat IRT**: Run the existing Phase 04 `build_irt_graph()` / `build_and_sample()` on per-topic vote subsets from Phase 18 BERTopic/CAP assignments. Zero new model code, zero new dependencies, battle-tested infrastructure.
 
@@ -56,4 +56,4 @@ No NetCDF per topic — save parquet summaries only to avoid GB of disk for 20+ 
 
 - Standalone phase (not in pipeline) — requires Phase 18 topics + Phase 04 IRT results.
 - Graceful degradation: convergence failure on one topic logs a warning, doesn't abort.
-- Available via `just issue-irt` or `uv run python analysis/19_issue_irt/issue_irt.py`.
+- Available via `just issue-irt` or `uv run python analysis/22_issue_irt/issue_irt.py`.

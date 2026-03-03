@@ -38,7 +38,7 @@ What are the trade-offs?
 | [0083](0083-bill-text-retrieval.md) | Bill text retrieval — multi-state-ready architecture |
 | [0084](0084-bill-text-analysis-phase-18.md) | Bill text analysis — Phase 18 (BERTopic + CAP classification) |
 | [0085](0085-openstates-legislator-identity.md) | OpenStates OCD person IDs for stable legislator identity |
-| [0086](0086-text-ideal-points-embedding-vote.md) | Text-based ideal points via embedding-vote approach (Phase 18b) |
+| [0086](0086-text-ideal-points-embedding-vote.md) | Text-based ideal points via embedding-vote approach (Phase 21) |
 | [0087](0087-issue-specific-ideal-points.md) | Issue-specific ideal points via topic-stratified flat IRT (Phase 19) |
 | [0088](0088-kanfocus-vote-data-adapter.md) | KanFocus vote data adapter (1999-2026, Chrome cookie auth, data archiving) |
 | [0089](0089-model-legislation-detection.md) | Model legislation detection (ALEC + cross-state, BT5) |
@@ -111,7 +111,7 @@ What are the trade-offs?
 |-----|-------|
 | [0019](0019-cross-session-validation.md) | Cross-session validation |
 | [0025](0025-external-validation-shor-mccarty.md) | External validation against Shor-McCarty scores |
-| [0062](0062-dime-cfscore-external-validation.md) | DIME/CFscore external validation (Phase 14b) |
+| [0062](0062-dime-cfscore-external-validation.md) | DIME/CFscore external validation (Phase 18) |
 | [0035](0035-cross-session-deep-dive-improvements.md) | Cross-session deep dive improvements |
 | [0039](0039-cross-session-validation-enhancements.md) | Cross-session validation enhancements |
 | [0059](0059-wnominate-validation-phase.md) | W-NOMINATE + OC validation phase |
@@ -150,6 +150,7 @@ What are the trade-offs?
 | [0079](0079-wcag-accessibility-alt-text.md) | WCAG 2.1 AA accessibility — alt-text and ARIA labels |
 | [0080](0080-code-audit-2026-03-02-resolution.md) | Code audit 2026-03-02 — manifest key fix, 4 remaining items |
 | [0090](0090-django-project-scaffolding.md) | Django project scaffolding + PostgreSQL (DB1) |
+| [0091](0091-phase-renumbering-two-pipeline-split.md) | Phase renumbering (01-27) + two-pipeline split |
 
 ## Chronological Index
 
@@ -216,7 +217,7 @@ What are the trade-offs?
 | [0059](0059-wnominate-validation-phase.md) | W-NOMINATE + OC validation phase (R subprocess, field-standard comparison) | Accepted | 2026-02-28 |
 | [0060](0060-test-suite-expansion.md) | Test suite expansion (markers, integration tests, report structure tests) | Accepted | 2026-02-28 |
 | [0061](0061-tsa-r-enrichment.md) | TSA R enrichment (CROPS penalty selection + Bai-Perron CIs) | Accepted | 2026-02-28 |
-| [0062](0062-dime-cfscore-external-validation.md) | DIME/CFscore external validation (Phase 14b, campaign-finance ideology) | Accepted | 2026-02-28 |
+| [0062](0062-dime-cfscore-external-validation.md) | DIME/CFscore external validation (Phase 18, campaign-finance ideology) | Accepted | 2026-02-28 |
 | [0063](0063-ppc-loo-standalone-phase.md) | Standalone PPC + LOO-CV phase (Phase 4c) | Accepted | 2026-02-28 |
 | [0064](0064-lca-latent-class-analysis.md) | Latent Class Analysis (Phase 5b) | Accepted | 2026-02-28 |
 | [0065](0065-bipartite-network-phase.md) | Bipartite Bill-Legislator Network (Phase 6b) | Accepted | 2026-02-28 |
@@ -240,11 +241,12 @@ What are the trade-offs?
 | [0083](0083-bill-text-retrieval.md) | Bill text retrieval — multi-state-ready architecture (StateAdapter Protocol, shared bill discovery, pdfplumber) | Accepted | 2026-03-02 |
 | [0084](0084-bill-text-analysis-phase-18.md) | Bill text analysis — Phase 18 (BERTopic + CAP classification, FastEmbed, vote cross-reference) | Accepted | 2026-03-02 |
 | [0085](0085-openstates-legislator-identity.md) | OpenStates OCD person IDs for stable legislator identity (slug→ocd_id mapping, 3-phase matching) | Accepted | 2026-03-02 |
-| [0086](0086-text-ideal-points-embedding-vote.md) | Text-based ideal points via embedding-vote approach (Phase 18b, TBIP alternative for committee-sponsored bills) | Accepted | 2026-03-03 |
+| [0086](0086-text-ideal-points-embedding-vote.md) | Text-based ideal points via embedding-vote approach (Phase 21, TBIP alternative for committee-sponsored bills) | Accepted | 2026-03-03 |
 | [0087](0087-issue-specific-ideal-points.md) | Issue-specific ideal points via topic-stratified flat IRT (Phase 19, BT4) | Accepted | 2026-03-03 |
 | [0088](0088-kanfocus-vote-data-adapter.md) | KanFocus vote data adapter (1999-2026, Chrome cookie auth, data archiving) | Accepted | 2026-03-03 |
 | [0089](0089-model-legislation-detection.md) | Model legislation detection (ALEC + cross-state, BT5) | Accepted | 2026-03-03 |
 | [0090](0090-django-project-scaffolding.md) | Django project scaffolding + PostgreSQL (DB1) | Accepted | 2026-03-03 |
+| [0091](0091-phase-renumbering-two-pipeline-split.md) | Phase renumbering (01-27) + two-pipeline split (ADR-0091) | Accepted | 2026-03-03 |
 
 ## Creating a New ADR
 

@@ -3,7 +3,7 @@
 A literature survey, code audit, and set of recommendations for the network analysis phase of the Kansas Legislature vote analysis pipeline.
 
 **Date:** 2026-02-25
-**Scope:** `analysis/06_network/network.py` (2,731 lines), `analysis/06_network/network_report.py` (1,121 lines), `tests/test_network.py` (581 lines), `analysis/design/network.md`, ADR-0010
+**Scope:** `analysis/11_network/network.py` (2,731 lines), `analysis/11_network/network_report.py` (1,121 lines), `tests/test_network.py` (581 lines), `analysis/design/network.md`, ADR-0010
 
 ---
 

@@ -1,7 +1,7 @@
 # IRT Design Choices
 
-**Script:** `analysis/04_irt/irt.py`
-**Constants defined at:** `analysis/04_irt/irt.py:181-205`
+**Script:** `analysis/05_irt/irt.py`
+**Constants defined at:** `analysis/05_irt/irt.py:181-205`
 **ADR:** `docs/adr/0006-irt-implementation-choices.md`
 
 ## Assumptions

@@ -199,7 +199,7 @@ The 1.01 threshold was calibrated for 4 chains (Vehtari et al. 2021). A value of
 | target_accept | 0.95 | 0.95 |
 
 **Changes required:**
-1. Update `build_per_chamber_model()` in `analysis/10_hierarchical/hierarchical.py` to default to 4 chains
+1. Update `build_per_chamber_model()` in `analysis/07_hierarchical/hierarchical.py` to default to 4 chains
 2. Add `init='adapt_diag'` when `xi_offset_initvals` is provided
 3. Update the Justfile `hierarchical` recipe if chain count is parameterized there
 

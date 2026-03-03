@@ -21,10 +21,10 @@ The highest-value additions are: (1) **BERTopic on full bill text** to replace N
 | Component | Location | What it does |
 |-----------|----------|--------------|
 | **Bill text retrieval (BT1)** | `src/tallgrass/text/` | **Completed 2026-03-02.** `tallgrass-text` CLI downloads bill PDFs, extracts text via `pdfplumber`. Multi-state `StateAdapter` Protocol + `KansasAdapter`. Output: `bill_texts.csv`. ADR-0083. |
-| **Bill text analysis (BT2)** | `analysis/18_bill_text/` | **Completed 2026-03-02.** BERTopic topic modeling (FastEmbed + HDBSCAN), optional CAP classification (Claude API), bill similarity, vote cross-reference. `just text-analysis`. ADR-0084. |
-| NMF topic features | `analysis/08_prediction/nlp_features.py` | TF-IDF + NMF (K=6) on `short_title`, produces 6 topic proportion columns |
+| **Bill text analysis (BT2)** | `analysis/20_bill_text/` | **Completed 2026-03-02.** BERTopic topic modeling (FastEmbed + HDBSCAN), optional CAP classification (Claude API), bill similarity, vote cross-reference. `just text-analysis`. ADR-0084. |
+| NMF topic features | `analysis/15_prediction/nlp_features.py` | TF-IDF + NMF (K=6) on `short_title`, produces 6 topic proportion columns |
 | Topic visualization | `nlp_features.py:plot_topic_words()` | Multi-panel bar chart of top words per topic |
-| Sponsor party feature | `analysis/08_prediction/prediction.py` | Binary `sponsor_party_R` from `sponsor_slugs` |
+| Sponsor party feature | `analysis/15_prediction/prediction.py` | Binary `sponsor_party_R` from `sponsor_slugs` |
 | NMF design decision | ADR-0012 | Why NMF over LDA or embeddings (deterministic, lightweight, zero deps) |
 | Bill title extraction | `src/tallgrass/scraper.py:687` | `_extract_bill_title()` from `<h4>` |
 | Short title from API | `src/tallgrass/scraper.py:1122-1125` | KLISS API `SHORTTITLE` field |
@@ -340,7 +340,7 @@ Davoodi & Goldwasser at Purdue have produced the most comprehensive academic wor
 
 ### Issue-specific ideal points (Shin 2024)
 
-An R package (`issueirt`) that estimates topic-specific ideal points using roll call votes + user-supplied issue labels. It first estimates multidimensional ideal points, then projects onto issue-specific axes. **Implemented as Phase 19** (ADR-0087) using a simpler approach: topic-stratified flat IRT (reusing Phase 04 infrastructure) rather than the `issueirt` R package. Kansas voting is fundamentally 1D (Phase 04b proved Dim 2 is noise), so the 2D Bingham prior machinery in `issueirt` is unnecessary. Phase 19 runs Phase 04's 2PL IRT on per-topic vote subsets from Phase 18's BERTopic/CAP topic assignments, producing per-policy-area ideal point estimates with sign alignment against the full model.
+An R package (`issueirt`) that estimates topic-specific ideal points using roll call votes + user-supplied issue labels. It first estimates multidimensional ideal points, then projects onto issue-specific axes. **Implemented as Phase 19** (ADR-0087) using a simpler approach: topic-stratified flat IRT (reusing Phase 04 infrastructure) rather than the `issueirt` R package. Kansas voting is fundamentally 1D (Phase 06 proved Dim 2 is noise), so the 2D Bingham prior machinery in `issueirt` is unnecessary. Phase 19 runs Phase 04's 2PL IRT on per-topic vote subsets from Phase 18's BERTopic/CAP topic assignments, producing per-policy-area ideal point estimates with sign alignment against the full model.
 
 ### Systematic review of text-based ideal points (2025)
 
@@ -356,13 +356,13 @@ The field has moved from "can NLP handle legislative text?" (2018-2022) to "whic
 
 ### Published integration patterns
 
-The academic literature shows five main patterns for combining text with roll-call analysis. Tallgrass uses Pattern 4 as the primary approach. Patterns 3 and 5 are now implemented as Phase 18b and Phase 19 respectively.
+The academic literature shows five main patterns for combining text with roll-call analysis. Tallgrass uses Pattern 4 as the primary approach. Patterns 3 and 5 are now implemented as Phase 21 and Phase 19 respectively.
 
 | Pattern | Description | Example | Fit for tallgrass |
 |---------|-------------|---------|-------------------|
 | **1. Joint generative** | Text generates topics via LDA; topics parameterize bill positions; ideal points and positions jointly predict votes | Gerrish & Blei 2011 | Complex inference, diminishing returns over Pattern 4 |
 | **2. Embedding prediction** | Bill text → averaged word embeddings; legislator ideal vectors; bilinear vote prediction | Kraft et al. 2016 | Simpler than Pattern 1, still complex |
-| **3. Text-based ideal points** | Ideal points from text alone, compared post-hoc to vote-based | TBIP (Vafa et al. 2020) | Validation of IRT — Phase 18b (embedding-vote approach, ADR-0086) |
+| **3. Text-based ideal points** | Ideal points from text alone, compared post-hoc to vote-based | TBIP (Vafa et al. 2020) | Validation of IRT — Phase 21 (embedding-vote approach, ADR-0086) |
 | **4. Two-stage pipeline** | Extract text features independently, use as covariates in vote/ideal point models | Most common in practice | **Primary approach** — extends Phase 08 |
 | **5. Issue-specific IRT** | Topic labels feed into hierarchical IRT for per-policy-area ideal points | Shin 2024 (`issueirt` R package) | Bridges text and IRT — Phase 19 (topic-stratified flat IRT, ADR-0087) |
 
@@ -386,7 +386,7 @@ Joins to existing data on `session` + `bill_number`. This is a 5th CSV output al
 
 #### Phase 18: Bill Text Analysis
 
-**Completed 2026-03-02.** `analysis/18_bill_text/` — BERTopic topic modeling (FastEmbed ONNX + HDBSCAN + c-TF-IDF), optional CAP 20-category classification via Claude Sonnet API, bill similarity, vote cross-reference. ADR-0084.
+**Completed 2026-03-02.** `analysis/20_bill_text/` — BERTopic topic modeling (FastEmbed ONNX + HDBSCAN + c-TF-IDF), optional CAP 20-category classification via Claude Sonnet API, bill similarity, vote cross-reference. ADR-0084.
 
 1. **Load and preprocess** bill text from `bill_texts.csv`. Strip boilerplate (enacting clauses, severability, K.S.A. refs → STATUTE_REF). Prefer supplemental notes over introduced text.
 2. **Embed** using FastEmbed (`BAAI/bge-small-en-v1.5`, 384-dim ONNX). Cache embeddings to parquet.
@@ -397,7 +397,7 @@ Joins to existing data on `session` + `bill_number`. This is a 5th CSV output al
 
 Report: 13 sections (conditional CAP), topic distribution, party × topic heatmap, caucus-splitting ranking, similarity clusters, bill summaries. 53 tests.
 
-#### Phase 18b: Text-Based Ideal Points ✓ DONE 2026-03-03
+#### Phase 21: Text-Based Ideal Points ✓ DONE 2026-03-03
 
 Standalone validation phase (like 14/14b). Classic TBIP (Vafa et al. 2020) requires individual authorship — Kansas bills are ~92% committee-sponsored, ruling out authorship-based estimation. Instead uses an **embedding-vote approach**: multiplies vote matrix (+1 Yea, -1 Nay, 0 absent) by Phase 18 bill embeddings, normalizes per legislator, then extracts PC1 via PCA as a text-derived ideal point. Validates against IRT xi_mean (flat + hierarchical) with lower quality thresholds (strong ≥ 0.80 vs Phase 14's 0.90). 36 tests. ADR-0086.
 
@@ -410,7 +410,7 @@ Phase 18 (Bill Text Analysis) ✓ DONE 2026-03-02
     depends on: Phase 01 (EDA), bill_texts.csv
     produces: topics, classifications, similarity, embeddings
                 ↓
-Phase 18b (Text-Based Ideal Points) ✓ DONE 2026-03-03
+Phase 21 (Text-Based Ideal Points) ✓ DONE 2026-03-03
     depends on: Phase 18 embeddings, Phase 04/10 IRT results
     produces: text-derived ideal points, validation correlations
                 ↓
@@ -444,7 +444,7 @@ The pipeline currently has phases through 17. Phase 18 follows naturally. The `b
 - PDF extraction: I/O-bound, ~1 sec/bill, ~10-15 min per biennium
 - Embedding: ~2 sec/bill on CPU, ~5-10 min per biennium
 - BERTopic fitting: ~30-60 sec per biennium on CPU
-- Phase 18b (embedding-vote PCA): ~10 sec (no MCMC — matrix multiply + PCA)
+- Phase 21 (embedding-vote PCA): ~10 sec (no MCMC — matrix multiply + PCA)
 
 All within Apple Silicon M3 Pro budget. No GPU needed.
 
@@ -466,7 +466,7 @@ The four original open questions from `docs/future-bill-text-analysis.md` are no
 1. **Supplemental notes vs. bill text** — Are supplemental notes available for pre-89th sessions? They may not exist for all historical bienniums.
 2. **Version at time of vote** — For text-informed vote prediction, we need the bill version that was on the floor when the roll call occurred. The `bill_actions.csv` HISTORY data could map vote dates to versions, but only for 89th+ sessions.
 3. **Cross-biennium topic stability** — If BERTopic discovers different topics per biennium, cross-session comparison becomes harder. BERTopic's `.merge_models()` may help, or a fixed taxonomy (CAP) avoids the problem entirely.
-4. **~~TBIP author mapping~~** — Resolved: classic TBIP rejected due to ~92% committee sponsorship. Phase 18b uses embedding-vote approach instead (ADR-0086).
+4. **~~TBIP author mapping~~** — Resolved: classic TBIP rejected due to ~92% committee sponsorship. Phase 21 uses embedding-vote approach instead (ADR-0086).
 5. **Model legislation** — Cross-state bill similarity requires LegiScan or OpenStates data from other states. Defer unless the project scope expands.
 
 ---
@@ -493,7 +493,7 @@ The four original open questions from `docs/future-bill-text-analysis.md` are no
 
 ### Phase 4: Text-based ideal points ✓ DONE 2026-03-03
 
-- ~~Implement Phase 18b (TBIP via NumPyro)~~ → Implemented as embedding-vote approach (ADR-0086)
+- ~~Implement Phase 21 (TBIP via NumPyro)~~ → Implemented as embedding-vote approach (ADR-0086)
 - Classic TBIP inapplicable: ~92% committee sponsorship, only ~27 individual sponsors
 - Vote-weighted bill embeddings + PCA → text-derived ideal points
 - Cross-validated against IRT (flat + hierarchical), 36 tests
@@ -566,6 +566,6 @@ The four original open questions from `docs/future-bill-text-analysis.md` are no
 - `docs/future-bill-text-analysis.md` — Original notes (superseded by this document)
 - `docs/method-evaluation.md` — TBIP evaluation and rejection (revisited in Section 7)
 - `docs/prediction-deep-dive.md` — Gerrish & Blei literature, current feature comparison
-- `analysis/08_prediction/nlp_features.py` — Current NMF implementation
+- `analysis/15_prediction/nlp_features.py` — Current NMF implementation
 - `analysis/design/prediction.md` — NMF design decisions (lines 126-154)
 - ADR-0012 — NMF over LDA/embeddings decision

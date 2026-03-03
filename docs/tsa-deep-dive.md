@@ -233,10 +233,10 @@ Phase 15 follows the established pattern from Phase 7 (Indices): `parse_args()` 
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `analysis/15_tsa/tsa.py` | ~1,560 | Main script: data loading, 14 core functions, 10 plotting functions, R integration, main() |
-| `analysis/15_tsa/tsa_r_data.py` | ~190 | Pure R result parsing: CROPS, Bai-Perron, elbow detection, PELT/BP merge |
-| `analysis/15_tsa/tsa_strucchange.R` | ~105 | R script: CROPS (`changepoint`) + Bai-Perron (`strucchange`) |
-| `analysis/15_tsa/tsa_report.py` | ~680 | HTML report builder: 16 section builders (4 new for R enrichment) |
+| `analysis/19_tsa/tsa.py` | ~1,560 | Main script: data loading, 14 core functions, 10 plotting functions, R integration, main() |
+| `analysis/19_tsa/tsa_r_data.py` | ~190 | Pure R result parsing: CROPS, Bai-Perron, elbow detection, PELT/BP merge |
+| `analysis/19_tsa/tsa_strucchange.R` | ~105 | R script: CROPS (`changepoint`) + Bai-Perron (`strucchange`) |
+| `analysis/19_tsa/tsa_report.py` | ~680 | HTML report builder: 16 section builders (4 new for R enrichment) |
 | `analysis/design/tsa.md` | ~140 | Design document |
 | `tests/test_tsa.py` | ~1,560 | 85 tests across 22 test classes |
 

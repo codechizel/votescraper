@@ -32,10 +32,10 @@ def run_dir(tmp_path: Path) -> tuple[Path, str]:
         json.dumps({"elapsed_display": "30.2s", "elapsed_seconds": 30.2})
     )
 
-    # Phase 04_irt
-    irt_dir = rd / "04_irt"
+    # Phase 05_irt
+    irt_dir = rd / "05_irt"
     irt_dir.mkdir()
-    (irt_dir / "04_irt_report.html").write_text("<html><body>IRT Report</body></html>")
+    (irt_dir / "05_irt_report.html").write_text("<html><body>IRT Report</body></html>")
     (irt_dir / "run_info.json").write_text(
         json.dumps({"elapsed_display": "5m 12s", "elapsed_seconds": 312.0})
     )
@@ -52,8 +52,8 @@ class TestPhaseOrder:
     def test_contains_known_phases(self):
         keys = [k for k, _ in PHASE_ORDER]
         assert "01_eda" in keys
-        assert "04_irt" in keys
-        assert "11_synthesis" in keys
+        assert "05_irt" in keys
+        assert "24_synthesis" in keys
 
     def test_labels_are_strings(self):
         for key, label in PHASE_ORDER:
@@ -76,7 +76,7 @@ class TestGenerateDashboard:
         index = generate_dashboard(session_dir, run_id)
         html = index.read_text()
         assert "Exploratory Data Analysis" in html
-        assert "IRT Ideal Points" in html
+        assert "Bayesian IRT (1D)" in html
 
     def test_contains_sidebar(self, run_dir):
         session_dir, run_id = run_dir

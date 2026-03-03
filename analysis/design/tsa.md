@@ -1,7 +1,7 @@
 # Time Series Analysis Design Choices
 
-**Script:** `analysis/15_tsa/tsa.py`
-**Constants defined at:** `analysis/15_tsa/tsa.py` (top of file)
+**Script:** `analysis/19_tsa/tsa.py`
+**Constants defined at:** `analysis/19_tsa/tsa.py` (top of file)
 
 ## Assumptions
 

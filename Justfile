@@ -6,7 +6,7 @@
 #   3. `just --list` documents every runnable command in the project
 #
 # All recipes pass *args through, so `just profiles --names "Masterson"`
-# is equivalent to `uv run python analysis/12_profiles/profiles.py --names "Masterson"`.
+# is equivalent to `uv run python analysis/25_profiles/profiles.py --names "Masterson"`.
 #
 # Cap thread pools to P-core count (6) to prevent E-core spillover on Apple Silicon.
 # See ADR-0022 and results/experimental_lab/2026-02-23_parallel-chains-performance/.
@@ -77,105 +77,105 @@ pca *args:
 
 # Run MCA analysis
 mca *args:
-    uv run python analysis/02c_mca/mca.py {{args}}
-
-# Run Bayesian IRT analysis
-irt *args:
-    uv run python analysis/04_irt/irt.py {{args}}
-
-# Run 2D Bayesian IRT analysis (experimental)
-irt-2d *args:
-    uv run python analysis/04b_irt_2d/irt_2d.py {{args}}
-
-# Run posterior predictive checks + LOO-CV model comparison
-ppc *args:
-    uv run python analysis/04c_ppc/ppc.py {{args}}
-
-# Run clustering analysis
-clustering *args:
-    uv run python analysis/05_clustering/clustering.py {{args}}
-
-# Run latent class analysis
-lca *args:
-    uv run python analysis/05b_lca/lca.py {{args}}
-
-# Run network analysis
-network *args:
-    uv run python analysis/06_network/network.py {{args}}
-
-# Run bipartite bill-legislator network analysis
-bipartite *args:
-    uv run python analysis/06b_network_bipartite/bipartite.py {{args}}
-
-# Run prediction analysis
-prediction *args:
-    uv run python analysis/08_prediction/prediction.py {{args}}
+    uv run python analysis/03_mca/mca.py {{args}}
 
 # Run UMAP analysis
 umap *args:
-    uv run python analysis/03_umap/umap_viz.py {{args}}
+    uv run python analysis/04_umap/umap_viz.py {{args}}
 
-# Run classical indices analysis
-indices *args:
-    uv run python analysis/07_indices/indices.py {{args}}
+# Run Bayesian IRT analysis
+irt *args:
+    uv run python analysis/05_irt/irt.py {{args}}
 
-# Run Beta-Binomial Bayesian party loyalty
-betabinom *args:
-    uv run python analysis/09_beta_binomial/beta_binomial.py {{args}}
+# Run 2D Bayesian IRT analysis
+irt-2d *args:
+    uv run python analysis/06_irt_2d/irt_2d.py {{args}}
 
 # Run hierarchical Bayesian IRT
 hierarchical *args:
-    uv run python analysis/10_hierarchical/hierarchical.py {{args}}
+    uv run python analysis/07_hierarchical/hierarchical.py {{args}}
 
-# Run synthesis report
-synthesis *args:
-    uv run python analysis/11_synthesis/synthesis.py {{args}}
+# Run posterior predictive checks + LOO-CV model comparison
+ppc *args:
+    uv run python analysis/08_ppc/ppc.py {{args}}
 
-# Run cross-session validation
-cross-session *args:
-    uv run python analysis/13_cross_session/cross_session.py {{args}}
+# Run clustering analysis
+clustering *args:
+    uv run python analysis/09_clustering/clustering.py {{args}}
 
-# Run legislator profiles
-profiles *args:
-    uv run python analysis/12_profiles/profiles.py {{args}}
+# Run latent class analysis
+lca *args:
+    uv run python analysis/10_lca/lca.py {{args}}
 
-# Run external validation against Shor-McCarty scores
-external-validation *args:
-    uv run python analysis/14_external_validation/external_validation.py {{args}}
+# Run network analysis
+network *args:
+    uv run python analysis/11_network/network.py {{args}}
 
-# Run external validation against DIME/CFscores
-dime *args:
-    uv run python analysis/14b_external_validation_dime/external_validation_dime.py {{args}}
+# Run bipartite bill-legislator network analysis
+bipartite *args:
+    uv run python analysis/12_bipartite/bipartite.py {{args}}
 
-# Run time series analysis (drift + changepoints)
-tsa *args:
-    uv run python analysis/15_tsa/tsa.py {{args}}
+# Run classical indices analysis
+indices *args:
+    uv run python analysis/13_indices/indices.py {{args}}
 
-# Run dynamic ideal point estimation (state-space IRT)
-dynamic-irt *args:
-    uv run python analysis/16_dynamic_irt/dynamic_irt.py {{args}}
+# Run Beta-Binomial Bayesian party loyalty
+betabinom *args:
+    uv run python analysis/14_beta_binomial/beta_binomial.py {{args}}
+
+# Run prediction analysis
+prediction *args:
+    uv run python analysis/15_prediction/prediction.py {{args}}
 
 # Run W-NOMINATE + Optimal Classification validation
 wnominate *args:
-    uv run python analysis/17_wnominate/wnominate.py {{args}}
+    uv run python analysis/16_wnominate/wnominate.py {{args}}
+
+# Run external validation against Shor-McCarty scores
+external-validation *args:
+    uv run python analysis/17_external_validation/external_validation.py {{args}}
+
+# Run external validation against DIME/CFscores
+dime *args:
+    uv run python analysis/18_dime/external_validation_dime.py {{args}}
+
+# Run time series analysis (drift + changepoints)
+tsa *args:
+    uv run python analysis/19_tsa/tsa.py {{args}}
 
 # Run bill text analysis (BERTopic topics + optional CAP classification)
 text-analysis *args:
-    uv run python analysis/18_bill_text/bill_text.py {{args}}
+    uv run python analysis/20_bill_text/bill_text.py {{args}}
 
 # Run text-based ideal points (embedding-vote approach)
 tbip *args:
-    uv run python analysis/18b_tbip/tbip.py {{args}}
+    uv run python analysis/21_tbip/tbip.py {{args}}
 
 # Run issue-specific ideal points (topic-stratified IRT)
 issue-irt *args:
-    uv run python analysis/19_issue_irt/issue_irt.py {{args}}
+    uv run python analysis/22_issue_irt/issue_irt.py {{args}}
 
 # Run model legislation detection (ALEC + cross-state)
 model-legislation *args:
-    uv run python analysis/20_model_legislation/model_legislation.py {{args}}
+    uv run python analysis/23_model_legislation/model_legislation.py {{args}}
 
-# Run full analysis pipeline for a session (all phases grouped under one run ID)
+# Run synthesis report
+synthesis *args:
+    uv run python analysis/24_synthesis/synthesis.py {{args}}
+
+# Run legislator profiles
+profiles *args:
+    uv run python analysis/25_profiles/profiles.py {{args}}
+
+# Run cross-session validation
+cross-session *args:
+    uv run python analysis/26_cross_session/cross_session.py {{args}}
+
+# Run dynamic ideal point estimation (state-space IRT)
+dynamic-irt *args:
+    uv run python analysis/27_dynamic_irt/dynamic_irt.py {{args}}
+
+# Run single-biennium pipeline (phases 01-25)
 pipeline session="2025-26" *args:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -183,25 +183,39 @@ pipeline session="2025-26" *args:
     echo "Pipeline run: $RUN_ID"
     echo "Session:      {{session}}"
     echo ""
-    just eda      --session {{session}} --run-id "$RUN_ID" {{args}}
-    just pca      --session {{session}} --run-id "$RUN_ID" {{args}}
-    just mca      --session {{session}} --run-id "$RUN_ID" {{args}}
-    just irt      --session {{session}} --run-id "$RUN_ID" {{args}}
-    just umap     --session {{session}} --run-id "$RUN_ID" {{args}}
-    just clustering --session {{session}} --run-id "$RUN_ID" {{args}}
-    just lca      --session {{session}} --run-id "$RUN_ID" {{args}}
-    just network  --session {{session}} --run-id "$RUN_ID" {{args}}
-    just bipartite --session {{session}} --run-id "$RUN_ID" {{args}}
-    just indices  --session {{session}} --run-id "$RUN_ID" {{args}}
-    just prediction --session {{session}} --run-id "$RUN_ID" {{args}}
-    just betabinom --session {{session}} --run-id "$RUN_ID" {{args}}
+    just eda        --session {{session}} --run-id "$RUN_ID" {{args}}
+    just pca        --session {{session}} --run-id "$RUN_ID" {{args}}
+    just mca        --session {{session}} --run-id "$RUN_ID" {{args}}
+    just umap       --session {{session}} --run-id "$RUN_ID" {{args}}
+    just irt        --session {{session}} --run-id "$RUN_ID" {{args}}
+    just irt-2d     --session {{session}} --run-id "$RUN_ID" {{args}}
     just hierarchical --session {{session}} --run-id "$RUN_ID" {{args}}
-    just synthesis --session {{session}} --run-id "$RUN_ID" {{args}}
-    just profiles --session {{session}} --run-id "$RUN_ID" {{args}}
-    just tsa       --session {{session}} --run-id "$RUN_ID" {{args}}
+    just ppc        --session {{session}} --run-id "$RUN_ID" {{args}}
+    just clustering --session {{session}} --run-id "$RUN_ID" {{args}}
+    just lca        --session {{session}} --run-id "$RUN_ID" {{args}}
+    just network    --session {{session}} --run-id "$RUN_ID" {{args}}
+    just bipartite  --session {{session}} --run-id "$RUN_ID" {{args}}
+    just indices    --session {{session}} --run-id "$RUN_ID" {{args}}
+    just betabinom  --session {{session}} --run-id "$RUN_ID" {{args}}
+    just prediction --session {{session}} --run-id "$RUN_ID" {{args}}
+    just wnominate  --session {{session}} --run-id "$RUN_ID" {{args}}
+    just external-validation --session {{session}} --run-id "$RUN_ID" {{args}}
+    just dime       --session {{session}} --run-id "$RUN_ID" {{args}}
+    just tsa        --session {{session}} --run-id "$RUN_ID" {{args}}
+    just text-analysis --session {{session}} --run-id "$RUN_ID" {{args}}
+    just tbip       --session {{session}} --run-id "$RUN_ID" {{args}}
+    just issue-irt  --session {{session}} --run-id "$RUN_ID" {{args}}
+    just model-legislation --session {{session}} --run-id "$RUN_ID" {{args}}
+    just synthesis  --session {{session}} --run-id "$RUN_ID" {{args}}
+    just profiles   --session {{session}} --run-id "$RUN_ID" {{args}}
     just dashboard {{session}} --run-id "$RUN_ID"
     echo ""
     echo "Pipeline complete: $RUN_ID"
+
+# Run cross-biennium pipeline (phases 26-27)
+cross-pipeline *args:
+    just cross-session {{args}}
+    just dynamic-irt {{args}}
 
 # Generate dashboard index for a session
 dashboard session="2025-26" *args:

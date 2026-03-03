@@ -7,8 +7,8 @@
 
 This document discusses two distinct IRT models in the tallgrass pipeline:
 
-- **Flat IRT** (Phase 04, `analysis/04_irt/irt.py`): Standard 2PL Bayesian IRT estimated per chamber, with test equating to place both chambers on a common scale. This is the canonical baseline model.
-- **Hierarchical IRT** (Phase 10, `analysis/10_hierarchical/hierarchical.py`): Extends the flat IRT with partial pooling by party. Produces three model variants:
+- **Flat IRT** (Phase 04, `analysis/05_irt/irt.py`): Standard 2PL Bayesian IRT estimated per chamber, with test equating to place both chambers on a common scale. This is the canonical baseline model.
+- **Hierarchical IRT** (Phase 10, `analysis/07_hierarchical/hierarchical.py`): Extends the flat IRT with partial pooling by party. Produces three model variants:
   - **Per-chamber hierarchical**: House-only and Senate-only models. These work correctly.
   - **Joint hierarchical**: A single model combining both chambers. **This is the broken model.**
 

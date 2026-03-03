@@ -77,7 +77,7 @@
 
 - **Phase 08 (Prediction)**: NMF topics from short titles could be supplemented or replaced by BERTopic topics from full text. Not done automatically — requires conscious integration.
 - **Phase 11 (Synthesis)**: Topic labels could enrich narrative synthesis. Currently not consumed.
-- **Phase 18b (BT3)**: Embedding-vote text-based ideal points (ADR-0086) use the cached embeddings from this phase.
+- **Phase 21 (BT3)**: Embedding-vote text-based ideal points (ADR-0086) use the cached embeddings from this phase.
 - **Phase 19 (BT4)**: Issue-specific ideal points (ADR-0087) use the BERTopic topic assignments and optional CAP classifications from this phase to subset votes by policy area.
 - **Future phase (BT5)**: Temporal topic evolution and cross-state comparison build on the embeddings and topic assignments saved here.
 - **CAP classifications** enable cross-state and cross-session comparisons using the standardized policy taxonomy. Useful for comparative state politics research.

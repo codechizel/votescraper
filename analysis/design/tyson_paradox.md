@@ -138,7 +138,7 @@ This is a feature of the model, not a bug — but it's a feature that systematic
 
 ## What We Could Do About It
 
-1. **2D IRT.** ~~A two-dimensional model would estimate Tyson's position on both the ideology axis and the contrarianism axis. This is the theoretically correct solution but significantly more complex to identify and interpret.~~ **Implemented as pipeline phase 04b (ADR-0054).** The 2D M2PL model with PLT identification separates ideology from contrarianism. Tyson drops from #1 (1D) to #3 on Dim 1 but is #1 on Dim 2. Convergence uses relaxed thresholds (Dim 2 has weak signal for most legislators). Runs both chambers with nutpie sampling. See `analysis/04b_irt_2d/irt_2d.py` and `docs/2d-irt-deep-dive.md`.
+1. **2D IRT.** ~~A two-dimensional model would estimate Tyson's position on both the ideology axis and the contrarianism axis. This is the theoretically correct solution but significantly more complex to identify and interpret.~~ **Implemented as pipeline phase 04b (ADR-0054).** The 2D M2PL model with PLT identification separates ideology from contrarianism. Tyson drops from #1 (1D) to #3 on Dim 1 but is #1 on Dim 2. Convergence uses relaxed thresholds (Dim 2 has weak signal for most legislators). Runs both chambers with nutpie sampling. See `analysis/06_irt_2d/irt_2d.py` and `docs/2d-irt-deep-dive.md`.
 
 2. **Party loyalty index.** A simple metric — "fraction of votes agreeing with the party median" — would immediately distinguish Tyson (low loyalty, high ideology) from Murphy (high loyalty, high ideology). This could supplement IRT rankings.
 
@@ -173,7 +173,7 @@ For now, we document this as a known limitation of the 1D model and flag Tyson's
 - `analysis/design/irt.md` — IRT design choices (Assumption 1 discusses 1D limitation)
 - `analysis/design/irt_2d.md` — 2D IRT design choices (PLT identification, convergence thresholds)
 - `analysis/design/pca.md` — PCA design, PC2 interpretation
-- `analysis/04b_irt_2d/irt_2d.py` — Pipeline phase 04b (2D IRT, both chambers, nutpie)
+- `analysis/06_irt_2d/irt_2d.py` — Pipeline phase 04b (2D IRT, both chambers, nutpie)
 - `docs/2d-irt-deep-dive.md` — Full 2D IRT deep dive with experimental results
 - `docs/analytic-flags.md` — Tyson and Thompson flagged as contrarian outliers
 - `docs/lessons-learned.md` — Lesson 6 (beta prior) is unrelated but contextually adjacent

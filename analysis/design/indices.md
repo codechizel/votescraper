@@ -1,7 +1,7 @@
 # Classical Indices Design Choices
 
-**Script:** `analysis/07_indices/indices.py`
-**Constants defined at:** `analysis/07_indices/indices.py` (top of file)
+**Script:** `analysis/13_indices/indices.py`
+**Constants defined at:** `analysis/13_indices/indices.py` (top of file)
 
 ## Assumptions
 

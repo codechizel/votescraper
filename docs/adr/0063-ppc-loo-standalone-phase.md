@@ -28,5 +28,5 @@ Create Phase 4c as a standalone validation phase (like Phase 17 W-NOMINATE):
 - Completes the internal validation story: every model now has PPC coverage
 - LOO-CV provides formal model ranking with stacking weights
 - Q3 gives empirical dimensionality evidence (beyond "2D captures more variance")
-- Phase 04b now saves InferenceData to NetCDF (prerequisite for PPC loading)
+- Phase 06 now saves InferenceData to NetCDF (prerequisite for PPC loading)
 - No R subprocess needed — Python ecosystem (ArviZ) is sufficient

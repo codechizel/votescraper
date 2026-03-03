@@ -27,21 +27,21 @@ Three new frozen dataclass section types added to `analysis/report.py`:
 
 ### New Analytical Features
 
-- **Bipartisanship Index (R12)** — `compute_bipartisanship_index()` in `analysis/07_indices/indices.py`. Lugar Center BPI analogue: fraction of party-line votes where legislator voted with opposing party majority. Distinct from maverick score (maverick = against own party; BPI = with opposing party). Includes BPI vs maverick scatter plot.
+- **Bipartisanship Index (R12)** — `compute_bipartisanship_index()` in `analysis/13_indices/indices.py`. Lugar Center BPI analogue: fraction of party-line votes where legislator voted with opposing party majority. Distinct from maverick score (maverick = against own party; BPI = with opposing party). Includes BPI vs maverick scatter plot.
 
-- **Plus-Minus Index (R11)** — `compute_plus_minus()` in `analysis/07_indices/indices.py`. Actual party unity minus party mean unity. Positive = more loyal than average. Dumbbell chart visualization.
+- **Plus-Minus Index (R11)** — `compute_plus_minus()` in `analysis/13_indices/indices.py`. Actual party unity minus party mean unity. Positive = more loyal than average. Dumbbell chart visualization.
 
-- **Cutting Lines (R7)** — `compute_cutting_points()` in `analysis/04_irt/irt.py`. Per-bill cutting point (`alpha / beta`) where P(Yea) = 0.5. VoteView-style multi-panel visualization: legislators on ideology axis colored by actual vote, vertical line at cutting point.
+- **Cutting Lines (R7)** — `compute_cutting_points()` in `analysis/05_irt/irt.py`. Per-bill cutting point (`alpha / beta`) where P(Yea) = 0.5. VoteView-style multi-panel visualization: legislators on ideology axis colored by actual vote, vertical line at cutting point.
 
-- **Swing Vote Identification (R8)** — `identify_swing_votes()` in `analysis/04_irt/irt.py`. For close votes (margin <= 5), finds legislators within 0.5 IRT units of cutting point. Ranked frequency table: who is the swing vote most often.
+- **Swing Vote Identification (R8)** — `identify_swing_votes()` in `analysis/05_irt/irt.py`. For close votes (margin <= 5), finds legislators within 0.5 IRT units of cutting point. Ranked frequency table: who is the swing vote most often.
 
-- **Party Ideal Point Density (R3)** — `plot_party_density()` in `analysis/04_irt/irt.py`. Overlapping KDE curves per party. The single most published figure in IRT literature (Bafumi et al. 2005, Shor & McCarty 2011).
+- **Party Ideal Point Density (R3)** — `plot_party_density()` in `analysis/05_irt/irt.py`. Overlapping KDE curves per party. The single most published figure in IRT literature (Bafumi et al. 2005, Shor & McCarty 2011).
 
-- **Item Characteristic Curves in Flat IRT (R6)** — `plot_icc_curves()` in `analysis/04_irt/irt.py`. P(Yea | theta) curves for top-5 most discriminating bills per chamber.
+- **Item Characteristic Curves in Flat IRT (R6)** — `plot_icc_curves()` in `analysis/05_irt/irt.py`. P(Yea | theta) curves for top-5 most discriminating bills per chamber.
 
 - **Absenteeism Analysis (R5)** — `_add_absenteeism_analysis()` in `analysis/01_eda/eda_report.py`. Strategic absence flags (ratio >= 2.0x on party-line votes with >= 3 absences).
 
-- **Coalition Labeler (R13)** — `analysis/11_synthesis/coalition_labeler.py`. Auto-names clusters based on party composition and IRT ideal points. Rules: >80% one party = "{modifier} {party}" (Mainstream/Moderate/Conservative/Progressive based on median IRT vs party mean); mixed = "Bipartisan Coalition"/"Cross-Party Bloc".
+- **Coalition Labeler (R13)** — `analysis/24_synthesis/coalition_labeler.py`. Auto-names clusters based on party composition and IRT ideal points. Rules: >80% one party = "{modifier} {party}" (Mainstream/Moderate/Conservative/Progressive based on median IRT vs party mean); mixed = "Bipartisan Coalition"/"Cross-Party Bloc".
 
 ### Presentation Enhancements
 
@@ -72,10 +72,10 @@ Three new frozen dataclass section types added to `analysis/report.py`:
 - `analysis/report.py` — 3 new section types, `make_interactive_table()`, updated template/CSS
 - `pyproject.toml` — 3 new dependencies
 - 22+ `*_report.py` files — key findings, ITables conversions, interactive sections
-- `analysis/04_irt/irt.py` — density, ICC, cutting points, swing votes, Plotly scatters
-- `analysis/07_indices/indices.py` — BPI, plus-minus, BPI scatter, Plotly scatter
-- `analysis/06_network/network.py` — PyVis generation
-- `analysis/11_synthesis/coalition_labeler.py` — new module
+- `analysis/05_irt/irt.py` — density, ICC, cutting points, swing votes, Plotly scatters
+- `analysis/13_indices/indices.py` — BPI, plus-minus, BPI scatter, Plotly scatter
+- `analysis/11_network/network.py` — PyVis generation
+- `analysis/24_synthesis/coalition_labeler.py` — new module
 - `analysis/01_eda/eda_report.py` — absenteeism analysis
 - `tests/test_report_sections.py` — 30 new tests for section types
 - `tests/test_indices.py` — 9 new tests for BPI

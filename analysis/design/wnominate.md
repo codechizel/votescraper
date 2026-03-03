@@ -1,9 +1,9 @@
 # W-NOMINATE + Optimal Classification Design Choices
 
-**Script:** `analysis/17_wnominate/wnominate.py`
-**Data module:** `analysis/17_wnominate/wnominate_data.py`
-**R script:** `analysis/17_wnominate/wnominate.R`
-**Report builder:** `analysis/17_wnominate/wnominate_report.py`
+**Script:** `analysis/16_wnominate/wnominate.py`
+**Data module:** `analysis/16_wnominate/wnominate_data.py`
+**R script:** `analysis/16_wnominate/wnominate.R`
+**Report builder:** `analysis/16_wnominate/wnominate_report.py`
 **Constants defined at:** top of `wnominate_data.py`
 
 ## Assumptions

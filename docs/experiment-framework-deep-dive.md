@@ -641,7 +641,7 @@ This made the PyMC callback infrastructure (Layers 1-2 above) unnecessary, and i
 
 ### Phase 1: Model Specification Extraction (No Behavior Change)
 
-1. Create `analysis/10_hierarchical/model_spec.py` with `BetaPriorSpec` and `PRODUCTION_BETA`
+1. Create `analysis/07_hierarchical/model_spec.py` with `BetaPriorSpec` and `PRODUCTION_BETA`
 2. Add `beta_prior: BetaPriorSpec = PRODUCTION_BETA` parameter to `build_per_chamber_model()` and `build_joint_model()`
 3. Replace the hardcoded `beta = pm.Normal(...)` line with `beta = beta_prior.build(n_votes)`
 4. Verify all 1,172 tests pass — this must be a zero-behavior-change refactor

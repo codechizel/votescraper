@@ -21,11 +21,11 @@ The hierarchical report now includes a Stocking-Lord linking section (coefficien
 
 ### 2. 2D IRT: Removed from Pipeline
 
-Phase 04b (`irt-2d`) removed from `just pipeline` and from the dashboard phase listing. The standalone `just irt-2d` recipe is preserved for research use. Phase 4c (PPC) already degrades gracefully when 2D IRT results are missing.
+Phase 06 (`irt-2d`) removed from `just pipeline` and from the dashboard phase listing. The standalone `just irt-2d` recipe is preserved for research use. Phase 4c (PPC) already degrades gracefully when 2D IRT results are missing.
 
 ### 3. Dynamic IRT: Informative Prior Fixed
 
-Three changes to `analysis/16_dynamic_irt/dynamic_irt.py`:
+Three changes to `analysis/27_dynamic_irt/dynamic_irt.py`:
 
 1. **Remove global re-standardization** of static IRT values. The prior construction now uses raw static IRT xi_mean values directly. These are already approximately unit-scale from the per-biennium IRT fits.
 2. **Accumulator pattern** for multi-biennium averaging: instead of first-match-only, each legislator's prior mean is the average of their xi_mean across all bienniums where they appear.

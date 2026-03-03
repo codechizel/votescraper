@@ -5,11 +5,17 @@ paths:
 
 # Analysis Framework
 
-## Pipeline
+## Two Pipelines
 
-EDA -> PCA -> MCA -> IRT -> UMAP -> Clustering -> LCA -> Network -> Bipartite Network -> Indices -> Prediction -> Beta-Binomial -> Hierarchical IRT -> Synthesis -> Profiles -> TSA
+**Single-biennium** (`just pipeline 2025-26`): phases 01-25 in order. Phases 06, 08, 16-23 gracefully skip when prerequisites are missing (no R, no bill texts, biennium out of range for SM/DIME).
 
-Phase 04b (2D IRT) is available standalone (`just irt-2d`) but removed from the pipeline — Kansas voting is fundamentally 1D (ADR-0074). Hierarchical IRT's joint cross-chamber model is off by default (`--run-joint` to enable); Stocking-Lord linking is the production cross-chamber alignment method (ADR-0074). Cross-session validation compares across bienniums (separate from the per-session pipeline). External validation compares IRT ideal points against Shor-McCarty scores (84th-88th bienniums only). Phase 14b (DIME/CFscores) validates against campaign-finance ideology (84th-89th bienniums, ADR-0062). Dynamic IRT (Phase 16) is a cross-session phase using Martin-Quinn state-space IRT across all 8 bienniums (ADR-0058; post-hoc sign correction via static IRT correlation — ADR-0068). PPC + LOO-CV (Phase 4c) is a standalone validation phase running posterior predictive checks and model comparison across all three IRT variants (ADR-0063). W-NOMINATE + OC (Phase 17) is a standalone validation phase comparing IRT to field-standard legislative scaling methods via R subprocess (ADR-0059). Bill Text Analysis (Phase 18) is a standalone NLP phase — BERTopic topic modeling (FastEmbed + HDBSCAN), optional CAP classification via Claude API, bill similarity, and vote cross-reference. Runs with `just text-analysis`; not in the pipeline (requires BT1 bill text data + optional API key for CAP). Text-Based Ideal Points (Phase 18b) derives text-informed ideology from vote-weighted bill embeddings + PCA, validating against IRT. Runs with `just tbip`; not in pipeline (requires BT1 + IRT results, ADR-0086). Issue-Specific Ideal Points (Phase 19) runs Phase 04 flat IRT on per-topic vote subsets from Phase 18 BERTopic/CAP assignments — estimates per-policy-area ideal points. Runs with `just issue-irt`; not in pipeline (requires Phase 18 topics + Phase 04 IRT, ADR-0087). Model Legislation Detection (Phase 20) compares Kansas bill embeddings against ALEC model policy corpus + neighbor state bills (MO, OK, NE, CO via OpenStates API v3). Three-tier cosine similarity matching with n-gram overlap confirmation. Cross-references Phase 18 topics. Runs with `just model-legislation`; not in pipeline (requires BT1 bill texts + ALEC corpus from `just alec`, ADR-0089).
+EDA → PCA → MCA → UMAP → IRT → 2D IRT → Hierarchical IRT → PPC → Clustering → LCA → Network → Bipartite → Indices → Beta-Binomial → Prediction → W-NOMINATE → External Validation → DIME → TSA → Bill Text → TBIP → Issue IRT → Model Legislation → Synthesis → Profiles
+
+**Cross-biennium** (`just cross-pipeline`): phases 26-27. Requires data from multiple bienniums.
+
+Cross-Session → Dynamic IRT
+
+Hierarchical IRT's joint cross-chamber model is off by default (`--run-joint` to enable); Stocking-Lord linking is the production cross-chamber alignment method (ADR-0074).
 
 ## Technology Preferences
 
@@ -19,7 +25,7 @@ Phase 04b (2D IRT) is available standalone (`just irt-2d`) but removed from the 
 
 ## Directory Structure
 
-Phases live in numbered subdirectories (`analysis/01_eda/`, `analysis/07_indices/`, etc.). A PEP 302 meta-path finder in `analysis/__init__.py` redirects `from analysis.eda import X` to `analysis/01_eda/eda.py` — zero import changes needed (ADR-0030). Shared infrastructure (`run_context.py`, `report.py`, `design/`) stays at the root.
+Phases live in numbered subdirectories (`analysis/01_eda/`, `analysis/13_indices/`, etc.). A PEP 302 meta-path finder in `analysis/__init__.py` redirects `from analysis.eda import X` to `analysis/01_eda/eda.py` — zero import changes needed (ADR-0030). Shared infrastructure (`run_context.py`, `report.py`, `design/`) stays at the root.
 
 ## HTML Report System
 
@@ -33,14 +39,14 @@ Each phase produces a self-contained HTML report with SPSS/APA-style tables and 
 
 ## Key Data Modules (Pure Logic, No I/O)
 
-- `analysis/08_prediction/nlp_features.py` — TF-IDF + NMF topic modeling on bill `short_title` text
-- `analysis/11_synthesis/synthesis_detect.py` — Notable legislator detection (mavericks, bridge-builders, paradoxes)
-- `analysis/12_profiles/profiles_data.py` — Profile targets, scorecards, bill-type breakdown, defections
-- `analysis/13_cross_session/cross_session_data.py` — Legislator matching, IRT alignment, shift metrics, prediction transfer
-- `analysis/14_external_validation/external_validation_data.py` — SM parsing, name normalization, matching, correlations, outlier detection
-- `analysis/14b_external_validation_dime/external_validation_dime_data.py` — DIME parsing, name normalization, biennium filtering, CFscore matching
-- `analysis/16_dynamic_irt/dynamic_irt_data.py` — Global roster, cross-biennium vote stacking, bridge coverage, emIRT interface
-- `analysis/11_synthesis/coalition_labeler.py` — Auto-named coalitions from clusters (party composition, IRT ideal points)
+- `analysis/15_prediction/nlp_features.py` — TF-IDF + NMF topic modeling on bill `short_title` text
+- `analysis/24_synthesis/synthesis_detect.py` — Notable legislator detection (mavericks, bridge-builders, paradoxes)
+- `analysis/25_profiles/profiles_data.py` — Profile targets, scorecards, bill-type breakdown, defections
+- `analysis/26_cross_session/cross_session_data.py` — Legislator matching, IRT alignment, shift metrics, prediction transfer
+- `analysis/17_external_validation/external_validation_data.py` — SM parsing, name normalization, matching, correlations, outlier detection
+- `analysis/18_dime/external_validation_dime_data.py` — DIME parsing, name normalization, biennium filtering, CFscore matching
+- `analysis/27_dynamic_irt/dynamic_irt_data.py` — Global roster, cross-biennium vote stacking, bridge coverage, emIRT interface
+- `analysis/24_synthesis/coalition_labeler.py` — Auto-named coalitions from clusters (party composition, IRT ideal points)
 
 ## Design Documents
 

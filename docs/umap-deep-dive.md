@@ -1,7 +1,7 @@
 # UMAP Deep Dive: Implementation Review and Literature Survey
 
 **Date:** 2026-02-24
-**Scope:** Research survey, code review, and recommendations for `analysis/03_umap/umap_viz.py`
+**Scope:** Research survey, code review, and recommendations for `analysis/04_umap/umap_viz.py`
 
 ## Executive Summary
 

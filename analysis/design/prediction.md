@@ -1,7 +1,7 @@
 # Prediction Design Choices
 
-**Script:** `analysis/08_prediction/prediction.py`
-**Constants defined at:** `analysis/08_prediction/prediction.py:48-60`
+**Script:** `analysis/15_prediction/prediction.py`
+**Constants defined at:** `analysis/15_prediction/prediction.py:48-60`
 **Deep dive:** `docs/prediction-deep-dive.md`
 **ADRs:** ADR-0012 (NLP features), ADR-0031 (holdout eval, Brier/log-loss, IRT caveat)
 

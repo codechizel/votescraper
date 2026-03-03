@@ -56,7 +56,7 @@ The obvious question: if the model can't tell left from right, how do we know wh
 
 We use PCA — Principal Component Analysis — which runs before the IRT model in the pipeline. PCA performs a simpler version of the same task: it finds the main axis of variation in the vote matrix and assigns each legislator a score along that axis. PCA has the same mirror ambiguity (it can't tell which end is which either), but we resolve it using the sign convention that Democrats score lower than Republicans. Since we know the party labels, we can orient the PCA axis correctly.
 
-The anchor selection algorithm, implemented in `select_anchors()` in `analysis/04_irt/irt.py`, works as follows:
+The anchor selection algorithm, implemented in `select_anchors()` in `analysis/05_irt/irt.py`, works as follows:
 
 1. **Start with PCA scores.** Every legislator already has a PC1 score from the PCA phase (Phase 2 of the pipeline).
 

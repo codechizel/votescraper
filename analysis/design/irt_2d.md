@@ -1,6 +1,6 @@
 # 2D IRT Design Choices
 
-**Script:** `analysis/04b_irt_2d/irt_2d.py` (pipeline phase), `analysis/experimental/irt_2d_experiment.py` (original experiment)
+**Script:** `analysis/06_irt_2d/irt_2d.py` (pipeline phase), `analysis/experimental/irt_2d_experiment.py` (original experiment)
 **ADRs:** `docs/adr/0046-2d-irt-experimental.md`, `docs/adr/0054-2d-irt-pipeline-integration.md`
 **Deep dive:** `docs/2d-irt-deep-dive.md`
 

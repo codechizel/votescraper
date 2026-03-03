@@ -5,7 +5,7 @@
 
 ## Context
 
-Multiple Correspondence Analysis (MCA) is added as Phase 02c — a categorical-data analogue of PCA that uses chi-square distance instead of Euclidean distance. On binary (Yea/Nay) data, MCA is mathematically equivalent to PCA (Lebart et al. 1977). MCA only adds value when using the full categorical encoding: Yea / Nay / Absent as three distinct categories. This is the entire justification for the phase — it preserves the absence dimension that PCA imputes away.
+Multiple Correspondence Analysis (MCA) is added as Phase 03 — a categorical-data analogue of PCA that uses chi-square distance instead of Euclidean distance. On binary (Yea/Nay) data, MCA is mathematically equivalent to PCA (Lebart et al. 1977). MCA only adds value when using the full categorical encoding: Yea / Nay / Absent as three distinct categories. This is the entire justification for the phase — it preserves the absence dimension that PCA imputes away.
 
 Several implementation choices needed to be resolved:
 

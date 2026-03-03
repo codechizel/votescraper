@@ -33,7 +33,7 @@ The scraper's `legislators.csv` uses `slug` as its column name, but several newe
 
 ### DIME CSV Party Column Type (1 fix)
 
-**Phase 14b DIME** (`external_validation_dime_data.py`): The DIME CSV (144 MB) has `party` and `party.orig` columns with mixed types — numeric party codes (100, 200) in most rows, string values ("UNK") in rare rows. Polars `infer_schema_length=10000` inferred `i64`, then failed on "UNK". Fix: `schema_overrides={"party": pl.Utf8, "party.orig": pl.Utf8}`.
+**Phase 18 DIME** (`external_validation_dime_data.py`): The DIME CSV (144 MB) has `party` and `party.orig` columns with mixed types — numeric party codes (100, 200) in most rows, string values ("UNK") in rare rows. Polars `infer_schema_length=10000` inferred `i64`, then failed on "UNK". Fix: `schema_overrides={"party": pl.Utf8, "party.orig": pl.Utf8}`.
 
 ### LCA Report Enhancement (1 enhancement)
 

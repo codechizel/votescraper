@@ -35,7 +35,7 @@ Same as M6 — `trajectories_{chamber}.parquet` from Phase 16 (dynamic IRT).
 
 ## Implementation
 
-### New Function in `analysis/16_dynamic_irt/dynamic_irt.py`
+### New Function in `analysis/27_dynamic_irt/dynamic_irt.py`
 
 ```python
 import plotly.express as px
@@ -134,7 +134,7 @@ def plot_animated_scatter(
 
 ### Integration in `main()`
 
-In `analysis/16_dynamic_irt/dynamic_irt.py`, after the ridgeline plot (or after existing trajectory plots):
+In `analysis/27_dynamic_irt/dynamic_irt.py`, after the ridgeline plot (or after existing trajectory plots):
 
 ```python
 for chamber in chambers:
@@ -146,7 +146,7 @@ for chamber in chambers:
 
 ### Report Integration
 
-In `analysis/16_dynamic_irt/dynamic_irt_report.py`, add a new section function:
+In `analysis/27_dynamic_irt/dynamic_irt_report.py`, add a new section function:
 
 ```python
 def _add_animated_scatter(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:

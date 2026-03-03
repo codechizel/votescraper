@@ -259,7 +259,7 @@ Tests 1-3 are the highest value. They cover the most critical untested code path
 
 ### 4.1 Extract Unified Legislator Join to Shared Module
 
-**Current state:** `build_legislator_df()` and `load_all_upstream()` live in `synthesis.py` but are imported by profiles (`analysis/12_profiles/profiles.py:69`) and cross-session (`analysis/13_cross_session/cross_session.py:80`).
+**Current state:** `build_legislator_df()` and `load_all_upstream()` live in `synthesis.py` but are imported by profiles (`analysis/25_profiles/profiles.py:69`) and cross-session (`analysis/26_cross_session/cross_session.py:80`).
 
 **Problem:** `synthesis.py` is 936 lines, and ~200 of those (the data loading and joining functions) are pure data logic with no synthesis-specific behavior. Downstream phases importing from `synthesis.py` pull in matplotlib, the primer constant, `main()`, and everything else — creating a heavyweight dependency chain for what should be a lightweight data operation.
 

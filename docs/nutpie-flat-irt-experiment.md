@@ -27,7 +27,7 @@ Specific questions:
 
 ### Setup
 
-- **Model:** Flat 2PL IRT (identical to `analysis/04_irt/irt.py` production code)
+- **Model:** Flat 2PL IRT (identical to `analysis/05_irt/irt.py` production code)
 - **Chamber:** 91st House (130 legislators × 297 votes = 35,917 observations)
 - **Parameters:** 722 free (128 xi_free + 297 alpha + 297 beta)
 - **Anchors:** Avery Anderson (conservative, xi=+1.0), Brooklynne Mosley (liberal, xi=-1.0)

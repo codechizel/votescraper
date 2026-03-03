@@ -421,7 +421,7 @@ def main() -> None:
     results_root = ks.results_dir
     eda_dir = results_root / "01_eda" / "latest"
     pca_dir = results_root / "02_pca" / "latest"
-    output_dir = results_root / "04_irt" / "beta_experiment"
+    output_dir = results_root / "05_irt" / "beta_experiment"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 80)

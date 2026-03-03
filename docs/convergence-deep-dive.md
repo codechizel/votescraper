@@ -60,7 +60,7 @@ The bill-matching fix improved the model from "completely broken" (zero shared i
 
 ### The Alternative: Stocking-Lord Linking (Already Working)
 
-`analysis/10_hierarchical/irt_linking.py` implements four IRT linking methods:
+`analysis/07_hierarchical/irt_linking.py` implements four IRT linking methods:
 
 - **Stocking-Lord** (primary): TCC-based test characteristic curve matching
 - **Haebara**: ICC-based item characteristic curve matching
@@ -92,7 +92,7 @@ The joint model is structurally over-specified for Kansas data. With only 17% sh
 
 ### The Model
 
-Phase 04b implements a multidimensional 2-parameter logistic (M2PL) IRT model with PLT identification (constraining a 2×2 submatrix of discriminations to fix rotation and reflection). The motivation was the "Tyson paradox" — a Republican who votes with Democrats on high-discrimination bills but against his own party on low-discrimination bills.
+Phase 06 implements a multidimensional 2-parameter logistic (M2PL) IRT model with PLT identification (constraining a 2×2 submatrix of discriminations to fix rotation and reflection). The motivation was the "Tyson paradox" — a Republican who votes with Democrats on high-discrimination bills but against his own party on low-discrimination bills.
 
 ### Convergence Evidence
 
@@ -148,11 +148,11 @@ The model is correctly implemented (PLT identification is textbook). nutpie samp
 
 ### The Tyson Paradox Is Already Explained
 
-The original motivation (Tyson voting with Democrats on high-discrimination bills) is documented in the analytic flags and the 1D IRT report. The design doc already states: "The 2D model does NOT replace the 1D model... All downstream phases continue to use 1D ideal points." Phase 04b was always experimental.
+The original motivation (Tyson voting with Democrats on high-discrimination bills) is documented in the analytic flags and the 1D IRT report. The design doc already states: "The 2D model does NOT replace the 1D model... All downstream phases continue to use 1D ideal points." Phase 06 was always experimental.
 
-### Recommendation: Drop Phase 04b
+### Recommendation: Drop Phase 06
 
-**Action:** Remove 2D IRT from the production pipeline. The model is sound but the data doesn't support it. Phase 04b consumes 20-40 minutes per biennium with no usable output. Keep the code in `analysis/04b_irt_2d/` for reference and document the negative finding.
+**Action:** Remove 2D IRT from the production pipeline. The model is sound but the data doesn't support it. Phase 06 consumes 20-40 minutes per biennium with no usable output. Keep the code in `analysis/06_irt_2d/` for reference and document the negative finding.
 
 ---
 

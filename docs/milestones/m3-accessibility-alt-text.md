@@ -144,43 +144,43 @@ Examples:
 | File | `FigureSection` Count | Priority |
 |------|----------------------|----------|
 | `analysis/01_eda/eda_report.py` | 8 | First impressions for every user |
-| `analysis/11_synthesis/synthesis_report.py` | 15 | Narrative summary — most shared |
-| `analysis/12_profiles/profiles_report.py` | 6 | Per-legislator deep dives |
+| `analysis/24_synthesis/synthesis_report.py` | 15 | Narrative summary — most shared |
+| `analysis/25_profiles/profiles_report.py` | 6 | Per-legislator deep dives |
 
 **Batch 2:** IRT + Clustering + Network — core analytical visualizations
 
 | File | `FigureSection` Count |
 |------|----------------------|
-| `analysis/04_irt/irt_report.py` | 12 |
-| `analysis/05_clustering/clustering_report.py` | 12 |
-| `analysis/06_network/network_report.py` | 13 |
+| `analysis/05_irt/irt_report.py` | 12 |
+| `analysis/09_clustering/clustering_report.py` | 12 |
+| `analysis/11_network/network_report.py` | 13 |
 
 **Batch 3:** Prediction + Indices + Cross-Session
 
 | File | `FigureSection` Count |
 |------|----------------------|
-| `analysis/08_prediction/prediction_report.py` | 11 |
-| `analysis/07_indices/indices_report.py` | 12 |
-| `analysis/13_cross_session/cross_session_report.py` | 8 |
+| `analysis/15_prediction/prediction_report.py` | 11 |
+| `analysis/13_indices/indices_report.py` | 12 |
+| `analysis/26_cross_session/cross_session_report.py` | 8 |
 
 **Batch 4:** Remaining phases
 
 | File | `FigureSection` Count |
 |------|----------------------|
-| `analysis/15_tsa/tsa_report.py` | 10 |
-| `analysis/16_dynamic_irt/dynamic_irt_report.py` | 8 |
-| `analysis/06b_network_bipartite/bipartite_report.py` | 8 |
-| `analysis/10_hierarchical/hierarchical_report.py` | 7 |
+| `analysis/19_tsa/tsa_report.py` | 10 |
+| `analysis/27_dynamic_irt/dynamic_irt_report.py` | 8 |
+| `analysis/12_bipartite/bipartite_report.py` | 8 |
+| `analysis/07_hierarchical/hierarchical_report.py` | 7 |
 | `analysis/02_pca/pca_report.py` | 6 |
 | `analysis/02b_umap/umap_report.py` | 5 |
-| `analysis/02c_mca/mca_report.py` | 5 |
-| `analysis/04b_irt_2d/irt_2d_report.py` | 4 |
-| `analysis/04c_ppc/ppc_report.py` | 6 |
-| `analysis/05b_lca/lca_report.py` | 5 |
+| `analysis/03_mca/mca_report.py` | 5 |
+| `analysis/06_irt_2d/irt_2d_report.py` | 4 |
+| `analysis/08_ppc/ppc_report.py` | 6 |
+| `analysis/10_lca/lca_report.py` | 5 |
 | `analysis/07b_beta_binomial/beta_binomial_report.py` | 4 |
-| `analysis/14_external_validation/external_validation_report.py` | 4 |
-| `analysis/14b_external_validation_dime/external_validation_dime_report.py` | 4 |
-| `analysis/17_wnominate/wnominate_report.py` | 4 |
+| `analysis/17_external_validation/external_validation_report.py` | 4 |
+| `analysis/18_dime/external_validation_dime_report.py` | 4 |
+| `analysis/16_wnominate/wnominate_report.py` | 4 |
 
 ### InteractiveSection Updates
 

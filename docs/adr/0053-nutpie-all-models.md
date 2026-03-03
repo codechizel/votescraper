@@ -18,9 +18,9 @@ The joint model consistently fails convergence on PyMC (R-hat 1.53, ESS=7 across
 
 Migrate all remaining MCMC models to nutpie:
 
-1. **Flat IRT (`analysis/04_irt/irt.py`):** Extract `build_irt_graph()` (model graph only), rewrite `build_and_sample()` to compile+sample with nutpie. PCA init via `initial_points={"xi_free": ...}`, jitter all other RVs.
+1. **Flat IRT (`analysis/05_irt/irt.py`):** Extract `build_irt_graph()` (model graph only), rewrite `build_and_sample()` to compile+sample with nutpie. PCA init via `initial_points={"xi_free": ...}`, jitter all other RVs.
 
-2. **Joint hierarchical IRT (`analysis/10_hierarchical/hierarchical.py`):** Extract `build_joint_graph()` returning `(pm.Model, combined_data)`, rewrite `build_joint_model()` to compile+sample with nutpie. Adds optional `xi_offset_initvals` parameter for future PCA init.
+2. **Joint hierarchical IRT (`analysis/07_hierarchical/hierarchical.py`):** Extract `build_joint_graph()` returning `(pm.Model, combined_data)`, rewrite `build_joint_model()` to compile+sample with nutpie. Adds optional `xi_offset_initvals` parameter for future PCA init.
 
 Implementation mirrors ADR-0051's pattern:
 - `callback`, `target_accept`, `cores` parameters accepted but ignored (API compatibility)

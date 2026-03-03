@@ -43,12 +43,12 @@ Implement 9 of 12 recommendations from the deep dive. Defer 3 lower-priority ite
 - Minority mavericks add report length. In sessions where both parties have very high unity (> 0.95), the section is skipped gracefully.
 
 **Files changed:**
-- `analysis/11_synthesis/synthesis_data.py` — New, ~236 lines.
-- `analysis/11_synthesis/synthesis.py` — Removed data loading functions, added `_extract_best_auc`, updated imports and `main()`.
-- `analysis/11_synthesis/synthesis_detect.py` — Added `_minority_parties()`, updated `detect_all()`.
-- `analysis/11_synthesis/synthesis_report.py` — Added minority maverick narrative, fixed type annotation, fixed slug splitting.
-- `analysis/12_profiles/profiles.py` — Import path updated (synthesis → synthesis_data).
-- `analysis/13_cross_session/cross_session.py` — Import path updated.
+- `analysis/24_synthesis/synthesis_data.py` — New, ~236 lines.
+- `analysis/24_synthesis/synthesis.py` — Removed data loading functions, added `_extract_best_auc`, updated imports and `main()`.
+- `analysis/24_synthesis/synthesis_detect.py` — Added `_minority_parties()`, updated `detect_all()`.
+- `analysis/24_synthesis/synthesis_report.py` — Added minority maverick narrative, fixed type annotation, fixed slug splitting.
+- `analysis/25_profiles/profiles.py` — Import path updated (synthesis → synthesis_data).
+- `analysis/26_cross_session/cross_session.py` — Import path updated.
 - `analysis/__init__.py` — Added `synthesis_data` to module map.
 - `tests/test_synthesis.py` — New, 47 tests.
 - `docs/synthesis-deep-dive.md` — New deep dive article.

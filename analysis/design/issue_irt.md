@@ -19,7 +19,7 @@ Estimate per-topic Bayesian IRT ideal points to answer: "How conservative is eac
 ### Why Not `issueirt`?
 
 The `issueirt` R package (Shin 2024) estimates 2D ideal points with Bingham directional priors per topic. However:
-- Phase 04b proved Kansas voting is fundamentally 1D — Dim 2 is noise.
+- Phase 06 proved Kansas voting is fundamentally 1D — Dim 2 is noise.
 - `issueirt` is GitHub-only (4 stars, 0 forks), pre-1.0, requires rstan.
 - Author moved to industry; uncertain maintenance.
 

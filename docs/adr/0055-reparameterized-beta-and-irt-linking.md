@@ -38,7 +38,7 @@ The joint model's alpha (bill difficulty) prior tightened from `Normal(0, 5)` to
 
 ### 3. IRT Scale Linking (`irt_linking.py`)
 
-New module `analysis/10_hierarchical/irt_linking.py` implementing four IRT linking methods for cross-chamber ideal point alignment:
+New module `analysis/07_hierarchical/irt_linking.py` implementing four IRT linking methods for cross-chamber ideal point alignment:
 
 - **Stocking-Lord**: Minimizes squared difference between test characteristic curves (TCCs) over a standard-normal-weighted theta grid. Most widely used in operational testing (Kolen and Brennan 2014).
 - **Haebara**: Minimizes squared ICC differences per item. More robust than Stocking-Lord when individual anchor items are outliers.

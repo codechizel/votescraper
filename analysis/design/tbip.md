@@ -1,4 +1,4 @@
-# Phase 18b: Text-Based Ideal Points — Design Document
+# Phase 21: Text-Based Ideal Points — Design Document
 
 ## Overview
 
@@ -33,7 +33,7 @@ TBIP (Vafa et al. 2020) models `text_i ~ f(author_ideal_point)`, learning author
 
 Lower than Phase 14 (SM/DIME) because text scores are further removed from ideology:
 
-| Quality | Phase 18b (text) | Phase 14 (SM/DIME) |
+| Quality | Phase 21 (text) | Phase 14 (SM/DIME) |
 |---------|-----------------|-------------------|
 | Strong | r ≥ 0.80 | r ≥ 0.90 |
 | Good | r ≥ 0.65 | r ≥ 0.85 |

@@ -11,7 +11,7 @@ However, the experiment only ran on a single chamber, used manual output directo
 
 ## Decision
 
-Integrate the 2D IRT model as pipeline phase `04b_irt_2d` with these design choices:
+Integrate the 2D IRT model as pipeline phase `06_irt_2d` with these design choices:
 
 1. **Both chambers**: Run House and Senate (not just Senate). Consistent with all other phases. House may reveal its own second-dimension patterns.
 

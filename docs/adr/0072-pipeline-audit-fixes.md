@@ -24,7 +24,7 @@ After completing a full pipeline run across all 8 bienniums (84th-91st, 2011-202
 
 **High — Systematic convergence failures:**
 - **A2**: Joint hierarchical model fails all 8 bienniums (256-4,281 divergences). Root cause: ADR-0042 `vote_id` deduplication prevents bill matching. Per-chamber + Stocking-Lord linking works; joint model wastes ~4 min/biennium.
-- **A3**: 2D IRT (Phase 04b) Senate ESS catastrophically low (6-52 vs threshold 200) across all bienniums. House marginal. Dim 2 captures noise.
+- **A3**: 2D IRT (Phase 06) Senate ESS catastrophically low (6-52 vs threshold 200) across all bienniums. House marginal. Dim 2 captures noise.
 - **A4**: Dynamic IRT Senate still fails (R-hat 1.84, ESS 3) despite ADR-0070 fixes. 87th/88th have sign-flip artifacts.
 
 **Medium — Methodology observations:**

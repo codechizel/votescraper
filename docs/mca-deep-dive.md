@@ -259,7 +259,7 @@ Worth noting: Fujiwara et al. (2023, PLOS ONE) published contrastive MCA specifi
 
 ### Phase Placement
 
-**Phase 02c (between PCA and UMAP).** Following the precedent of UMAP as "Phase 2b," MCA becomes "Phase 2c" — a third dimensionality reduction view on the same data. Directory: `analysis/02c_mca/`.
+**Phase 03 (between PCA and UMAP).** Following the precedent of UMAP as "Phase 2b," MCA becomes "Phase 2c" — a third dimensionality reduction view on the same data. Directory: `analysis/03_mca/`.
 
 This placement reflects MCA's role: an alternative geometric view of the vote matrix, consuming the same EDA output as PCA and UMAP, but with a different encoding and distance metric. It does not depend on PCA or UMAP results and can run independently.
 
@@ -329,9 +329,9 @@ Save parquet files + plots + HTML report
 
 | File | Purpose |
 |------|---------|
-| `analysis/02c_mca/__init__.py` | Empty package marker |
-| `analysis/02c_mca/mca.py` | Main phase script (~600-800 lines) |
-| `analysis/02c_mca/mca_report.py` | HTML report builder (~400 lines) |
+| `analysis/03_mca/__init__.py` | Empty package marker |
+| `analysis/03_mca/mca.py` | Main phase script (~600-800 lines) |
+| `analysis/03_mca/mca_report.py` | HTML report builder (~400 lines) |
 | `analysis/design/mca.md` | Design choices document |
 | `tests/test_mca.py` | Tests (~30-40 tests) |
 

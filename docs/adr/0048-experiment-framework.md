@@ -16,7 +16,7 @@ Three structural problems:
 
 Implement a lightweight experiment framework with three components:
 
-### 1. BetaPriorSpec (`analysis/10_hierarchical/model_spec.py`)
+### 1. BetaPriorSpec (`analysis/07_hierarchical/model_spec.py`)
 
 Factor the bill discrimination (beta) prior into a frozen dataclass. Production functions gain a `beta_prior` parameter with `PRODUCTION_BETA` as the default. Zero behavior change for production callers. Experiments pass alternative specs to the same functions — no code duplication.
 
@@ -33,7 +33,7 @@ Two production constants are defined: `PRODUCTION_BETA = BetaPriorSpec("normal",
 - **ExperimentConfig**: frozen dataclass bundling all experiment parameters (beta prior, sampling settings, session, chambers)
 - **run_experiment()**: orchestrates the full lifecycle: platform check → data load → per-chamber models → optional joint model → HTML report → metrics.json
 - All model-building, diagnostics, and reporting logic is imported from production — zero duplication
-- HTML reports use `build_hierarchical_report()` from `analysis/10_hierarchical/hierarchical_report.py` — the same 18-22 section report as production `just hierarchical`. Standalone experiment scripts also call this function directly, ensuring experiment output is visually identical to production and can be directly compared.
+- HTML reports use `build_hierarchical_report()` from `analysis/07_hierarchical/hierarchical_report.py` — the same 18-22 section report as production `just hierarchical`. Standalone experiment scripts also call this function directly, ensuring experiment output is visually identical to production and can be directly compared.
 
 ## Alternatives Considered
 

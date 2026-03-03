@@ -21,7 +21,7 @@ Systematic open-source readiness pass covering:
 - PID file race condition in `experiment_monitor.py` — lock before truncate
 - Circular import between `scraper.py` and `odt_parser.py` — moved `VOTE_CATEGORIES` and `_normalize_bill_code` to `models.py`
 - F821 undefined `plots_dir` in `bipartite_report.py` — added parameter to function signature
-- `apply_dim1_sign_check()` Polars DuplicateError in Phase 04b — `with_columns` + `rename` created duplicate columns; fixed with `.drop()` before `.rename()`
+- `apply_dim1_sign_check()` Polars DuplicateError in Phase 06 — `with_columns` + `rename` created duplicate columns; fixed with `.drop()` before `.rename()`
 - `test_tsa.py` referenced old `vote_category` column name instead of `vote`
 
 **Documentation:**
@@ -31,7 +31,7 @@ Systematic open-source readiness pass covering:
 - `--version` CLI flag, year validation with error message
 
 **Testing:**
-- Phase 04b tests: 16 new tests covering sign-flip logic, PCA correlation, convergence constants
+- Phase 06 tests: 16 new tests covering sign-flip logic, PCA correlation, convergence constants
 - `test_data_integrity.py`: skipif guard when data CSVs aren't present
 - `sys.path.insert` consistency across test files
 - E402 suppression for standard `pytestmark`-between-imports pattern
@@ -52,5 +52,5 @@ Systematic open-source readiness pass covering:
 - Test suite: 1680 → 1696 tests, all passing
 - Lint + format: zero errors
 - Project ready for public GitHub release under MIT license
-- Phase 04b sign-flip bug would have caused `DuplicateError` on any run where Republicans had negative Dim 1 mean
+- Phase 06 sign-flip bug would have caused `DuplicateError` on any run where Republicans had negative Dim 1 mean
 - `except A, B:` bugs were silently swallowing `TypeError` exceptions in 5 code paths

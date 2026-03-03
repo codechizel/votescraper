@@ -1,6 +1,6 @@
 # Cross-Session Validation Design Choices
 
-**Script:** `analysis/13_cross_session/cross_session.py`, `analysis/13_cross_session/cross_session_data.py`
+**Script:** `analysis/26_cross_session/cross_session.py`, `analysis/26_cross_session/cross_session_data.py`
 **Report:** `analysis/cross_session_report.py`
 **ADR:** `docs/adr/0019-cross-session-validation.md`
 

@@ -21,7 +21,7 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 2. **Monitoring callback mismatch with nutpie sampling (feature appears non-functional).**  
    `analysis/experiment_monitor.py` creates a PyMC callback that updates a status JSON every N draws, but hierarchical sampling uses `nutpie.sample()` which doesn’t support PyMC callbacks. Several call sites pass `callback=` and explicitly print “ignored”. This implies `just monitor` may not reflect real progress for nutpie-based runs (unless another mechanism exists elsewhere).
 
-3. **Dead/unused helpers in `analysis/04_irt/irt.py` (maintainability).**  
+3. **Dead/unused helpers in `analysis/05_irt/irt.py` (maintainability).**  
    Several joint-model helper functions appear unreferenced in the current phase flow (e.g., `plot_joint_vs_chamber` and related utilities). Keeping them in the production phase file increases cognitive load and makes the “supported” surface area unclear.
 
 ### Medium-priority findings (quality / robustness)
@@ -52,9 +52,9 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 
 ### Representative phases
 - EDA: `analysis/01_eda/eda.py`
-- IRT: `analysis/04_irt/irt.py`
-- Hierarchical IRT: `analysis/10_hierarchical/hierarchical.py`
-- Synthesis integration: `analysis/11_synthesis/synthesis.py`, `analysis/11_synthesis/synthesis_data.py`, `analysis/11_synthesis/synthesis_detect.py`
+- IRT: `analysis/05_irt/irt.py`
+- Hierarchical IRT: `analysis/07_hierarchical/hierarchical.py`
+- Synthesis integration: `analysis/24_synthesis/synthesis.py`, `analysis/24_synthesis/synthesis_data.py`, `analysis/24_synthesis/synthesis_detect.py`
 
 ### Repo-wide searches
 - `TODO|FIXME|XXX|HACK` in `*.py` (none found)
@@ -83,9 +83,9 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 ### A) Synthesis manifest keys don’t match upstream storage (high priority)
 
 **Evidence**
-- `analysis/11_synthesis/synthesis_data.py` stores manifests as:
+- `analysis/24_synthesis/synthesis_data.py` stores manifests as:
   - `upstream["manifests"]["01_eda"]`, `["07_indices"]`, `["05_clustering"]`, etc.
-- `analysis/11_synthesis/synthesis.py` / `synthesis_report.py` contain accesses like:
+- `analysis/24_synthesis/synthesis.py` / `synthesis_report.py` contain accesses like:
   - `manifests.get("eda", {})`
   - `manifests.get("indices", {})`
   - `manifests.get("clustering", {})`
@@ -104,7 +104,7 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 
 **Evidence**
 - `analysis/experiment_monitor.py` defines `create_monitoring_callback()` designed for `pm.sample(callback=...)`.
-- `analysis/10_hierarchical/hierarchical.py` and `analysis/experiment_runner.py` use `nutpie.sample()`.
+- `analysis/07_hierarchical/hierarchical.py` and `analysis/experiment_runner.py` use `nutpie.sample()`.
 - Several functions accept `callback=` but print that it is ignored.
 
 **Why it matters**
@@ -118,7 +118,7 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 
 ---
 
-### C) Potential dead/unused helpers in `analysis/04_irt/irt.py` (maintainability)
+### C) Potential dead/unused helpers in `analysis/05_irt/irt.py` (maintainability)
 
 **Evidence**
 - `plot_joint_vs_chamber` appears defined but not referenced elsewhere in repo.
@@ -129,7 +129,7 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 
 **Suggested direction**
 - Move unused helpers into:
-  - `analysis/experimental/` or a dedicated `analysis/04_irt/joint_experiments.py`
+  - `analysis/experimental/` or a dedicated `analysis/05_irt/joint_experiments.py`
 - Keep `irt.py` focused on the supported flow.
 
 ---
@@ -156,7 +156,7 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 
 ~~Today there are at least two patterns:~~
 - ~~`analysis.run_context.resolve_upstream_dir()` (phases)~~
-- ~~`analysis/11_synthesis/synthesis_data._resolve_phase_dir()` (synthesis)~~
+- ~~`analysis/24_synthesis/synthesis_data._resolve_phase_dir()` (synthesis)~~
 
 ~~Recommendation: make synthesis reuse the canonical resolver.~~
 
@@ -196,7 +196,7 @@ These are not urgent (dataset sizes are modest), but they’re cheap wins:
 **Resolved 2026-03-02 (CQ4).** EDA heatmap now uses a precomputed `slug_to_name` dict, matching the `slug_to_party` pattern already used nearby.
 
 ### 2) Anchor selection participation rates can be vectorized
-`analysis/04_irt/irt.py::select_anchors()` computes participation by iterating matrix rows and counting non-null values.
+`analysis/05_irt/irt.py::select_anchors()` computes participation by iterating matrix rows and counting non-null values.
 
 Recommendation: use `pl.sum_horizontal()` with `is_not_null()` across columns (similar to how EDA filters low-participation legislators).
 
@@ -227,7 +227,7 @@ Even if collisions are rare, hashing is effectively free and removes a correctne
 
 1. **Fix synthesis manifest key normalization** (correctness + reporting integrity)  
 2. **Clarify/repair experiment monitoring under nutpie** (operability)  
-3. **Move dead joint-model helpers out of `analysis/04_irt/irt.py`** (maintainability)  
+3. **Move dead joint-model helpers out of `analysis/05_irt/irt.py`** (maintainability)  
 4. **Harden scraper cache keys with hashing** (robustness)  
 5. **Consolidate shared mini-utilities** (reduce drift)  
 6. **Decide and document special-session analysis support** (UX / correctness)
@@ -238,5 +238,5 @@ Even if collisions are rare, hashing is effectively free and removes a correctne
 
 - `src/tallgrass/scraper.py`, `src/tallgrass/session.py`, `src/tallgrass/odt_parser.py`
 - `analysis/run_context.py`, `analysis/report.py`, `analysis/phase_utils.py`
-- `analysis/01_eda/eda.py`, `analysis/04_irt/irt.py`, `analysis/10_hierarchical/hierarchical.py`
-- `analysis/11_synthesis/synthesis.py`, `analysis/11_synthesis/synthesis_data.py`, `analysis/11_synthesis/synthesis_detect.py`
+- `analysis/01_eda/eda.py`, `analysis/05_irt/irt.py`, `analysis/07_hierarchical/hierarchical.py`
+- `analysis/24_synthesis/synthesis.py`, `analysis/24_synthesis/synthesis_data.py`, `analysis/24_synthesis/synthesis_detect.py`

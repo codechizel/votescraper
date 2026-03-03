@@ -508,9 +508,9 @@ class TestResolveUpstreamDir:
 
     def test_no_run_id_no_override_legacy_exists(self, tmp_path):
         """With both None, prefers legacy if it exists."""
-        legacy = tmp_path / "04_irt" / "latest"
+        legacy = tmp_path / "05_irt" / "latest"
         legacy.mkdir(parents=True)
-        result = resolve_upstream_dir("04_irt", tmp_path, run_id=None, override=None)
+        result = resolve_upstream_dir("05_irt", tmp_path, run_id=None, override=None)
         assert result == legacy
 
 
@@ -552,7 +552,7 @@ class TestRunContextRunIdMode:
     def test_session_level_symlink_idempotent(self, tmp_path):
         """Multiple phases in the same run write the same session-level symlink."""
         run_id = "2024s-2026-02-27T19-30-00"
-        for phase in ["01_eda", "02_pca", "04_irt"]:
+        for phase in ["01_eda", "02_pca", "05_irt"]:
             ctx = RunContext(
                 session="2024s",
                 analysis_name=phase,

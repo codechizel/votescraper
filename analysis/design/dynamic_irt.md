@@ -1,7 +1,7 @@
 # Dynamic Ideal Point Estimation Design Choices
 
-**Script:** `analysis/16_dynamic_irt/dynamic_irt.py`
-**Data module:** `analysis/16_dynamic_irt/dynamic_irt_data.py`
+**Script:** `analysis/27_dynamic_irt/dynamic_irt.py`
+**Data module:** `analysis/27_dynamic_irt/dynamic_irt_data.py`
 **Constants defined at:** top of each module
 
 ## Assumptions
