@@ -22,10 +22,12 @@ just lint-check                              # → ruff check + ruff format --ch
 just typecheck                               # → ty check src/ + ty check analysis/
 just sessions                                # → uv run tallgrass --list-sessions
 just check                                   # → lint-check + typecheck + test (quality gate)
-just test                                    # → uv run pytest tests/ -v (~1958 tests)
+just test                                    # → uv run pytest tests/ -v (~1976 tests)
 just test-scraper                            # → pytest -m scraper (~282 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just monitor                                 # → check running experiment status
+just merge-special 2020                      # → merge 2020 special into 88th biennium
+just merge-special all                       # → merge all 5 specials into parent bienniums
 just pipeline 2025-26                        # → full analysis pipeline (all phases grouped)
 uv run tallgrass 2023                  # historical session (direct)
 uv run tallgrass 2024 --special        # special session (direct)
@@ -73,6 +75,7 @@ src/tallgrass/
   scraper.py    - KSVoteScraper: 4-step pipeline (bill URLs -> API filter -> vote parse -> enrich)
   odt_parser.py - ODT vote file parser (2011-2014): pure functions, no I/O
   output.py     - CSV export (4 files: votes, rollcalls, legislators, bill_actions)
+  merge_special.py - Post-scrape special session merge into parent bienniums
   cli.py        - argparse CLI entry point
 ```
 
@@ -140,6 +143,7 @@ Four CSVs in `data/kansas/{legislature}_{start}-{end}/`:
 - `{name}_bill_actions.csv` — one per bill lifecycle action (KLISS API HISTORY; all bills, not just those with votes)
 
 Directory naming: `(start_year - 1879) // 2 + 18` -> legislature number. Special sessions: `{year}s`.
+Special session merge: `just merge-special all` merges special session CSVs into parent biennium directories (ADR-0082). Idempotent — filters by `session` column before concat. Run after scraping specials, before running the parent's pipeline.
 Cache: `data/kansas/{name}/.cache/`. Failed fetches -> `failure_manifest.json` + `missing_votes.md`.
 External data: `data/external/shor_mccarty.tab` (Shor-McCarty scores, auto-downloaded from Harvard Dataverse).
 External data: `data/external/dime_recipients_1979_2024.csv` (DIME CFscores, manually placed, ODC-BY license).
@@ -166,7 +170,7 @@ See `.claude/rules/analysis-framework.md` for the full pipeline, report system a
 
 Key references:
 - Design docs: `analysis/design/README.md`
-- ADRs: `docs/adr/README.md` (81 decisions)
+- ADRs: `docs/adr/README.md` (82 decisions)
 - Analysis primer: `docs/analysis-primer.md` (plain-English guide)
 - How IRT works: `docs/how-irt-works.md` (general-audience explanation of anchors, identification, and MCMC divergences)
 - External validation: `docs/external-validation-results.md` (5-biennium results, all 20 correlations "strong")

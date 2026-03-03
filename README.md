@@ -35,6 +35,8 @@ just pipeline 2025-26
 uv run tallgrass 2025                   # current session (2025-26)
 uv run tallgrass 2023                   # historical session (2023-24)
 uv run tallgrass 2024 --special         # special session
+uv run tallgrass --merge-special 2020   # merge 2020 special into parent biennium
+uv run tallgrass --merge-special all    # merge all 5 specials
 uv run tallgrass --list-sessions        # show all available sessions
 uv run tallgrass 2025 --clear-cache     # re-fetch everything
 ```

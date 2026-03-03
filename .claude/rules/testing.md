@@ -8,7 +8,7 @@ paths:
 ## Commands
 
 ```bash
-just test                    # run all tests (~1958)
+just test                    # run all tests (~1976)
 just test-scraper            # scraper tests only (-m scraper, ~282)
 just test-fast               # skip slow tests (-m "not slow", ~1873)
 just check                   # full check (lint + typecheck + tests)
@@ -46,6 +46,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_scraper_http.py` — HTTP layer: _get() retries, error classification, cache, _fetch_many() waves, rate limiting, KLISS API (~43 tests)
 - `tests/test_output.py` — CSV export: filenames, headers, row counts, roundtrip (~10 tests)
 - `tests/test_cli.py` — argument parsing with monkeypatched scraper (~17 tests)
+- `tests/test_merge_special.py` — special session merge: parent_session property, CSV merge, idempotency, column alignment, legislator dedup, CLI flag (~21 tests)
 
 ## Analysis Test Files
 

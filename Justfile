@@ -25,6 +25,10 @@ default:
 scrape *args:
     uv run tallgrass {{args}}
 
+# Merge special session data into parent biennium
+merge-special *args:
+    uv run tallgrass --merge-special {{args}}
+
 # Scrape with fresh cache
 scrape-fresh *args:
     uv run tallgrass --clear-cache {{args}}

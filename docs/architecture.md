@@ -91,8 +91,11 @@ Key functions:
 ### output.py
 CSV export. Uses `dataclasses.asdict()` for RollCall/IndividualVote. Legislators use explicit field list since they're stored as plain dicts.
 
+### merge_special.py
+Post-scrape utility that merges special session CSVs into parent biennium directories. Special sessions (1-2 days, 3-8 roll calls) are too small for standalone IRT/PCA analysis; merging makes them analyzable via the parent's pipeline. Idempotent via `session` column filtering. Handles column mismatch (e.g. `sponsor_slugs`) and legislator deduplication.
+
 ### cli.py
-argparse entry point. Minimal — constructs KSSession and KSVoteScraper, calls `run()`.
+argparse entry point. Constructs KSSession and KSVoteScraper, calls `run()`. Also handles `--merge-special` for special session merging.
 
 ## Concurrency Model
 

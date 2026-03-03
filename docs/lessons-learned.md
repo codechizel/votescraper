@@ -97,7 +97,7 @@ This constant must be manually updated when the KS Legislature starts a new bien
 
 ## Gotcha: Special Session URL Patterns
 
-Special sessions use a completely different URL scheme (`/li_2024s/` instead of `/li_2024/b2023_24/`). They also don't have a biennium code. New special sessions must be manually added to `SPECIAL_SESSION_YEARS` in session.py.
+Special sessions use a completely different URL scheme (`/li_2024s/` instead of `/li_2024/b2023_24/`). They also don't have a biennium code. New special sessions must be manually added to `SPECIAL_SESSION_YEARS` in session.py. After scraping, run `just merge-special <year>` to merge into the parent biennium for analysis (ADR-0082).
 
 ---
 

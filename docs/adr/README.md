@@ -34,6 +34,7 @@ What are the trade-offs?
 | [0009](0009-retry-waves-for-transient-failures.md) | Retry waves for transient failures |
 | [0020](0020-historical-session-support.md) | Historical session support (2011-2026) |
 | [0036](0036-scraper-hardening.md) | Scraper hardening |
+| [0082](0082-merge-special-sessions-into-parent-bienniums.md) | Merge special sessions into parent bienniums |
 
 ### Dimensionality Reduction
 
@@ -227,6 +228,7 @@ What are the trade-offs?
 | [0079](0079-wcag-accessibility-alt-text.md) | WCAG 2.1 AA accessibility — alt-text and ARIA labels (132 figures, 8 interactive sections, 23 report builders) | Accepted | 2026-03-02 |
 | [0080](0080-code-audit-2026-03-02-resolution.md) | Code audit 2026-03-02 — synthesis manifest key fix, 4 remaining cleanup items | Accepted | 2026-03-02 |
 | [0081](0081-sponsor-slugs-phase-11-12-integration.md) | Sponsor slugs integration into Synthesis (n_bills_sponsored) and Profiles (sponsorship section, defection sponsor) | Accepted | 2026-03-02 |
+| [0082](0082-merge-special-sessions-into-parent-bienniums.md) | Merge special sessions into parent bienniums (post-scrape utility, idempotent, column alignment) | Accepted | 2026-03-02 |
 
 ## Creating a New ADR
 

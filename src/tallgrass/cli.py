@@ -53,6 +53,13 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="List known session years and exit",
     )
+    parser.add_argument(
+        "--merge-special",
+        type=str,
+        default=None,
+        metavar="YEAR|all",
+        help="Merge special session into parent biennium (e.g. 2020, or 'all')",
+    )
 
     args = parser.parse_args(argv)
 
@@ -70,6 +77,10 @@ def main(argv: list[str] | None = None) -> None:
             print(f"    {s.label:22s}  {BASE_URL}{s.li_prefix}/")
         return
 
+    if args.merge_special is not None:
+        _run_merge_special(args.merge_special)
+        return
+
     session = KSSession.from_year(args.year, special=args.special)
 
     scraper = KSVoteScraper(
@@ -82,3 +93,32 @@ def main(argv: list[str] | None = None) -> None:
         scraper.clear_cache()
 
     scraper.run(enrich=not args.no_enrich)
+
+
+def _run_merge_special(arg: str) -> None:
+    """Handle --merge-special: merge one or all special sessions."""
+    from tallgrass.merge_special import merge_all_specials, merge_special_into_parent
+
+    if arg.lower() == "all":
+        results = merge_all_specials()
+        for year, stats in sorted(results.items()):
+            special = KSSession(start_year=year, special=True)
+            parent = special.parent_session
+            print(f"  {special.label} -> {parent.label}: {stats}")
+        if not results:
+            print("  No special sessions found to merge.")
+        return
+
+    year = int(arg)
+    if year not in SPECIAL_SESSION_YEARS:
+        print(f"Error: {year} is not a known special session year.")
+        print(f"Known special sessions: {sorted(SPECIAL_SESSION_YEARS)}")
+        return
+
+    special = KSSession(start_year=year, special=True)
+    parent = special.parent_session
+    stats = merge_special_into_parent(year)
+    print(f"Merged {special.label} -> {parent.label}:")
+    print(f"  Votes added:       {stats['votes_added']}")
+    print(f"  Roll calls added:  {stats['rollcalls_added']}")
+    print(f"  Legislators added: {stats['legislators_added']}")

@@ -534,7 +534,8 @@ See `docs/method-evaluation.md` for detailed rationale on each rejection.
 | Item | When | Details |
 |------|------|---------|
 | Update `CURRENT_BIENNIUM_START` | 2027 | Change from 2025 to 2027 in `session.py` |
-| Add special sessions | As needed | Add year to `SPECIAL_SESSION_YEARS` in `session.py` |
+| Add special sessions | As needed | Add year to `SPECIAL_SESSION_YEARS` in `session.py`, scrape, then `just merge-special <year>` |
+| Merge special sessions | After scraping | `just merge-special all` merges into parent bienniums (ADR-0082) |
 | ~~Fix Shallenburger suffix~~ | ~~Done~~ | Fixed in analysis via `strip_leadership_suffix()` in `run_context.py` — applied at every CSV load point across all phases (ADR-0014). Scraper stores the raw name; analysis handles display. |
 
 ---

@@ -167,6 +167,14 @@ class KSSession:
         return re.compile(rf"{escaped}/measures/(sb|hb|scr|hcr|sr|hr)\d+/", re.I)
 
     @property
+    def parent_session(self) -> "KSSession":
+        """Return the parent biennium session for a special session, or self."""
+        if not self.special:
+            return self
+        parent_start = self.start_year if self.start_year % 2 == 1 else self.start_year - 1
+        return KSSession(start_year=parent_start, special=False)
+
+    @property
     def api_path(self) -> str:
         """API base path for this session.
 
