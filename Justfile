@@ -37,6 +37,10 @@ scrape-fresh *args:
 text *args:
     uv run tallgrass-text {{args}}
 
+# Scrape vote data from KanFocus (kanfocus.com)
+kanfocus *args:
+    uv run tallgrass-kanfocus {{args}}
+
 # Sync OpenStates legislator roster (slug→ocd_id mapping)
 roster-sync:
     uv run python -c "from tallgrass.roster import sync_roster; sync_roster()"

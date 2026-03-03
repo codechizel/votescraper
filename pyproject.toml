@@ -14,6 +14,7 @@ dependencies = [
 [project.scripts]
 tallgrass = "tallgrass.cli:main"
 tallgrass-text = "tallgrass.text.cli:main"
+tallgrass-kanfocus = "tallgrass.kanfocus.cli:main"
 
 [dependency-groups]
 dev = [

@@ -63,6 +63,23 @@ src/tallgrass/text/
 
 Multi-state-ready: `StateAdapter` Protocol defines the contract; adding a state requires one new file. `BillTextFetcher` is state-agnostic — takes `list[BillDocumentRef]` from any adapter. See ADR-0083.
 
+## KanFocus Subpackage (`kanfocus/`)
+
+Separate subpackage for scraping KanFocus (kanfocus.com) vote tally pages:
+
+```
+src/tallgrass/kanfocus/
+  models.py      — KanFocusVoteRecord, KanFocusLegislator frozen dataclasses
+  session.py     — session ID mapping (106-119), URL construction, vote_id generation
+  parser.py      — parse_vote_page() pure function, legislator entry parsing
+  slugs.py       — slug generation from "Name, R-32nd" format + cross-reference
+  fetcher.py     — KanFocusFetcher: HTTP + file cache + rate limiting + enumeration
+  output.py      — convert to standard format + gap-fill merge
+  cli.py         — tallgrass-kanfocus entry point
+```
+
+Coverage: 78th-91st (1999-2026). Uses `kf_` prefix for vote_ids. Conservative rate limiting (7s delay, single-threaded). See ADR-0088.
+
 ## Static Parsing Helpers
 
 All `@staticmethod` on `KSVoteScraper` — callable without a scraper instance, tested directly:

@@ -50,6 +50,14 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_roster.py` — OpenStates roster sync: slug extraction, YAML parsing, slug→ocd_id lookup, cache load/save, same-name disambiguation (~22 tests)
 - `tests/test_bills.py` — shared bill discovery: JS parsing, bill sort, URL-to-number, HTML/JS discovery (~23 tests)
 
+## KanFocus Test Files
+
+- `tests/test_kanfocus_session.py` — session ID mapping (14 bienniums), URL construction, vote_id generation, biennium streams (~27 tests)
+- `tests/test_kanfocus_parser.py` — vote tally page parsing: metadata, counts, legislator extraction, category mapping, empty page detection (~40 tests)
+- `tests/test_kanfocus_slugs.py` — slug generation: standard names, suffixes, nicknames, multi-word, cross-reference matching, CSV loading (~23 tests)
+- `tests/test_kanfocus_output.py` — output conversion: date format, passed derivation, vote_type classification, standard format conversion (~27 tests)
+- `tests/test_kanfocus_fetcher.py` — HTTP caching, vote enumeration, consecutive-empty threshold, rate limiting defaults (~9 tests)
+
 ## Bill Text Test Files
 
 - `tests/test_text_models.py` — BillDocumentRef + BillText frozen dataclasses, equality, hashing (~14 tests)

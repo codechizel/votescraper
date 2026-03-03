@@ -18,6 +18,7 @@ Kansas Legislature roll call vote scraper + analysis platform. Scrapes kslegisla
 just scrape 2025                             # → uv run tallgrass 2025
 just scrape-fresh 2025                       # → uv run tallgrass --clear-cache 2025
 just text 2025                               # → uv run tallgrass-text 2025 (bill text retrieval)
+just kanfocus 1999                           # → uv run tallgrass-kanfocus 1999 (KanFocus vote scrape)
 just lint                                    # → ruff check --fix + ruff format
 just lint-check                              # → ruff check + ruff format --check
 just typecheck                               # → ty check src/ + ty check analysis/
@@ -34,6 +35,8 @@ just pipeline 2025-26                        # → full analysis pipeline (all p
 uv run tallgrass 2023                  # historical session (direct)
 uv run tallgrass 2024 --special        # special session (direct)
 uv run tallgrass-text 2025             # bill text retrieval (direct)
+uv run tallgrass-kanfocus 1999         # KanFocus scrape (direct)
+uv run tallgrass-kanfocus 2011 --mode gap-fill  # fill 84th gaps
 ```
 
 Analysis recipes (all pass `*args` through to the underlying script):
@@ -91,11 +94,22 @@ src/tallgrass/
     extractors.py - PDF extraction + legislative text cleaning (pure functions)
     output.py     - CSV export (bill_texts.csv)
     cli.py        - tallgrass-text entry point
+  kanfocus/
+    __init__.py   - Public API re-exports
+    models.py     - KanFocusVoteRecord + KanFocusLegislator frozen dataclasses
+    session.py    - KanFocus session ID mapping, URL construction, vote_id generation
+    parser.py     - parse_vote_page() pure function (HTML text → intermediate models)
+    slugs.py      - Slug generation from "Name, R-32nd" format + cross-ref matching
+    fetcher.py    - KanFocusFetcher: HTTP + caching + rate limiting + vote enumeration
+    output.py     - Convert intermediates → standard IndividualVote/RollCall + gap-fill merge
+    cli.py        - tallgrass-kanfocus entry point
 ```
 
 Vote scraper pipeline: `get_bill_urls()` -> `_filter_bills_with_votes()` -> `get_vote_links()` -> `parse_vote_pages()` -> `enrich_legislators()` -> `save_csvs()`
 
 Bill text pipeline: `KansasAdapter.discover_bills()` -> `BillTextFetcher.fetch_all()` -> `save_bill_texts()`
+
+KanFocus pipeline: `KanFocusFetcher.fetch_biennium()` -> `parse_vote_page()` -> `convert_to_standard()` -> `save_csvs()` (or `merge_gap_fill()` for gap-fill mode). Coverage: 78th-91st (1999-2026). See ADR-0088.
 
 Static parsing helpers (all `@staticmethod` on `KSVoteScraper`): `_extract_bill_title()`, `_extract_chamber_motion_date()`, `_parse_vote_categories()`, `_extract_party_and_district()`. Each docstring references the HTML pitfalls it handles. Tests call these directly.
 
@@ -141,9 +155,9 @@ These are real bugs that were found and fixed. Do NOT regress on them:
 
 ## Data Model
 
-- `vote_id` encodes a timestamp: `je_20250320203513` -> `2025-03-20T20:35:13`
+- `vote_id` encodes a timestamp: `je_20250320203513` -> `2025-03-20T20:35:13`. KanFocus-sourced data uses `kf_{vote_num}_{year}_{chamber}` (e.g. `kf_33_2011_S`) — see ADR-0088.
 - `passed`: passed/adopted/prevailed/concurred -> True; failed/rejected/sustained -> False; else null
-- Vote categories: Yea, Nay, Present and Passing, Absent and Not Voting, Not Voting (exactly 5)
+- Vote categories: Yea, Nay, Present and Passing, Absent and Not Voting, Not Voting (exactly 5). KanFocus has 4 categories (no "Absent and Not Voting" — maps "Not Voting" uniformly).
 - Legislator slugs: `sen_` = Senate, `rep_` = House
 - Column naming: scraper CSVs use `slug` and `vote`; analysis phases rename to `legislator_slug` and expect `vote` (not `vote_category`). Each phase handles the rename at load time (ADR-0066).
 - Independent party handling: scraper outputs empty string; all analysis fills to "Independent" at load time (ADR-0021)
@@ -162,7 +176,7 @@ Five CSVs in `data/kansas/{legislature}_{start}-{end}/`:
 
 Directory naming: `(start_year - 1879) // 2 + 18` -> legislature number. Special sessions: `{year}s`.
 Special session merge: `just merge-special all` merges special session CSVs into parent biennium directories (ADR-0082). Idempotent — filters by `session` column before concat. Run after scraping specials, before running the parent's pipeline.
-Cache: `data/kansas/{name}/.cache/`. Failed fetches -> `failure_manifest.json` + `missing_votes.md`. Bill text cache: `data/kansas/{name}/.cache/text/`.
+Cache: `data/kansas/{name}/.cache/`. Failed fetches -> `failure_manifest.json` + `missing_votes.md`. Bill text cache: `data/kansas/{name}/.cache/text/`. KanFocus cache: `data/kansas/{name}/.cache/kanfocus/`.
 External data: `data/external/shor_mccarty.tab` (Shor-McCarty scores, auto-downloaded from Harvard Dataverse).
 External data: `data/external/dime_recipients_1979_2024.csv` (DIME CFscores, manually placed, ODC-BY license).
 External data: `data/external/openstates/ks_slug_to_ocd.json` (OpenStates slug→ocd_id mapping, auto-synced via `just roster-sync`, CC0 license — ADR-0085).
@@ -240,6 +254,7 @@ Key references:
 - Text-based ideal points design: `analysis/design/tbip.md` (methodology, assumptions, lower quality thresholds, limitations)
 - Issue-specific ideal points: ADR-0087 (topic-stratified flat IRT, why not issueirt, thresholds, anchor strategy)
 - Issue-specific ideal points design: `analysis/design/issue_irt.md` (two taxonomies, parameters, quality thresholds, assumptions)
+- KanFocus vote data adapter: ADR-0088 (1999-2026 coverage, gap-fill mode, category mapping, slug cross-reference)
 - Future bill text analysis: `docs/future-bill-text-analysis.md` (original notes, superseded by deep dive)
 - Apple Silicon MCMC tuning: `docs/apple-silicon-mcmc-tuning.md` (P/E core scheduling, thread pool caps, parallel chains, batch job rules)
 - Ward linkage article: `docs/ward-linkage-non-euclidean.md` (why Ward on Kappa distances is impure, the fix)
@@ -287,7 +302,7 @@ All hierarchical experiments (whether using `ExperimentRunner` or standalone scr
 ## Testing
 
 ```bash
-just test                    # 2113 tests
+just test                    # 2254 tests
 just test-scraper            # scraper tests only (-m scraper)
 just test-fast               # skip slow/integration tests (-m "not slow")
 just check                   # full check (lint + typecheck + tests)
