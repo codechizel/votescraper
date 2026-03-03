@@ -303,9 +303,13 @@ test-scraper *args:
 test-fast *args:
     uv run pytest tests/ -m "not slow" {{args}} -v
 
+# Run Django/database tests only (requires PostgreSQL via db-up)
+test-web *args:
+    DJANGO_SETTINGS_MODULE=tallgrass_web.settings.test PYTHONPATH=src/web uv run --group web pytest tests/ -m web {{args}} -v
+
 # Type check with ty (scraper must pass clean, analysis warnings-only)
 typecheck:
-    uvx ty check src/
+    uvx ty check src/tallgrass/
     uvx ty check analysis/
 
 # Check if an experiment is running (nutpie shows its own progress bar in the terminal)
@@ -317,3 +321,37 @@ check:
     just lint-check
     just typecheck
     just test
+
+# --- Django / Database ---
+
+# Start local PostgreSQL (docker-compose)
+db-up:
+    docker compose up -d db
+
+# Stop local PostgreSQL
+db-down:
+    docker compose down
+
+# Run Django migrations
+db-migrate *args:
+    DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py migrate {{args}}
+
+# Generate Django migrations
+db-makemigrations *args:
+    DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py makemigrations {{args}}
+
+# Start Django admin dev server
+db-admin:
+    DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py runserver
+
+# Create Django superuser
+db-createsuperuser:
+    DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py createsuperuser
+
+# Open psql shell to local database
+db-shell:
+    docker compose exec db psql -U tallgrass -d tallgrass
+
+# Generic manage.py passthrough
+django *args:
+    DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py {{args}}

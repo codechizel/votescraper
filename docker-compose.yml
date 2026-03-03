@@ -1,0 +1,16 @@
+# Local development — PostgreSQL only.
+# Django runs locally via `uv run --group web` (not containerized).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tallgrass
+      POSTGRES_USER: tallgrass
+      POSTGRES_PASSWORD: tallgrass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

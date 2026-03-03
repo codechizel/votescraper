@@ -11,6 +11,7 @@ paths:
 just test                    # run all tests (~2458)
 just test-scraper            # scraper tests only (-m scraper, ~312)
 just test-fast               # skip slow tests (-m "not slow")
+just test-web                # Django/database tests only (-m web, requires PostgreSQL)
 just check                   # full check (lint + typecheck + tests)
 uv run pytest tests/ -v      # pytest directly
 uv run pytest tests/ -m integration  # integration tests only
@@ -24,6 +25,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `@pytest.mark.scraper` — scraper pipeline tests (11 files, ~312 tests)
 - `@pytest.mark.integration` — end-to-end and real-data tests (~29 tests)
 - `@pytest.mark.slow` — tests that take >5 seconds (~39 tests, including 15 in test_scraper_http.py)
+- `@pytest.mark.web` — Django/database tests (2 files, ~63 tests; requires PostgreSQL via `just db-up`)
 
 ## Conventions
 
@@ -111,6 +113,13 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_dashboard.py` — phase ordering, dashboard generation, sidebar/iframe rendering, elapsed formatting, git hash display, missing phase handling (~14 tests)
 - `tests/test_integration_pipeline.py` — end-to-end: synthetic data → EDA → PCA pipeline chain, RunContext lifecycle, upstream resolution, generate_run_id (~26 tests). Marked `@pytest.mark.integration`.
 - `tests/test_data_integrity.py` — real-data CSV structural tests (~24 tests). Marked `@pytest.mark.integration` + `@pytest.mark.slow`.
+
+## Django Test Files
+
+Django tests use `pytest.importorskip("django")` at module top — existing tests never import Django. Requires PostgreSQL running (`just db-up`). Run with `just test-web`.
+
+- `tests/test_django_models.py` — all 8 models: creation, unique constraints, nullable fields, FK cascades, `__str__`, cross-model reverse queries (~53 tests). Marked `@pytest.mark.web` + `@pytest.mark.django_db`.
+- `tests/test_django_admin.py` — admin registration for all 8 models, `list_display`/`list_filter`/`search_fields`/`raw_id_fields` configuration (~10 tests). Marked `@pytest.mark.web` + `@pytest.mark.django_db`.
 
 ## Manual Verification
 

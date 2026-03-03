@@ -28,6 +28,7 @@ type(scope): description [vYYYY.MM.DD.N]
 - cli: Command-line interface
 - docs: Documentation files
 - infra: CI, hooks, tooling
+- web: Django project, database models, admin
 
 ## Post-Feature Workflow
 

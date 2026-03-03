@@ -22,5 +22,8 @@ CLAUDE.local.md
 # IDE
 .idea/
 
+# Environment
+.env
+
 # OS
 .DS_Store

@@ -149,6 +149,7 @@ What are the trade-offs?
 | [0078](0078-code-audit-phase-utils-extraction.md) | Code audit — phase_utils extraction, bug fixes, efficiency |
 | [0079](0079-wcag-accessibility-alt-text.md) | WCAG 2.1 AA accessibility — alt-text and ARIA labels |
 | [0080](0080-code-audit-2026-03-02-resolution.md) | Code audit 2026-03-02 — manifest key fix, 4 remaining items |
+| [0090](0090-django-project-scaffolding.md) | Django project scaffolding + PostgreSQL (DB1) |
 
 ## Chronological Index
 
@@ -243,6 +244,7 @@ What are the trade-offs?
 | [0087](0087-issue-specific-ideal-points.md) | Issue-specific ideal points via topic-stratified flat IRT (Phase 19, BT4) | Accepted | 2026-03-03 |
 | [0088](0088-kanfocus-vote-data-adapter.md) | KanFocus vote data adapter (1999-2026, Chrome cookie auth, data archiving) | Accepted | 2026-03-03 |
 | [0089](0089-model-legislation-detection.md) | Model legislation detection (ALEC + cross-state, BT5) | Accepted | 2026-03-03 |
+| [0090](0090-django-project-scaffolding.md) | Django project scaffolding + PostgreSQL (DB1) | Accepted | 2026-03-03 |
 
 ## Creating a New ADR
 

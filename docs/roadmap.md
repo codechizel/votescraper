@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-03 (Phase 19 issue-specific ideal points completed)
+**Last updated:** 2026-03-03 (PostgreSQL + Django roadmap added, KanFocus backfill in progress)
 
 ---
 
@@ -510,6 +510,111 @@ All 18 phases define `*_PRIMER` strings (150-200 lines of Markdown each) that Ru
 - **Integration tests**: `test_integration_pipeline.py` — synthetic data → EDA → PCA pipeline chain, RunContext lifecycle, upstream resolution (26 tests)
 - **HTML report structural tests**: `test_report_structure.py` — TOC anchors, section ordering, numbering, container types, empty report, CSS embedding, make_gt integration (22 tests)
 - **Pytest markers**: `@pytest.mark.scraper` (264 tests), `@pytest.mark.integration` (29 tests), `@pytest.mark.slow` (24 tests). Registered in `pyproject.toml`. Recipes: `just test-scraper`, `just test-fast`
+
+---
+
+## Infrastructure: PostgreSQL + Django
+
+Long-term storage and web platform for multi-state legislative data. Full analysis: [`docs/data-storage-deep-dive.md`](data-storage-deep-dive.md).
+
+**Current state:** CSVs in `data/kansas/` — adequate for single-state, becomes unwieldy at 50 states. KanFocus backfill (ADR-0088) is extending coverage to 78th-91st (1999-2026), adding ~14 bienniums of data.
+
+### DB1. Django Project Scaffolding (COMPLETE — 2026-03-03)
+
+Django project at `src/web/` with 8 models (State, Session, Legislator, RollCall, Vote, BillAction, BillText, ALECModelBill) mapping to the CSV schema. PostgreSQL 16 via Docker Compose. Django admin with list/filter/search on all models. 63 tests (model creation, unique constraints, nullable fields, FK cascades, `__str__`, admin registration). ADR-0090.
+
+**Deliverables:**
+- Django project with models, migrations, admin registration
+- `docker-compose.yml` for local PostgreSQL
+- Settings split: `base.py`, `local.py`, `test.py`
+- Justfile recipes: `db-up`, `db-down`, `db-migrate`, `db-admin`, `db-shell`, `test-web`
+- `web` dependency group (Django 5.2 LTS + psycopg3) — not a core dependency
+
+### DB2. CSV-to-PostgreSQL Loader
+
+Management command (`manage.py load_session`) that bulk-loads existing CSVs into PostgreSQL using `COPY`. Idempotent — re-running for the same biennium replaces that session's data. Handles both kslegislature.gov data (`je_` vote IDs) and KanFocus data (`kf_` vote IDs).
+
+**Deliverables:**
+- `manage.py load_session KS 2025` — loads all 5 CSVs for a biennium
+- `manage.py load_all KS` — loads all bienniums for a state
+- Validation report: row counts, null checks, FK integrity
+
+**Prerequisite:** DB1
+
+### DB3. Scraper Post-Hook
+
+After each scrape run, automatically load the new CSVs into PostgreSQL. The scraper continues writing CSVs (unchanged) — the database is a downstream consumer, not the authoritative source (yet).
+
+```bash
+just scrape 2025           # writes CSVs (unchanged)
+just db-load 2025-26       # CSV → PostgreSQL (new command)
+```
+
+**Deliverables:**
+- `just db-load` recipe in Justfile
+- Optional `--auto-load` flag on `tallgrass` CLI to chain CSV write + DB load
+
+**Prerequisite:** DB2
+
+### DB4. REST API
+
+Django REST Framework (DRF) API for external consumers. Read-only endpoints for votes, rollcalls, legislators, sessions. Filters by state, biennium, chamber, party, legislator. Pagination for large result sets.
+
+**Key endpoints:**
+- `GET /api/states/` — list states with session counts
+- `GET /api/sessions/?state=KS` — list sessions for a state
+- `GET /api/legislators/?session=91&chamber=Senate` — legislators with filters
+- `GET /api/rollcalls/?session=91&bill=SB+55` — rollcalls with bill filter
+- `GET /api/votes/?legislator=sen_masterson_ty_1` — individual votes
+
+**Deliverables:**
+- DRF serializers, viewsets, router
+- OpenAPI/Swagger documentation
+- Rate limiting for public access
+
+**Prerequisite:** DB1
+
+### DB5. Analysis Pipeline Database Integration
+
+Allow the analysis pipeline to read from PostgreSQL instead of (or in addition to) CSVs. Polars `pl.read_database()` queries PostgreSQL directly. Optional — CSVs remain the default data source. The pipeline never writes to the database.
+
+```python
+# phase_utils.py — load from DB when configured
+if settings.DATABASE_URL:
+    votes = pl.read_database("SELECT ... FROM votes WHERE session_id = ...", conn)
+else:
+    votes = pl.read_csv(data_dir / f"{name}_votes.csv")
+```
+
+**Deliverables:**
+- `phase_utils.load_votes()` / `load_rollcalls()` gain optional DB path
+- `DATABASE_URL` environment variable support
+- No performance regression — PostgreSQL indexed queries are faster than CSV reads
+
+**Prerequisite:** DB2
+
+### DB6. Multi-State Adapter
+
+Extend the `StateAdapter` Protocol (from bill text, ADR-0083) pattern to the vote scraper. Each state gets its own adapter producing the same CSV/DB schema. PostgreSQL's `state_code` foreign key and Django's `Session.state` field are already designed for this.
+
+**Deliverables:**
+- Second state adapter (candidate: Missouri, Nebraska, or Oklahoma — geographic neighbors with accessible legislature sites)
+- Shared schema validation across states
+- Cross-state queries in API and analysis pipeline
+
+**Prerequisite:** DB3, one state beyond Kansas operational
+
+### Implementation Order
+
+```
+DB1 (scaffolding) ─→ DB2 (loader) ─→ DB3 (post-hook)
+       │                                      │
+       └──→ DB4 (API)               DB5 (pipeline integration)
+                                              │
+                                    DB6 (multi-state)
+```
+
+DB1-DB3 are the critical path — they get data into PostgreSQL. DB4 and DB5 are independent and can proceed in parallel after DB1/DB2. DB6 is the long-term goal that motivates the entire effort.
 
 ---
 
