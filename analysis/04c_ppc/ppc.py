@@ -705,17 +705,31 @@ def main() -> None:
 
         # ── Load EDA vote matrices ──
         print_header("LOADING DATA")
-        house_matrix = pl.read_parquet(eda_dir / "data" / "vote_matrix_house_filtered.parquet")
-        senate_matrix = pl.read_parquet(eda_dir / "data" / "vote_matrix_senate_filtered.parquet")
-        print(f"  House matrix: {house_matrix.height} legislators x {house_matrix.width - 1} votes")
-        print(
-            f"  Senate matrix: {senate_matrix.height} legislators x {senate_matrix.width - 1} votes"
-        )
+        house_path = eda_dir / "data" / "vote_matrix_house_filtered.parquet"
+        senate_path = eda_dir / "data" / "vote_matrix_senate_filtered.parquet"
+        if not house_path.exists() and not senate_path.exists():
+            print("Phase 04c (PPC): skipping — no EDA vote matrices available")
+            return
+        house_matrix = pl.read_parquet(house_path) if house_path.exists() else None
+        senate_matrix = pl.read_parquet(senate_path) if senate_path.exists() else None
+        if house_matrix is not None:
+            print(
+                f"  House matrix: {house_matrix.height} legislators "
+                f"x {house_matrix.width - 1} votes"
+            )
+        if senate_matrix is not None:
+            print(
+                f"  Senate matrix: {senate_matrix.height} legislators "
+                f"x {senate_matrix.width - 1} votes"
+            )
 
         # ── Process each chamber ──
         all_results: dict[str, dict] = {}
 
         for chamber, matrix in [("House", house_matrix), ("Senate", senate_matrix)]:
+            if matrix is None:
+                print(f"\n  {chamber}: EDA matrix not available — skipping")
+                continue
             ch = chamber.lower()
 
             # Discover available models

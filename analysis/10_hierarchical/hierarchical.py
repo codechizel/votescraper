@@ -1636,8 +1636,18 @@ def main() -> None:
 
         # ── Load data ──
         print_header("LOADING DATA")
+        eda_house_path = eda_dir / "data" / "vote_matrix_house_filtered.parquet"
+        eda_senate_path = eda_dir / "data" / "vote_matrix_senate_filtered.parquet"
+        if not eda_house_path.exists() and not eda_senate_path.exists():
+            print("Phase 10 (Hierarchical): skipping — no EDA vote matrices available")
+            return
         house_matrix, senate_matrix, full_matrix = load_eda_matrices(eda_dir)
-        house_pca, senate_pca = load_pca_scores(pca_dir)
+        pca_house_path = pca_dir / "data" / "pc_scores_house.parquet"
+        if pca_house_path.exists():
+            house_pca, senate_pca = load_pca_scores(pca_dir)
+        else:
+            print("  PCA scores not available — skipping PCA-informed initialization")
+            house_pca, senate_pca = None, None
         rollcalls, legislators = load_metadata(data_dir)
 
         # Load flat IRT ideal points for comparison
@@ -1660,6 +1670,10 @@ def main() -> None:
         ]:
             ch = chamber.lower()
             print_header(f"HIERARCHICAL IRT — {chamber}")
+
+            if matrix.height < 5:
+                print(f"  Skipping {chamber}: too few legislators ({matrix.height})")
+                continue
 
             # Prepare data with party indices
             data = prepare_hierarchical_data(matrix, legislators, chamber)
@@ -1967,6 +1981,10 @@ def main() -> None:
 
                 traceback.print_exc()
                 linking_results = None  # noqa: F841
+
+        if not per_chamber_results:
+            print("Phase 10 (Hierarchical): skipping — no chambers had sufficient data")
+            return
 
         # ── HTML Report ──
         print_header("HTML REPORT")

@@ -1679,12 +1679,10 @@ def plot_agreement_heatmap(
     import pandas as pd
 
     # Resolve slugs to human-readable names for axis labels
-    labels = [
-        legislators.filter(pl.col("slug") == s)["full_name"].to_list()[0]
-        if legislators.filter(pl.col("slug") == s).height > 0
-        else s
-        for s in slugs
-    ]
+    slug_to_name = dict(
+        legislators.select("slug", "full_name").filter(pl.col("slug").is_in(slugs)).iter_rows()
+    )
+    labels = [slug_to_name.get(s, s) for s in slugs]
     df = pd.DataFrame(agreement_clean, index=labels, columns=labels)
     row_color_series = pd.Series(row_colors, index=labels, name="Party")
 
@@ -1993,7 +1991,8 @@ def main() -> None:
     else:
         from tallgrass.session import KSSession
 
-        data_dir = KSSession.from_session_string(args.session).data_dir
+        ks = KSSession.from_session_string(args.session)
+        data_dir = ks.data_dir
 
     with RunContext(
         session=args.session,
@@ -2136,8 +2135,8 @@ def main() -> None:
 
         # ── 7b. Bill lifecycle (optional) ──
         bill_actions_df: pl.DataFrame | None = None
-        actions_path = data_dir / f"{ctx.session.output_name}_bill_actions.csv"
-        if actions_path.exists():
+        actions_path = next(data_dir.glob("*_bill_actions.csv"), None)
+        if actions_path is not None and actions_path.exists():
             bill_actions_df = pl.read_csv(actions_path)
             print(f"  Loaded {bill_actions_df.height} bill actions")
 

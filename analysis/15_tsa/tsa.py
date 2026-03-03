@@ -1469,6 +1469,13 @@ def main() -> None:
         print(f"  Roll calls: {rollcalls.height:,} rows")
         print(f"  Legislators: {legislators.height:,} rows")
 
+        if rollcalls.height < WINDOW_SIZE:
+            print(
+                f"Phase 15 (TSA): skipping — {rollcalls.height} roll calls "
+                f"< WINDOW_SIZE ({WINDOW_SIZE})"
+            )
+            return
+
         # R enrichment check
         r_available = not args.skip_r and check_tsa_r_packages()
         if args.skip_r:

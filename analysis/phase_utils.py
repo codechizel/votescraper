@@ -72,17 +72,13 @@ def _clean_legislators(data_dir: Path) -> pl.DataFrame:
 
 # ── Name Normalization ─────────────────────────────────────────────────────
 
-_LEADERSHIP_SUFFIX_RE = re.compile(r"\s*-\s+.*$")
-"""Matches leadership suffixes like ' - House Minority Caucus Chair'."""
-
-
 def normalize_name(name: str) -> str:
     """Normalize a legislator name for cross-session/biennium matching.
 
     Lowercases, strips whitespace, and removes leadership suffixes.
     """
     name = name.strip().lower()
-    name = _LEADERSHIP_SUFFIX_RE.sub("", name)
+    name = strip_leadership_suffix(name)
     return name
 
 

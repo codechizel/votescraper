@@ -1,8 +1,10 @@
 # Future: Bill Text Analysis
 
-Notes on tools, techniques, and resources for a future phase that incorporates full bill text into the analysis pipeline. Currently the scraper captures vote data but not bill text; Phase 6+ uses only `short_title` via NMF topic extraction.
+> **Superseded by:** `docs/bill-text-nlp-deep-dive.md` — comprehensive survey of tools, research, data sources, and integration strategy.
 
-**Last updated:** 2026-02-25
+Original notes on tools, techniques, and resources for a future phase that incorporates full bill text into the analysis pipeline. Currently the scraper captures vote data but not bill text; Phase 6+ uses only `short_title` via NMF topic extraction.
+
+**Last updated:** 2026-02-25 (see deep dive for current state)
 
 ---
 

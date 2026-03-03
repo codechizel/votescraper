@@ -661,6 +661,9 @@ def main() -> None:
         for chamber in ("house", "senate"):
             print(f"\nBuilding unified DataFrame: {chamber}")
             df = build_legislator_df(upstream, chamber)
+            if df is None:
+                print(f"  {chamber}: IRT not available — skipping")
+                continue
             leg_dfs[chamber] = df
             print(f"  {chamber}: {df.height} legislators, {df.width} columns")
             df.write_parquet(ctx.data_dir / f"legislator_df_{chamber}.parquet")
@@ -669,6 +672,10 @@ def main() -> None:
                 f"full_scorecard_{chamber}.csv",
                 f"Full legislator scorecard for {chamber.title()} (all metrics)",
             )
+
+        if not leg_dfs:
+            print("Phase 11 (Synthesis): skipping — no IRT data for any chamber")
+            return
 
         # ── Sponsor stats (optional — needs rollcalls CSV) ────────────
         data_dir = Path("data") / STATE_DIR / ctx.session

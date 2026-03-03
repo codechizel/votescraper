@@ -2769,8 +2769,26 @@ def main() -> None:
 
         # ── Phase 1: Load data ──
         print_header("PHASE 1: LOADING DATA")
+        eda_house_path = eda_dir / "data" / "vote_matrix_house_filtered.parquet"
+        if not eda_house_path.exists():
+            print("Phase 04 (IRT): skipping — no EDA vote matrices available")
+            return
         house_matrix, senate_matrix, full_matrix = load_eda_matrices(eda_dir)
-        pca_house, pca_senate = load_pca_scores(pca_dir)
+
+        # Check if any chamber has legislators after filtering
+        if house_matrix.height == 0 and senate_matrix.height == 0:
+            print(
+                "Phase 04 (IRT): skipping — 0 legislators after filtering "
+                "(too few votes for IRT)"
+            )
+            return
+
+        pca_house_path = pca_dir / "data" / "pc_scores_house.parquet"
+        if pca_house_path.exists():
+            pca_house, pca_senate = load_pca_scores(pca_dir)
+        else:
+            print("  PCA scores not available — skipping PCA-informed initialization")
+            pca_house, pca_senate = None, None
         rollcalls, legislators = load_metadata(data_dir)
         prefix = data_dir.name
         raw_votes = pl.read_csv(data_dir / f"{prefix}_votes.csv")
@@ -2780,8 +2798,10 @@ def main() -> None:
         print(f"  House filtered: {house_matrix.height} x {len(house_matrix.columns) - 1}")
         print(f"  Senate filtered: {senate_matrix.height} x {len(senate_matrix.columns) - 1}")
         print(f"  Full matrix: {full_matrix.height} x {len(full_matrix.columns) - 1}")
-        print(f"  PCA House scores: {pca_house.height}")
-        print(f"  PCA Senate scores: {pca_senate.height}")
+        if pca_house is not None:
+            print(f"  PCA House scores: {pca_house.height}")
+        if pca_senate is not None:
+            print(f"  PCA Senate scores: {pca_senate.height}")
         print(f"  Rollcalls: {rollcalls.height}")
         print(f"  Legislators: {legislators.height}")
 
@@ -3039,6 +3059,10 @@ def main() -> None:
             )
         elif args.skip_sensitivity:
             print_header("SENSITIVITY ANALYSIS (SKIPPED)")
+
+        if not results:
+            print("Phase 04 (IRT): skipping — no chambers with enough data for IRT")
+            return
 
         # ── Phase 11: Filtering manifest + report ──
         print_header("PHASE 11: FILTERING MANIFEST")

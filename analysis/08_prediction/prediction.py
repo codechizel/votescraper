@@ -248,39 +248,53 @@ def load_legislator_data(data_dir: Path) -> pl.DataFrame:
     )
 
 
-def load_ideal_points(irt_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
+def _load_parquet_pair(
+    base_dir: Path, prefix: str
+) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+    """Load a house/senate parquet pair, returning None for missing files."""
+    results: list[pl.DataFrame | None] = []
+    for ch in ("house", "senate"):
+        path = base_dir / "data" / f"{prefix}_{ch}.parquet"
+        if path.exists():
+            results.append(pl.read_parquet(path))
+        else:
+            results.append(None)
+    return results[0], results[1]
+
+
+def load_ideal_points(
+    irt_dir: Path,
+) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
     """Load IRT ideal points for both chambers."""
-    house = pl.read_parquet(irt_dir / "data" / "ideal_points_house.parquet")
-    senate = pl.read_parquet(irt_dir / "data" / "ideal_points_senate.parquet")
-    return house, senate
+    return _load_parquet_pair(irt_dir, "ideal_points")
 
 
-def load_bill_params(irt_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
+def load_bill_params(
+    irt_dir: Path,
+) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
     """Load IRT bill parameters for both chambers."""
-    house = pl.read_parquet(irt_dir / "data" / "bill_params_house.parquet")
-    senate = pl.read_parquet(irt_dir / "data" / "bill_params_senate.parquet")
-    return house, senate
+    return _load_parquet_pair(irt_dir, "bill_params")
 
 
-def load_party_loyalty(clustering_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
+def load_party_loyalty(
+    clustering_dir: Path,
+) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
     """Load party loyalty rates from clustering phase."""
-    house = pl.read_parquet(clustering_dir / "data" / "party_loyalty_house.parquet")
-    senate = pl.read_parquet(clustering_dir / "data" / "party_loyalty_senate.parquet")
-    return house, senate
+    return _load_parquet_pair(clustering_dir, "party_loyalty")
 
 
-def load_centrality(network_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
+def load_centrality(
+    network_dir: Path,
+) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
     """Load centrality measures from network phase."""
-    house = pl.read_parquet(network_dir / "data" / "centrality_house.parquet")
-    senate = pl.read_parquet(network_dir / "data" / "centrality_senate.parquet")
-    return house, senate
+    return _load_parquet_pair(network_dir, "centrality")
 
 
-def load_pc_scores(pca_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
+def load_pc_scores(
+    pca_dir: Path,
+) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
     """Load PCA scores from PCA phase."""
-    house = pl.read_parquet(pca_dir / "data" / "pc_scores_house.parquet")
-    senate = pl.read_parquet(pca_dir / "data" / "pc_scores_senate.parquet")
-    return house, senate
+    return _load_parquet_pair(pca_dir, "pc_scores")
 
 
 # ── Phase 2: Feature Engineering — Vote-Level ───────────────────────────────
@@ -1740,6 +1754,11 @@ def main() -> None:
         cent_house, cent_senate = load_centrality(network_dir)
         pc_house, pc_senate = load_pc_scores(pca_dir)
 
+        # IRT is required — skip phase entirely if both chambers missing
+        if ip_house is None and ip_senate is None:
+            print("Phase 08 (Prediction): skipping — no IRT ideal points available")
+            return
+
         # Organize by chamber
         chamber_data = {
             "House": {
@@ -1762,6 +1781,10 @@ def main() -> None:
 
         for chamber in ["House", "Senate"]:
             cd = chamber_data[chamber]
+
+            if cd["ideal_points"] is None:
+                print(f"\n  {chamber}: IRT not available — skipping")
+                continue
 
             # ── Phase 2: Build Vote Features ────────────────────────────
             print_header(f"PHASE 2: VOTE FEATURES — {chamber.upper()}")
@@ -2168,6 +2191,10 @@ def main() -> None:
                 results[chamber]["passage_shap_values"] = passage_shap_values
                 results[chamber]["stratified_accuracy"] = stratified
 
+        if not results:
+            print("Phase 08 (Prediction): skipping — no chambers with IRT data")
+            return
+
         # ── Filtering Manifest ──────────────────────────────────────────
         print_header("FILTERING MANIFEST")
 
@@ -2192,6 +2219,8 @@ def main() -> None:
             manifest["nlp_topic_models"] = nlp_meta
 
         for chamber in ["House", "Senate"]:
+            if chamber not in results:
+                continue
             r = results[chamber]
             vf = r["vote_features"]
             manifest["chambers"][chamber] = {

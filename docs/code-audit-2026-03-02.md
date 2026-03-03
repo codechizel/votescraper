@@ -152,20 +152,26 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 
 ## Refactoring opportunities (low risk, high leverage)
 
-### 1) Consolidate upstream directory resolution
-Today there are at least two patterns:
-- `analysis.run_context.resolve_upstream_dir()` (phases)
-- `analysis/11_synthesis/synthesis_data._resolve_phase_dir()` (synthesis)
+### ~~1) Consolidate upstream directory resolution~~ — Fixed
 
-Recommendation: make synthesis reuse the canonical resolver (or provide a shared resolver that covers both “run-directory mode” and “flat mode” consistently).
+~~Today there are at least two patterns:~~
+- ~~`analysis.run_context.resolve_upstream_dir()` (phases)~~
+- ~~`analysis/11_synthesis/synthesis_data._resolve_phase_dir()` (synthesis)~~
 
-### 2) Consolidate small repeated parsing utilities
-Examples:
-- Leadership suffix stripping exists in both `run_context.py` and `phase_utils.py`.
+~~Recommendation: make synthesis reuse the canonical resolver.~~
+
+**Resolved 2026-03-02 (CQ2).** `_resolve_phase_dir()` deleted; `synthesis_data.py` now imports and calls `resolve_upstream_dir()` from `run_context`.
+
+### ~~2) Consolidate small repeated parsing utilities~~ — Partially fixed
+
+~~Examples:~~
+- ~~Leadership suffix stripping exists in both `run_context.py` and `phase_utils.py`.~~
 - Vote tally parsing exists in multiple places (scraper + run_context).
 - Bill motion parsing exists in multiple forms (scraper vs ODT vs analysis-level parsing).
 
-Recommendation: create a very small `analysis/text_utils.py` / `tallgrass/text_utils.py` and import from both sides where appropriate.
+~~Recommendation: create a very small `analysis/text_utils.py`.~~
+
+**Resolved 2026-03-02 (CQ3).** Leadership suffix regex consolidated: `phase_utils.normalize_name()` and `external_validation_data.normalize_our_name()` now call `strip_leadership_suffix()` from `run_context.py`. The vote tally and bill motion parsing duplications remain (different domains — scraper vs analysis — intentional separation).
 
 ### 3) Replace dict-of-dict legislator records with a typed model
 The scraper’s `self.legislators: dict[str, dict]` is pragmatic, but it:
@@ -181,10 +187,13 @@ A frozen dataclass or TypedDict would improve correctness and readability withou
 
 These are not urgent (dataset sizes are modest), but they’re cheap wins:
 
-### 1) Avoid repeated `polars.filter()` inside loops for label lookups
-Example pattern (EDA heatmap labeling): repeatedly filtering `legislators` per slug can become O(n²) in Python overhead.
+### ~~1) Avoid repeated `polars.filter()` inside loops for label lookups~~ — Fixed
 
-Recommendation: precompute `slug -> full_name` dict once.
+~~Example pattern (EDA heatmap labeling): repeatedly filtering `legislators` per slug can become O(n²) in Python overhead.~~
+
+~~Recommendation: precompute `slug -> full_name` dict once.~~
+
+**Resolved 2026-03-02 (CQ4).** EDA heatmap now uses a precomputed `slug_to_name` dict, matching the `slug_to_party` pattern already used nearby.
 
 ### 2) Anchor selection participation rates can be vectorized
 `analysis/04_irt/irt.py::select_anchors()` computes participation by iterating matrix rows and counting non-null values.

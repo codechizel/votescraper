@@ -17,6 +17,8 @@ import numpy as np
 import polars as pl
 from scipy import stats as sp_stats
 
+from analysis.run_context import strip_leadership_suffix
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
 SHOR_MCCARTY_URL = "https://dataverse.harvard.edu/api/access/datafile/7067107"
@@ -38,7 +40,6 @@ OUTLIER_TOP_N = 5
 
 # ── Name Normalization ───────────────────────────────────────────────────────
 
-_LEADERSHIP_RE = re.compile(r"\s*-\s+.*$")
 _SUFFIX_RE = re.compile(r"\s+(?:Sr\.?|Jr\.?|III?|IV)$", re.IGNORECASE)
 _MIDDLE_INITIAL_RE = re.compile(r"\s+[A-Z]\.?\s+")
 
@@ -82,7 +83,7 @@ def normalize_our_name(name: str) -> str:
     name = name.strip()
 
     # Strip leadership suffix: "Ty Masterson - President of the Senate"
-    name = _LEADERSHIP_RE.sub("", name).strip()
+    name = strip_leadership_suffix(name)
 
     # Strip generational suffix: "John Barker Sr."
     name = _SUFFIX_RE.sub("", name).strip()

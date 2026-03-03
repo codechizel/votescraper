@@ -194,14 +194,19 @@ def parse_args() -> argparse.Namespace:
 
 def load_eda_matrices(
     eda_dir: Path,
-) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame] | None:
     """Load filtered vote matrices from the EDA phase output.
 
-    Returns (house_filtered, senate_filtered, full_matrix).
+    Returns (house_filtered, senate_filtered, full_matrix), or None if unavailable.
     """
-    house = pl.read_parquet(eda_dir / "data" / "vote_matrix_house_filtered.parquet")
-    senate = pl.read_parquet(eda_dir / "data" / "vote_matrix_senate_filtered.parquet")
-    full = pl.read_parquet(eda_dir / "data" / "vote_matrix_full.parquet")
+    house_path = eda_dir / "data" / "vote_matrix_house_filtered.parquet"
+    senate_path = eda_dir / "data" / "vote_matrix_senate_filtered.parquet"
+    full_path = eda_dir / "data" / "vote_matrix_full.parquet"
+    if not house_path.exists() or not senate_path.exists():
+        return None
+    house = pl.read_parquet(house_path)
+    senate = pl.read_parquet(senate_path)
+    full = pl.read_parquet(full_path) if full_path.exists() else pl.DataFrame()
     return house, senate, full
 
 
@@ -1029,7 +1034,14 @@ def main() -> None:
 
         # ── Phase 1: Load data ──
         print_header("LOADING DATA")
-        house_matrix, senate_matrix, full_matrix = load_eda_matrices(eda_dir)
+        eda_result = load_eda_matrices(eda_dir)
+        if eda_result is None:
+            print("Phase 02 (PCA): skipping — no EDA vote matrices available")
+            return
+        house_matrix, senate_matrix, full_matrix = eda_result
+        if house_matrix.height == 0 and senate_matrix.height == 0:
+            print("Phase 02 (PCA): skipping — 0 legislators after EDA filtering")
+            return
         rollcalls, legislators = load_metadata(data_dir)
 
         print(f"  House filtered: {house_matrix.height} x {len(house_matrix.columns) - 1}")

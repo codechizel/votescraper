@@ -124,7 +124,15 @@ class TestKSSessionProperties:
         assert special_session.is_current is False
 
     def test_li_prefix_special(self, special_session: KSSession):
-        assert special_session.li_prefix == "/li_2024s"
+        assert special_session.li_prefix == "/li_2024s/b2023_24"
+
+    def test_li_prefix_special_all(self):
+        """Each special session uses its empirically verified biennium code."""
+        assert KSSession(2024, special=True).li_prefix == "/li_2024s/b2023_24"
+        assert KSSession(2021, special=True).li_prefix == "/li_2021s/b2021s"
+        assert KSSession(2020, special=True).li_prefix == "/li_2020s/b2020s"
+        assert KSSession(2016, special=True).li_prefix == "/li_2016s/b2015_16"
+        assert KSSession(2013, special=True).li_prefix == "/li_2013s/b2013_14"
 
     def test_label_special(self, special_session: KSSession):
         assert special_session.label == "2024 Special"
@@ -284,8 +292,21 @@ class TestJsDataPaths:
         assert historical_session.js_data_paths == []
 
     def test_special_session_path(self):
-        """Special sessions use a different JS path format."""
+        """Special sessions try both /s/ and /m/ JS data paths."""
         s = KSSession(start_year=2016, special=True)
         paths = s.js_data_paths
-        assert len(paths) == 1
-        assert "/li_2016s/js/data/bills_li_2016s.js" in paths
+        assert len(paths) == 2
+        assert "/li_2016s/s/js/data/bills_li_2016s.js" in paths
+        assert "/li_2016s/m/js/data/bills_li_2016s.js" in paths
+
+    def test_special_session_2024_no_js(self):
+        """2024 special uses HTML bill listing, no JS fallback needed."""
+        s = KSSession(start_year=2024, special=True)
+        assert s.js_data_paths == []
+
+    def test_special_session_2021_has_js(self):
+        """2021 special needs JS fallback despite being >= 2021."""
+        s = KSSession(start_year=2021, special=True)
+        paths = s.js_data_paths
+        assert len(paths) == 2
+        assert "/li_2021s/s/js/data/bills_li_2021s.js" in paths

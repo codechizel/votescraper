@@ -10,6 +10,8 @@ from pathlib import Path
 
 import polars as pl
 
+from analysis.run_context import resolve_upstream_dir
+
 UPSTREAM_PHASES = [
     "01_eda",
     "02_pca",
@@ -40,19 +42,6 @@ def _read_manifest(path: Path) -> dict:
     return {}
 
 
-def _resolve_phase_dir(results_base: Path, phase: str, run_id: str | None) -> Path:
-    """Resolve the output directory for an upstream phase.
-
-    When run_id is set: results_base/{run_id}/{phase}
-    Otherwise: results_base/{phase}/latest, falling back to results_base/latest/{phase}
-    """
-    if run_id is not None:
-        return results_base / run_id / phase
-    legacy = results_base / phase / "latest"
-    if legacy.exists():
-        return legacy
-    return results_base / "latest" / phase
-
 
 def load_all_upstream(results_base: Path, run_id: str | None = None) -> dict:
     """Read all parquets and manifests from the 10 upstream phases.
@@ -66,7 +55,7 @@ def load_all_upstream(results_base: Path, run_id: str | None = None) -> dict:
     upstream: dict = {"manifests": {}, "house": {}, "senate": {}, "plots": {}}
 
     for phase in UPSTREAM_PHASES:
-        phase_dir = _resolve_phase_dir(results_base, phase, run_id)
+        phase_dir = resolve_upstream_dir(phase, results_base, run_id)
         data_dir = phase_dir / "data"
         plots_dir = phase_dir / "plots"
 
@@ -128,15 +117,15 @@ def load_all_upstream(results_base: Path, run_id: str | None = None) -> dict:
     return upstream
 
 
-def build_legislator_df(upstream: dict, chamber: str) -> pl.DataFrame:
+def build_legislator_df(upstream: dict, chamber: str) -> pl.DataFrame | None:
     """Join upstream parquets into a unified legislator DataFrame for one chamber.
 
     Base table: IRT ideal points. All other tables LEFT JOIN on legislator_slug.
+    Returns None if IRT ideal points are not available for this chamber.
     """
     base = upstream[chamber].get("irt")
     if base is None:
-        msg = f"No IRT ideal points found for {chamber}"
-        raise ValueError(msg)
+        return None
 
     df = base.select(
         "legislator_slug", "xi_mean", "xi_sd", "full_name", "party", "district", "chamber"

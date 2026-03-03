@@ -689,8 +689,15 @@ def main() -> None:
         for chamber in ("house", "senate"):
             print(f"\nBuilding unified DataFrame: {chamber}")
             df = build_legislator_df(upstream, chamber)
+            if df is None:
+                print(f"  {chamber}: IRT not available — skipping")
+                continue
             leg_dfs[chamber] = df
             print(f"  {chamber}: {df.height} legislators, {df.width} columns")
+
+        if not leg_dfs:
+            print("Phase 12 (Profiles): skipping — no IRT data for any chamber")
+            return
 
         # ── Resolve --names to slugs ──────────────────────────────────
         if args.names:

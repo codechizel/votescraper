@@ -273,18 +273,24 @@ def save_filtering_manifest(manifest: dict, out_dir: Path) -> None:
 # ── Phase 1: Load Data ──────────────────────────────────────────────────────
 
 
-def load_vote_matrices(eda_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Load filtered binary vote matrices from EDA."""
-    house = pl.read_parquet(eda_dir / "data" / "vote_matrix_house_filtered.parquet")
-    senate = pl.read_parquet(eda_dir / "data" / "vote_matrix_senate_filtered.parquet")
-    return house, senate
+def load_vote_matrices(eda_dir: Path) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+    """Load filtered binary vote matrices from EDA. Returns None if unavailable."""
+    results: list[pl.DataFrame | None] = []
+    for ch in ("house", "senate"):
+        path = eda_dir / "data" / f"vote_matrix_{ch}_filtered.parquet"
+        results.append(pl.read_parquet(path) if path.exists() else None)
+    return results[0], results[1]
 
 
-def load_irt_ideal_points(irt_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Load IRT ideal points for both chambers."""
-    house = pl.read_parquet(irt_dir / "data" / "ideal_points_house.parquet")
-    senate = pl.read_parquet(irt_dir / "data" / "ideal_points_senate.parquet")
-    return house, senate
+def load_irt_ideal_points(
+    irt_dir: Path,
+) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+    """Load IRT ideal points for both chambers. Returns None if unavailable."""
+    results: list[pl.DataFrame | None] = []
+    for ch in ("house", "senate"):
+        path = irt_dir / "data" / f"ideal_points_{ch}.parquet"
+        results.append(pl.read_parquet(path) if path.exists() else None)
+    return results[0], results[1]
 
 
 def load_clustering_labels(clustering_dir: Path, chamber: str) -> dict[str, np.ndarray] | None:
@@ -1105,10 +1111,16 @@ def main() -> None:
         irt_house, irt_senate = load_irt_ideal_points(irt_dir)
         legislators = load_legislators(data_dir)
 
-        print(f"  Vote matrix House:  {vm_house.height} x {len(vm_house.columns) - 1}")
-        print(f"  Vote matrix Senate: {vm_senate.height} x {len(vm_senate.columns) - 1}")
-        print(f"  IRT House:  {irt_house.height} legislators")
-        print(f"  IRT Senate: {irt_senate.height} legislators")
+        if vm_house is None and vm_senate is None:
+            print("Phase 05b (LCA): skipping — no EDA vote matrices available")
+            return
+
+        for label, df in [("Vote matrix House", vm_house), ("Vote matrix Senate", vm_senate)]:
+            info = f"{df.height} x {len(df.columns) - 1}" if df is not None else "not available"
+            print(f"  {label}:  {info}")
+        for label, df in [("IRT House", irt_house), ("IRT Senate", irt_senate)]:
+            info = f"{df.height} legislators" if df is not None else "not available"
+            print(f"  {label}:  {info}")
         print(f"  Legislators: {legislators.height}")
 
         chamber_configs = [
@@ -1119,8 +1131,12 @@ def main() -> None:
         results: dict[str, dict] = {}
 
         for chamber, vm, irt_ip in chamber_configs:
-            if vm.height < 5:
-                print(f"\n  Skipping {chamber}: too few legislators ({vm.height})")
+            if vm is None or vm.height < 5:
+                n = vm.height if vm is not None else 0
+                print(f"\n  Skipping {chamber}: too few legislators ({n})")
+                continue
+            if irt_ip is None:
+                print(f"\n  Skipping {chamber}: no IRT ideal points available")
                 continue
 
             chamber_results: dict = {}
@@ -1342,6 +1358,10 @@ def main() -> None:
             if "irt_cv" in result:
                 manifest[f"{ch}_irt_monotonic"] = result["irt_cv"]["is_monotonic"]
                 manifest[f"{ch}_n_straddlers"] = result["irt_cv"]["n_straddlers"]
+
+        if not results:
+            print("Phase 05b (LCA): skipping — no chambers had sufficient data")
+            return
 
         save_filtering_manifest(manifest, ctx.run_dir)
 

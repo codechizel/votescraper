@@ -5,7 +5,7 @@ vs historical sessions:
 
   Current (2025-26):  /li/b2025_26/measures/bills/
   Historical (2023-24): /li_2024/b2023_24/measures/bills/
-  Special (2024):     /li_2024s/...
+  Special (2024):     /li_2024s/b2023_24/measures/bills/
 
 This module encapsulates that logic so the scraper can target any session.
 """
@@ -20,6 +20,17 @@ CURRENT_BIENNIUM_START = 2025
 
 # Known special session years
 SPECIAL_SESSION_YEARS = [2024, 2021, 2020, 2016, 2013]
+
+# Biennium codes for special sessions.  Empirically verified — the KS Legislature
+# website is inconsistent: some specials reuse the parent biennium code while others
+# use a year-specific code (e.g., b2021s).  There is no derivable pattern.
+SPECIAL_SESSION_BIENNIUM_CODES: dict[int, str] = {
+    2024: "b2023_24",
+    2021: "b2021s",
+    2020: "b2020s",
+    2016: "b2015_16",
+    2013: "b2013_14",
+}
 
 # State-level directory name (sits between data/results root and biennium dir)
 STATE_DIR = "kansas"
@@ -66,9 +77,14 @@ class KSSession:
 
     @property
     def li_prefix(self) -> str:
-        """The /li.../ path prefix for this session."""
+        """The /li.../ path prefix for this session.
+
+        Special sessions include a biennium code that varies per session
+        (see SPECIAL_SESSION_BIENNIUM_CODES).
+        """
         if self.special:
-            return f"/li_{self.start_year}s"
+            code = SPECIAL_SESSION_BIENNIUM_CODES[self.start_year]
+            return f"/li_{self.start_year}s/{code}"
         elif self.is_current:
             return f"/li/{self.biennium_code}"
         else:
@@ -122,12 +138,21 @@ class KSSession:
         Sessions before 2021 load bill lists via JavaScript instead of server-side
         HTML rendering.  The JS file lives at one of two paths (Senate ``/s/`` or
         House ``/m/``). Returns an empty list for sessions that use HTML listing.
+
+        Special sessions: only the 2024 special uses HTML bill listing; all others
+        (2021s, 2020s, 2016s, 2013s) are JS-rendered.
         """
+        if self.special:
+            if self.start_year >= 2024:
+                return []  # 2024 special has HTML bill links
+            prefix = f"/li_{self.start_year}s"
+            basename = f"bills_li_{self.start_year}s.js"
+            return [
+                f"{prefix}/s/js/data/{basename}",
+                f"{prefix}/m/js/data/{basename}",
+            ]
         if self.start_year >= 2021:
             return []
-        if self.special:
-            prefix = f"/li_{self.start_year}s"
-            return [f"{prefix}/js/data/bills_li_{self.start_year}s.js"]
         prefix = f"/li_{self.end_year}"
         basename = f"bills_li_{self.end_year}.js"
         return [
@@ -143,7 +168,11 @@ class KSSession:
 
     @property
     def api_path(self) -> str:
-        """API base path for this session."""
+        """API base path for this session.
+
+        Note: KLISS API returns 404/500 for all known special sessions.
+        The path is kept for completeness in case API support is added.
+        """
         if self.special:
             return f"/li_{self.start_year}s/api/v13/rev-1"
         elif self.is_current:

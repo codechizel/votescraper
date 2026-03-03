@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-02 (CQ1 manifest key regression test)
+**Last updated:** 2026-03-02 (bill text NLP roadmap)
 
 ---
 
@@ -113,6 +113,45 @@ Completed 2026-02-28. Bipartite bill-legislator network preserving two-mode stru
 | **Bai-Perron confidence intervals** | **Done** | R `strucchange::breakpoints()` + `confint()` via subprocess. ADR-0061. |
 
 R enrichment is optional — `--skip-r` for Python-only mode. 21 new tests (85 total). Full analysis: [`docs/tsa-deep-dive.md`](tsa-deep-dive.md). Design doc: [`analysis/design/tsa.md`](../analysis/design/tsa.md). ADRs: 0057, 0061.
+
+---
+
+## Next Up: Bill Text NLP Pipeline
+
+Full survey and technical design: [`docs/bill-text-nlp-deep-dive.md`](bill-text-nlp-deep-dive.md).
+
+### BT1. Bill Text Retrieval (scraper extension)
+
+Extend the scraper to download bill PDFs (introduced version + supplemental notes) from kslegislature.gov and extract text via `pdfplumber`. Output: 5th CSV (`{name}_bill_texts.csv`) with columns `session`, `bill_number`, `version`, `document_type`, `text`, `page_count`, `pdf_url`. Joins to existing data on `bill_number`. Separate fetch step (`just fetch-text 2025`) since it's slow (hundreds of PDF downloads). Start with 91st, validate, then backfill historical.
+
+**Dependencies:** `pdfplumber`
+**Prerequisite for:** BT2, BT3, BT4, BT5
+
+### BT2. Bill Text Analysis — Phase 18
+
+Topic modeling with BERTopic on full bill text. CAP 28-category zero-shot policy classification. Bill similarity via sentence-transformer embeddings. Cross-reference topics with voting patterns: which policy areas split the caucus, which are rubber-stamps. Topic-specific party cohesion scores.
+
+**Dependencies:** `bertopic`, `sentence-transformers`, `hdbscan` (new), `umap-learn` (already installed)
+**Output:** `bill_topics.csv`, topic distribution plots, policy-area heatmaps, model legislation candidates
+**Enriches:** Phase 08 (prediction features), Phase 11 (per-topic voting patterns), Phase 12 ("how did legislator X vote on education bills?"), Phase 07 (policy-area-specific indices)
+
+### BT3. Text-Based Ideal Points — Phase 18b (experimental)
+
+TBIP (Vafa, Naidu & Blei, ACL 2020) via NumPyro. Estimates legislator ideal points from bill text alone (no votes). Cross-validates against IRT xi_mean, alongside SM and DIME external validations. NumPyro implementation is JAX-compatible (same stack as nutpie).
+
+**Caveat:** TBIP was designed for authored text (speeches, tweets). Bills are staff-drafted with sponsor attribution — weaker author mapping. Treat as experimental validation, not a replacement for vote-based IRT.
+
+### BT4. Issue-Specific Ideal Points (future extension)
+
+Shin 2024 `issueirt` R package. Uses topic labels (from BT2) as hierarchical structure in IRT to estimate per-policy-area ideal points. "How conservative is this legislator on education vs. criminal justice?" R subprocess follows existing pattern (Phase 15, 17).
+
+**Prerequisite:** BT2 topic labels at sufficient quality.
+
+### BT5. Model Legislation Detection (future extension)
+
+Cross-state bill similarity using LegiScan or OpenStates data from other states. Bills with >0.95 cosine similarity across states are model legislation candidates. Based on the Legislative Influence Detector approach (KDD 2016). Requires expanding data acquisition beyond Kansas.
+
+**Prerequisite:** BT1 embeddings, cross-state data source.
 
 ---
 
@@ -342,26 +381,17 @@ Three tests in `TestManifestKeyConsistency` parse `manifests.get()` calls from s
 
 **Files:** `tests/test_synthesis.py`
 
-### CQ2. Consolidate `_resolve_phase_dir()` into `resolve_upstream_dir()`
+### ~~CQ2. Consolidate `_resolve_phase_dir()` into `resolve_upstream_dir()`~~ — Done
 
-`synthesis_data.py` has a private `_resolve_phase_dir()` that is functionally identical to the public `resolve_upstream_dir()` in `run_context.py` (same 3-level fallback cascade, minus the CLI override parameter). One import swap eliminates the duplicate and removes a drift vector.
+**Fixed 2026-03-02.** Replaced private `_resolve_phase_dir()` in `synthesis_data.py` with the public `resolve_upstream_dir()` from `run_context.py`. Single import swap, functionally identical (same 3-level fallback cascade).
 
-**Files:** `analysis/11_synthesis/synthesis_data.py`, `analysis/run_context.py`
-**Effort:** Single import change, 5 minutes
+### ~~CQ3. Leadership suffix regex deduplication~~ — Done
 
-### CQ3. Leadership suffix regex deduplication
+**Fixed 2026-03-02.** Consolidated `r"\s*-\s+.*$"` regex from 3 definitions to 1. `phase_utils.normalize_name()` and `external_validation_data.normalize_our_name()` now use `strip_leadership_suffix()` from `run_context.py`.
 
-The regex `r"\s*-\s+.*$"` is defined 3 times and the stripping function implemented twice. `run_context.py` already exports `strip_leadership_suffix()`, but `phase_utils.py` redefines `_LEADERSHIP_SUFFIX_RE` locally (line 75) and `external_validation_data.py` has a fully independent implementation. Quick consolidation to a single source of truth.
+### ~~CQ4. EDA heatmap label lookup — precompute dict~~ — Done
 
-**Files:** `analysis/phase_utils.py`, `analysis/14_external_validation/external_validation_data.py`
-**Effort:** ~10 minutes
-
-### CQ4. EDA heatmap label lookup — precompute dict
-
-`analysis/01_eda/eda.py` (lines 1682-1687) filters the legislators DataFrame twice per slug inside a list comprehension. Not a performance bottleneck at ~85 legislators, but a precomputed `slug_to_name` dict is cleaner and idiomatic.
-
-**Files:** `analysis/01_eda/eda.py`
-**Effort:** 2-line change, trivial
+**Fixed 2026-03-02.** Replaced double-filter list comprehension in `eda.py` with a precomputed `slug_to_name` dict lookup (matching the `slug_to_party` pattern already used nearby).
 
 ---
 
@@ -493,7 +523,7 @@ All 18 phases define `*_PRIMER` strings (150-200 lines of Markdown each) that Ru
 | Dynamic IRT within biennium | 2-year window too short; cross-session handles between-biennium |
 | GGUM unfolding models | No extreme-alliance voting pattern in Kansas data |
 | LLM legislative agents | Too experimental; XGBoost already at 0.98 AUC |
-| TBIP text-based ideal points | No full bill text available from scraper — revisit if bill text phase lands (see `docs/future-bill-text-analysis.md`) |
+| TBIP text-based ideal points | ~~No full bill text available~~ — **Unrejected.** Bill text retrieval planned (BT1), TBIP planned as Phase 18b (BT3). See `docs/bill-text-nlp-deep-dive.md`. |
 
 See `docs/method-evaluation.md` for detailed rationale on each rejection.
 
@@ -546,9 +576,15 @@ See `docs/method-evaluation.md` for detailed rationale on each rejection.
 | 31 | Standalone Posterior Predictive Checks | BAY | **Done** — Phase 4c (ADR-0063), 6/8 bienniums (ADR-0073) |
 | 32 | TSA Hardening (Desposato, CROPS, validation) | TSA | Completed — item #7 above |
 
-**Score: 32 completed, 7 rejected = 39 total**
+| 33 | Bill Text Topic Modeling (BERTopic) | NLP | **Planned** — Phase 18 (BT2) |
+| 34 | Bill Text Policy Classification (CAP) | NLP | **Planned** — Phase 18 (BT2) |
+| 35 | Text-Based Ideal Points (TBIP) | NLP | **Planned** — Phase 18b (BT3, experimental) |
+| 36 | Issue-Specific Ideal Points | BAY | **Planned** — BT4 (future) |
+| 37 | Model Legislation Detection | NLP | **Planned** — BT5 (future) |
 
-Note: Methods 29-32 are additions beyond the original 28 (Dynamic Ideal Points, DIME/CFscores, Standalone PPC, TSA Hardening).
+**Score: 32 completed, 5 planned, 6 rejected = 43 total**
+
+Note: Methods 29-32 are additions beyond the original 28 (Dynamic Ideal Points, DIME/CFscores, Standalone PPC, TSA Hardening). Methods 33-37 are the bill text NLP pipeline.
 
 ---
 

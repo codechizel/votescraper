@@ -299,32 +299,44 @@ def parse_args() -> argparse.Namespace:
 # ── Phase 1: Load Data ──────────────────────────────────────────────────────
 
 
-def load_irt_ideal_points(irt_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Load IRT ideal points for both chambers."""
-    house = pl.read_parquet(irt_dir / "data" / "ideal_points_house.parquet")
-    senate = pl.read_parquet(irt_dir / "data" / "ideal_points_senate.parquet")
-    return house, senate
+def load_irt_ideal_points(
+    irt_dir: Path,
+) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+    """Load IRT ideal points for both chambers. Returns None per chamber if unavailable."""
+    results: list[pl.DataFrame | None] = []
+    for ch in ("house", "senate"):
+        path = irt_dir / "data" / f"ideal_points_{ch}.parquet"
+        results.append(pl.read_parquet(path) if path.exists() else None)
+    return results[0], results[1]
 
 
-def load_agreement_matrices(eda_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Load pairwise Kappa agreement matrices from EDA."""
-    house = pl.read_parquet(eda_dir / "data" / "agreement_kappa_house.parquet")
-    senate = pl.read_parquet(eda_dir / "data" / "agreement_kappa_senate.parquet")
-    return house, senate
+def load_agreement_matrices(
+    eda_dir: Path,
+) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+    """Load pairwise Kappa agreement matrices from EDA. Returns None if unavailable."""
+    results: list[pl.DataFrame | None] = []
+    for ch in ("house", "senate"):
+        path = eda_dir / "data" / f"agreement_kappa_{ch}.parquet"
+        results.append(pl.read_parquet(path) if path.exists() else None)
+    return results[0], results[1]
 
 
-def load_vote_matrices(eda_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Load filtered binary vote matrices from EDA."""
-    house = pl.read_parquet(eda_dir / "data" / "vote_matrix_house_filtered.parquet")
-    senate = pl.read_parquet(eda_dir / "data" / "vote_matrix_senate_filtered.parquet")
-    return house, senate
+def load_vote_matrices(eda_dir: Path) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+    """Load filtered binary vote matrices from EDA. Returns None if unavailable."""
+    results: list[pl.DataFrame | None] = []
+    for ch in ("house", "senate"):
+        path = eda_dir / "data" / f"vote_matrix_{ch}_filtered.parquet"
+        results.append(pl.read_parquet(path) if path.exists() else None)
+    return results[0], results[1]
 
 
-def load_pca_scores(pca_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Load PCA scores for cross-validation."""
-    house = pl.read_parquet(pca_dir / "data" / "pc_scores_house.parquet")
-    senate = pl.read_parquet(pca_dir / "data" / "pc_scores_senate.parquet")
-    return house, senate
+def load_pca_scores(pca_dir: Path) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+    """Load PCA scores for cross-validation. Returns None if unavailable."""
+    results: list[pl.DataFrame | None] = []
+    for ch in ("house", "senate"):
+        path = pca_dir / "data" / f"pc_scores_{ch}.parquet"
+        results.append(pl.read_parquet(path) if path.exists() else None)
+    return results[0], results[1]
 
 
 # ── Phase 2: Party Loyalty ───────────────────────────────────────────────────
@@ -2283,12 +2295,23 @@ def main() -> None:
         pca_house, pca_senate = load_pca_scores(pca_dir)
         rollcalls, legislators = load_metadata(data_dir)
 
-        print(f"  IRT House:    {irt_house.height} legislators")
-        print(f"  IRT Senate:   {irt_senate.height} legislators")
-        print(f"  Kappa House:  {kappa_house.height} x {len(kappa_house.columns) - 1}")
-        print(f"  Kappa Senate: {kappa_senate.height} x {len(kappa_senate.columns) - 1}")
-        print(f"  Vote matrix House:  {vm_house.height} x {len(vm_house.columns) - 1}")
-        print(f"  Vote matrix Senate: {vm_senate.height} x {len(vm_senate.columns) - 1}")
+        # Check if we have enough upstream data to proceed
+        if irt_house is None and irt_senate is None:
+            print("Phase 05 (Clustering): skipping — no IRT ideal points available")
+            return
+        if kappa_house is None and kappa_senate is None:
+            print("Phase 05 (Clustering): skipping — no EDA agreement matrices available")
+            return
+
+        for label, df in [("IRT House", irt_house), ("IRT Senate", irt_senate)]:
+            info = f"{df.height} legislators" if df is not None else "not available"
+            print(f"  {label}:    {info}")
+        for label, df in [("Kappa House", kappa_house), ("Kappa Senate", kappa_senate)]:
+            info = f"{df.height} x {len(df.columns) - 1}" if df is not None else "not available"
+            print(f"  {label}:  {info}")
+        for label, df in [("Vote matrix House", vm_house), ("Vote matrix Senate", vm_senate)]:
+            info = f"{df.height} x {len(df.columns) - 1}" if df is not None else "not available"
+            print(f"  {label}:  {info}")
         print(f"  Rollcalls: {rollcalls.height}")
         print(f"  Legislators: {legislators.height}")
 
@@ -2300,8 +2323,9 @@ def main() -> None:
         results: dict[str, dict] = {}
 
         for chamber, irt_ip, kappa_mat, vm, pca_scores in chamber_configs:
-            if irt_ip.height < 5:
-                print(f"\n  Skipping {chamber}: too few legislators ({irt_ip.height})")
+            if irt_ip is None or irt_ip.height < 5:
+                n = irt_ip.height if irt_ip is not None else 0
+                print(f"\n  Skipping {chamber}: too few legislators ({n})")
                 continue
 
             chamber_results: dict = {
@@ -2683,6 +2707,10 @@ def main() -> None:
                             k: v for k, v in pd.items() if k not in ("labels", "slugs")
                         }
                 manifest[f"{ch}_within_party"] = wp_summary
+
+        if not results:
+            print("Phase 05 (Clustering): skipping — no chambers had sufficient data")
+            return
 
         save_filtering_manifest(manifest, ctx.run_dir)
 

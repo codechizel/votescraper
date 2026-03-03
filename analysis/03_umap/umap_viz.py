@@ -237,13 +237,17 @@ def find_irt_column(df: pl.DataFrame) -> str | None:
 
 def load_eda_matrices(
     eda_dir: Path,
-) -> tuple[pl.DataFrame, pl.DataFrame]:
+) -> tuple[pl.DataFrame, pl.DataFrame] | None:
     """Load filtered vote matrices from the EDA phase output.
 
-    Returns (house_filtered, senate_filtered).
+    Returns (house_filtered, senate_filtered), or None if unavailable.
     """
-    house = pl.read_parquet(eda_dir / "data" / "vote_matrix_house_filtered.parquet")
-    senate = pl.read_parquet(eda_dir / "data" / "vote_matrix_senate_filtered.parquet")
+    house_path = eda_dir / "data" / "vote_matrix_house_filtered.parquet"
+    senate_path = eda_dir / "data" / "vote_matrix_senate_filtered.parquet"
+    if not house_path.exists() or not senate_path.exists():
+        return None
+    house = pl.read_parquet(house_path)
+    senate = pl.read_parquet(senate_path)
     return house, senate
 
 
@@ -946,7 +950,14 @@ def main() -> None:
 
         # ── Phase 1: Load data ──
         print_header("LOADING DATA")
-        house_matrix, senate_matrix = load_eda_matrices(eda_dir)
+        eda_result = load_eda_matrices(eda_dir)
+        if eda_result is None:
+            print("Phase 03 (UMAP): skipping — no EDA vote matrices available")
+            return
+        house_matrix, senate_matrix = eda_result
+        if house_matrix.height == 0 and senate_matrix.height == 0:
+            print("Phase 03 (UMAP): skipping — 0 legislators after EDA filtering")
+            return
         legislators = load_legislators(data_dir)
 
         print(f"  House filtered: {house_matrix.height} x {len(house_matrix.columns) - 1}")
