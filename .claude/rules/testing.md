@@ -8,7 +8,7 @@ paths:
 ## Commands
 
 ```bash
-just test                    # run all tests (~2113)
+just test                    # run all tests (~2458)
 just test-scraper            # scraper tests only (-m scraper, ~312)
 just test-fast               # skip slow tests (-m "not slow")
 just check                   # full check (lint + typecheck + tests)
@@ -103,6 +103,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_irt_2d.py` — sign-flip logic, PCA correlation, convergence constants (~16 tests)
 - `tests/test_bill_actions.py` — BillAction dataclass construction, CSV export (headers, committee join, roundtrip, row counts) (~17 tests)
 - `tests/test_bill_lifecycle.py` — bill lifecycle Sankey data: action categorization, stage transitions, died inference, chamber filtering, Sankey plot, constants (~31 tests)
+- `tests/test_model_legislation.py` — ALEC scraper (mocked HTML), OpenStates adapter (mocked API), cosine similarity, match classification, n-gram overlap, match summary, report builder, CLI args (~58 tests)
 
 ## Integration & Structure Test Files
 

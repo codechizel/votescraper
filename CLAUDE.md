@@ -19,12 +19,13 @@ just scrape 2025                             # → uv run tallgrass 2025
 just scrape-fresh 2025                       # → uv run tallgrass --clear-cache 2025
 just text 2025                               # → uv run tallgrass-text 2025 (bill text retrieval)
 just kanfocus 1999                           # → uv run tallgrass-kanfocus 1999 (KanFocus vote scrape)
+just alec                                    # → uv run tallgrass-alec (ALEC model legislation scrape)
 just lint                                    # → ruff check --fix + ruff format
 just lint-check                              # → ruff check + ruff format --check
 just typecheck                               # → ty check src/ + ty check analysis/
 just sessions                                # → uv run tallgrass --list-sessions
 just check                                   # → lint-check + typecheck + test (quality gate)
-just test                                    # → uv run pytest tests/ -v (~2113 tests)
+just test                                    # → uv run pytest tests/ -v (~2458 tests)
 just test-scraper                            # → pytest -m scraper (~312 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just monitor                                 # → check running experiment status
@@ -41,7 +42,7 @@ uv run tallgrass-kanfocus 2011 --mode gap-fill  # fill 84th gaps
 
 Analysis recipes (all pass `*args` through to the underlying script):
 
-`just eda`, `just pca`, `just mca`, `just umap`, `just irt`, `just irt-2d`, `just ppc`, `just clustering`, `just lca`, `just network`, `just bipartite`, `just indices`, `just betabinom`, `just hierarchical`, `just synthesis`, `just profiles`, `just tsa`, `just cross-session`, `just external-validation`, `just dime`, `just dynamic-irt`, `just wnominate`, `just text-analysis`, `just tbip`, `just issue-irt`.
+`just eda`, `just pca`, `just mca`, `just umap`, `just irt`, `just irt-2d`, `just ppc`, `just clustering`, `just lca`, `just network`, `just bipartite`, `just indices`, `just betabinom`, `just hierarchical`, `just synthesis`, `just profiles`, `just tsa`, `just cross-session`, `just external-validation`, `just dime`, `just dynamic-irt`, `just wnominate`, `just text-analysis`, `just tbip`, `just issue-irt`, `just model-legislation`.
 
 Each maps to `uv run python analysis/NN_phase/phase.py`. Example: `just profiles --names "Masterson"` runs `uv run python analysis/12_profiles/profiles.py --names "Masterson"`.
 
@@ -92,8 +93,15 @@ src/tallgrass/
     kansas.py     - KansasAdapter: bill discovery + PDF URL construction
     fetcher.py    - BillTextFetcher: concurrent download + text extraction
     extractors.py - PDF extraction + legislative text cleaning (pure functions)
+    openstates.py - OpenStates multi-state adapter (MO, OK, NE, CO via API v3)
     output.py     - CSV export (bill_texts.csv)
     cli.py        - tallgrass-text entry point
+  alec/
+    __init__.py   - Public API re-exports
+    models.py     - ALECModelBill frozen dataclass
+    scraper.py    - Paginated listing scraper + bill text extraction
+    output.py     - CSV export (alec_model_bills.csv)
+    cli.py        - tallgrass-alec entry point
   kanfocus/
     __init__.py   - Public API re-exports
     models.py     - KanFocusVoteRecord + KanFocusLegislator frozen dataclasses
@@ -110,6 +118,8 @@ Vote scraper pipeline: `get_bill_urls()` -> `_filter_bills_with_votes()` -> `get
 Bill text pipeline: `KansasAdapter.discover_bills()` -> `BillTextFetcher.fetch_all()` -> `save_bill_texts()`
 
 KanFocus pipeline: `KanFocusFetcher.fetch_biennium()` -> `parse_vote_page()` -> `convert_to_standard()` -> `save_csvs()` (or `merge_gap_fill()` for gap-fill mode). Coverage: 78th-91st (1999-2026). See ADR-0088.
+
+ALEC pipeline: `enumerate_bills()` -> `fetch_bill_texts()` -> `save_alec_bills()`. Scrapes alec.org/model-policy/ (~1,061 model policies). Cached HTML at `data/external/alec/.cache/`. See ADR-0089.
 
 Static parsing helpers (all `@staticmethod` on `KSVoteScraper`): `_extract_bill_title()`, `_extract_chamber_motion_date()`, `_parse_vote_categories()`, `_extract_party_and_district()`. Each docstring references the HTML pitfalls it handles. Tests call these directly.
 
@@ -180,6 +190,7 @@ Cache: `data/kansas/{name}/.cache/`. Failed fetches -> `failure_manifest.json` +
 External data: `data/external/shor_mccarty.tab` (Shor-McCarty scores, auto-downloaded from Harvard Dataverse).
 External data: `data/external/dime_recipients_1979_2024.csv` (DIME CFscores, manually placed, ODC-BY license).
 External data: `data/external/openstates/ks_slug_to_ocd.json` (OpenStates slug→ocd_id mapping, auto-synced via `just roster-sync`, CC0 license — ADR-0085).
+External data: `data/external/alec/alec_model_bills.csv` (ALEC model policy corpus, scraped via `just alec`, public data — ADR-0089).
 
 ## Results Directory
 
@@ -205,11 +216,13 @@ Phase `18b_tbip` is text-based ideal points — embedding-vote approach (not tru
 
 Phase `19_issue_irt` is issue-specific ideal points — topic-stratified flat IRT on per-topic vote subsets from Phase 18 BERTopic/CAP topics. Reuses Phase 04 `build_irt_graph()` / `build_and_sample()` — zero new model code. Two taxonomies: BERTopic (data-driven) + CAP (standardized). Relaxed thresholds (R-hat < 1.05, ESS > 200). Cross-topic correlation heatmap, ideological profile matrix, outlier detection. Standalone with `just issue-irt`; not in pipeline (requires Phase 18 topics + IRT results). Design: `analysis/design/issue_irt.md`, ADR-0087.
 
+Phase `20_model_legislation` is model legislation detection (BT5) — cosine similarity between Kansas bill embeddings and ALEC model policy corpus + neighbor state bills (MO, OK, NE, CO via OpenStates API). Three-tier matching (near-identical >= 0.95, strong >= 0.85, related >= 0.70). N-gram overlap confirmation for strong matches. Cross-references with Phase 18 topics. Standalone with `just model-legislation`; not in pipeline (requires BT1 bill texts + ALEC corpus from `just alec`). Design: `analysis/design/model_legislation.md`, ADR-0089.
+
 See `.claude/rules/analysis-framework.md` for the full pipeline, report system architecture, and design doc index. See `.claude/rules/analytic-workflow.md` for methodology rules, validation requirements, and audience guidance.
 
 Key references:
 - Design docs: `analysis/design/README.md`
-- ADRs: `docs/adr/README.md` (84 decisions)
+- ADRs: `docs/adr/README.md` (89 decisions)
 - Analysis primer: `docs/analysis-primer.md` (plain-English guide)
 - How IRT works: `docs/how-irt-works.md` (general-audience explanation of anchors, identification, and MCMC divergences)
 - External validation: `docs/external-validation-results.md` (5-biennium results, all 20 correlations "strong")
@@ -248,13 +261,15 @@ Key references:
 - Bipartite design: `analysis/design/bipartite.md` (BiCM backbone, Newman projection, bill communities, Phase 6 comparison)
 - Bill text retrieval: ADR-0083 (StateAdapter Protocol, shared bill discovery, pdfplumber PDF extraction, multi-state-ready)
 - Legislator identity: ADR-0085 (OpenStates OCD person IDs, slug→ocd_id mapping, 3-phase matching, same-name disambiguation)
-- Bill text NLP deep dive: `docs/bill-text-nlp-deep-dive.md` (BERTopic, CAP classification, TBIP, embeddings — BT2 done, BT3-BT4 done, BT5 planned)
+- Bill text NLP deep dive: `docs/bill-text-nlp-deep-dive.md` (BERTopic, CAP classification, TBIP, embeddings — BT1-BT5 complete)
 - Bill text analysis design: `analysis/design/bill_text.md` (BERTopic config, FastEmbed embedding, CAP taxonomy, Rice cohesion, caucus-splitting)
 - Text-based ideal points: ADR-0086 (embedding-vote approach, TBIP alternative for committee-sponsored bills)
 - Text-based ideal points design: `analysis/design/tbip.md` (methodology, assumptions, lower quality thresholds, limitations)
 - Issue-specific ideal points: ADR-0087 (topic-stratified flat IRT, why not issueirt, thresholds, anchor strategy)
 - Issue-specific ideal points design: `analysis/design/issue_irt.md` (two taxonomies, parameters, quality thresholds, assumptions)
 - KanFocus vote data adapter: ADR-0088 (1999-2026 coverage, gap-fill mode, category mapping, slug cross-reference)
+- Model legislation detection: ADR-0089 (ALEC + cross-state, embedding similarity, n-gram overlap, BT5)
+- Model legislation design: `analysis/design/model_legislation.md` (thresholds, data sources, architecture, limitations)
 - Future bill text analysis: `docs/future-bill-text-analysis.md` (original notes, superseded by deep dive)
 - Apple Silicon MCMC tuning: `docs/apple-silicon-mcmc-tuning.md` (P/E core scheduling, thread pool caps, parallel chains, batch job rules)
 - Ward linkage article: `docs/ward-linkage-non-euclidean.md` (why Ward on Kappa distances is impure, the fix)

@@ -41,6 +41,7 @@ What are the trade-offs?
 | [0086](0086-text-ideal-points-embedding-vote.md) | Text-based ideal points via embedding-vote approach (Phase 18b) |
 | [0087](0087-issue-specific-ideal-points.md) | Issue-specific ideal points via topic-stratified flat IRT (Phase 19) |
 | [0088](0088-kanfocus-vote-data-adapter.md) | KanFocus vote data adapter (1999-2026, gap-fill, category mapping) |
+| [0089](0089-model-legislation-detection.md) | Model legislation detection (ALEC + cross-state, BT5) |
 
 ### Dimensionality Reduction
 
@@ -241,6 +242,7 @@ What are the trade-offs?
 | [0086](0086-text-ideal-points-embedding-vote.md) | Text-based ideal points via embedding-vote approach (Phase 18b, TBIP alternative for committee-sponsored bills) | Accepted | 2026-03-03 |
 | [0087](0087-issue-specific-ideal-points.md) | Issue-specific ideal points via topic-stratified flat IRT (Phase 19, BT4) | Accepted | 2026-03-03 |
 | [0088](0088-kanfocus-vote-data-adapter.md) | KanFocus vote data adapter (1999-2026, gap-fill, category mapping) | Accepted | 2026-03-03 |
+| [0089](0089-model-legislation-detection.md) | Model legislation detection (ALEC + cross-state, BT5) | Accepted | 2026-03-03 |
 
 ## Creating a New ADR
 

@@ -41,6 +41,10 @@ text *args:
 kanfocus *args:
     uv run tallgrass-kanfocus {{args}}
 
+# Scrape ALEC model legislation corpus
+alec *args:
+    uv run tallgrass-alec {{args}}
+
 # Sync OpenStates legislator roster (slug→ocd_id mapping)
 roster-sync:
     uv run python -c "from tallgrass.roster import sync_roster; sync_roster()"
@@ -166,6 +170,10 @@ tbip *args:
 # Run issue-specific ideal points (topic-stratified IRT)
 issue-irt *args:
     uv run python analysis/19_issue_irt/issue_irt.py {{args}}
+
+# Run model legislation detection (ALEC + cross-state)
+model-legislation *args:
+    uv run python analysis/20_model_legislation/model_legislation.py {{args}}
 
 # Run full analysis pipeline for a session (all phases grouped under one run ID)
 pipeline session="2025-26" *args:

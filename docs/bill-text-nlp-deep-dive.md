@@ -113,7 +113,7 @@ OpenStates (now under Plural, `pluralpolicy.com`) provides JSON bulk downloads i
 
 ### Recommendation — Implemented
 
-**Option A (direct PDF scraping) implemented as BT1 (2026-03-02, ADR-0083).** The `tallgrass-text` CLI downloads introduced versions and supplemental notes, extracts text via `pdfplumber`, and exports to `bill_texts.csv`. Multi-state-ready `StateAdapter` Protocol with `KansasAdapter` as first implementation. Shared bill discovery module (`bills.py`) extracted from scraper. LegiScan remains available as a fallback for cross-state expansion (BT5).
+**Option A (direct PDF scraping) implemented as BT1 (2026-03-02, ADR-0083).** The `tallgrass-text` CLI downloads introduced versions and supplemental notes, extracts text via `pdfplumber`, and exports to `bill_texts.csv`. Multi-state-ready `StateAdapter` Protocol with `KansasAdapter` as first implementation. Shared bill discovery module (`bills.py`) extracted from scraper. Cross-state expansion implemented as BT5 (2026-03-03, ADR-0089) via OpenStates API v3 for neighbor state bill discovery (MO, OK, NE, CO).
 
 ---
 
@@ -297,13 +297,19 @@ Organizations like ALEC draft "model bills" that are introduced verbatim or near
 
 Published at KDD 2016 (Burgess et al.). Uses Smith-Waterman local alignment (borrowed from bioinformatics) to find text reuse between model legislation databases and state bills. Elasticsearch-based candidate filtering, then pairwise alignment with synonym handling. Found ALEC introduced 10,370 bills across states, 1,573 enacted. A [companion tutorial](https://investigate.ai/azcentral-text-reuse-model-legislation/05-checking-for-legislative-text-reuse-using-python-solr-and-simple-text-search/) demonstrates a simpler Python + Solr approach.
 
-### Simpler approach with embeddings
+### Simpler approach with embeddings — Implemented
 
-With bill text embeddings already computed (Section 6), cross-state bill similarity becomes trivial: bills with cosine similarity >0.95 from different states are model legislation candidates. This requires LegiScan or OpenStates data from other states — defer unless the project scope expands beyond Kansas.
+**Implemented as BT5 / Phase 20 (2026-03-03, ADR-0089).** With bill text embeddings already computed (Phase 18), cross-state bill similarity becomes straightforward: bills with cosine similarity >= 0.95 are near-identical (likely direct copies), >= 0.85 are strong matches (adapted from same source), and >= 0.70 are related (warrants investigation). 5-gram word overlap serves as secondary confirmation for strong matches (>= 0.85).
+
+Two comparison corpora:
+1. **ALEC model policies** (~1,061 model bills scraped from alec.org via `just alec`)
+2. **Neighbor state bills** (MO, OK, NE, CO via OpenStates API v3 + `BillTextFetcher` PDF extraction)
+
+All corpora share the same BAAI/bge-small-en-v1.5 embedding space as Phase 18, so similarity scores are directly comparable. The `OpenStatesAdapter` implements the existing `StateAdapter` Protocol, reusing `BillTextFetcher` for state-agnostic PDF download and extraction.
 
 ### Integration with tallgrass
 
-This is a natural extension of the bill similarity analysis in Phase 18. For Kansas-only analysis: flag bills whose text matches known model legislation databases. For cross-state work: detect which Kansas bills appear verbatim in other states. Both feed into the synthesis narrative ("Bill X was introduced in 12 states; Kansas was the 4th to pass it").
+Phase 20 cross-references matches with Phase 18 BERTopic/CAP topic assignments to show which policy areas have the most model legislation influence. The HTML report includes interactive ALEC match tables, cross-state match tables, similarity distribution histograms, topic heatmaps, and side-by-side text excerpts for near-identical matches. Run with `just model-legislation`.
 
 ---
 

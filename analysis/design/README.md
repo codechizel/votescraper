@@ -35,6 +35,7 @@ Read these sequentially. Each phase inherits data from the previous one, so assu
 | 15. Bill Text Analysis | [bill_text.md](bill_text.md) | BERTopic topics (FastEmbed + HDBSCAN), CAP classification (Claude API, optional), bill similarity, caucus-splitting scores |
 | 16. Text-Based Ideal Points | [tbip.md](tbip.md) | Embedding-vote approach (not TBIP), vote-weighted bill embeddings + PCA, lower quality thresholds, IRT validation |
 | 17. Issue-Specific Ideal Points | [issue_irt.md](issue_irt.md) | Topic-stratified flat IRT on per-topic vote subsets, two taxonomies (BERTopic/CAP), relaxed convergence, anchor stability |
+| 18. Model Legislation Detection | [model_legislation.md](model_legislation.md) | ALEC corpus matching, cross-state diffusion (MO/OK/NE/CO), cosine similarity, n-gram overlap confirmation |
 
 ## Pipeline Phase (Experimental)
 

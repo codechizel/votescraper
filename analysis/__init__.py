@@ -27,6 +27,7 @@ Pipeline phases (in order):
   18_bill_text         — Bill text analysis (BERTopic + CAP classification)
   18b_tbip             — Text-based ideal points (embedding-vote approach)
   19_issue_irt         — Issue-specific ideal points (topic-stratified IRT)
+  20_model_legislation — Model legislation detection (ALEC + cross-state)
 
 Shared infrastructure at root: run_context.py, report.py
 
@@ -113,6 +114,9 @@ _MODULE_MAP: dict[str, str] = {
     "issue_irt": "19_issue_irt",
     "issue_irt_data": "19_issue_irt",
     "issue_irt_report": "19_issue_irt",
+    "model_legislation": "20_model_legislation",
+    "model_legislation_data": "20_model_legislation",
+    "model_legislation_report": "20_model_legislation",
 }
 
 

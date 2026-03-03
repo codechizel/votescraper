@@ -15,6 +15,7 @@ dependencies = [
 tallgrass = "tallgrass.cli:main"
 tallgrass-text = "tallgrass.text.cli:main"
 tallgrass-kanfocus = "tallgrass.kanfocus.cli:main"
+tallgrass-alec = "tallgrass.alec.cli:main"
 
 [dependency-groups]
 dev = [
@@ -235,6 +236,11 @@ allowed-unresolved-imports = [
     "analysis.tbip",
     "analysis.tbip_data",
     "analysis.tbip_report",
+    "model_legislation_data",
+    "model_legislation_report",
+    "analysis.model_legislation",
+    "analysis.model_legislation_data",
+    "analysis.model_legislation_report",
 ]
 
 # Analysis code: suppress noise from third-party stubs while ty matures.
