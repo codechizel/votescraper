@@ -13,6 +13,7 @@ from tallgrass.kanfocus.output import (
     _derive_passed,
     _parse_bool,
     convert_to_standard,
+    merge_gap_fill,
 )
 
 pytestmark = pytest.mark.scraper
@@ -222,3 +223,131 @@ class TestParseBool:
 
     def test_none_string(self):
         assert _parse_bool("None") is None
+
+
+# ── merge_gap_fill() deduplication ───────────────────────────────────────
+
+
+class TestGapFillDedup:
+    """Gap-fill should only add kf_ rollcalls that don't overlap with existing je_ data."""
+
+    def _write_csv(self, path, header, rows):
+        import csv
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(header)
+            for row in rows:
+                w.writerow(row)
+
+    def _rollcall_header(self):
+        return [
+            "session", "bill_number", "bill_title", "vote_id", "vote_url",
+            "vote_datetime", "vote_date", "chamber", "motion", "vote_type",
+            "result", "short_title", "sponsor", "sponsor_slugs",
+            "yea_count", "nay_count", "present_passing_count",
+            "absent_not_voting_count", "not_voting_count", "total_votes", "passed",
+        ]
+
+    def _vote_header(self):
+        return [
+            "session", "bill_number", "bill_title", "vote_id",
+            "vote_datetime", "vote_date", "chamber", "motion",
+            "legislator_name", "legislator_slug", "vote",
+        ]
+
+    def _leg_header(self):
+        return ["name", "full_name", "slug", "chamber", "party", "district", "member_url", "ocd_id"]
+
+    def test_skips_duplicate_rollcalls(self, tmp_path):
+        """kf_ rollcalls matching existing je_ by bill+chamber+date are skipped."""
+        # Existing je_ rollcall for SB 13 / Senate / 02/03/2011
+        self._write_csv(
+            tmp_path / "test_rollcalls.csv",
+            self._rollcall_header(),
+            [["test", "SB 13", "", "je_123", "", "", "02/03/2011", "Senate",
+              "", "", "", "", "", "", 38, 0, 0, 0, 1, 38, "True"]],
+        )
+        self._write_csv(
+            tmp_path / "test_votes.csv",
+            self._vote_header(),
+            [["test", "SB 13", "", "je_123", "", "02/03/2011", "Senate", "",
+              "Abrams", "sen_abrams_steve_1", "Yea"]],
+        )
+        self._write_csv(tmp_path / "test_legislators.csv", self._leg_header(), [])
+
+        # New kf_ rollcall for same bill+chamber+date — should be skipped
+        leg = _make_legislator()
+        record = _make_record(bill_number="SB 13", chamber="S", date="02/03/2011")
+        new_votes, new_rollcalls, new_legs = convert_to_standard([record], "test", {})
+
+        merge_gap_fill(tmp_path, "test", new_votes, new_rollcalls, new_legs)
+
+        # Read merged rollcalls — should only have the original je_
+        import csv
+
+        with open(tmp_path / "test_rollcalls.csv", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert len(rows) == 1
+        assert rows[0]["vote_id"] == "je_123"
+
+    def test_keeps_genuinely_new_rollcalls(self, tmp_path):
+        """kf_ rollcalls for bills NOT in existing data are kept."""
+        # Existing je_ rollcall for SB 13
+        self._write_csv(
+            tmp_path / "test_rollcalls.csv",
+            self._rollcall_header(),
+            [["test", "SB 13", "", "je_123", "", "", "02/03/2011", "Senate",
+              "", "", "", "", "", "", 38, 0, 0, 0, 1, 38, "True"]],
+        )
+        self._write_csv(
+            tmp_path / "test_votes.csv",
+            self._vote_header(),
+            [["test", "SB 13", "", "je_123", "", "02/03/2011", "Senate", "",
+              "Abrams", "sen_abrams_steve_1", "Yea"]],
+        )
+        self._write_csv(tmp_path / "test_legislators.csv", self._leg_header(), [])
+
+        # New kf_ rollcall for SB 99 — different bill, should be kept
+        record = _make_record(vote_num=50, bill_number="SB 99", chamber="S", date="03/15/2011")
+        new_votes, new_rollcalls, new_legs = convert_to_standard([record], "test", {})
+
+        merge_gap_fill(tmp_path, "test", new_votes, new_rollcalls, new_legs)
+
+        import csv
+
+        with open(tmp_path / "test_rollcalls.csv", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert len(rows) == 2
+        vote_ids = {r["vote_id"] for r in rows}
+        assert "je_123" in vote_ids
+        assert "kf_50_2011_S" in vote_ids
+
+    def test_idempotent_rerun(self, tmp_path):
+        """Running gap-fill twice produces the same result."""
+        self._write_csv(
+            tmp_path / "test_rollcalls.csv",
+            self._rollcall_header(),
+            [["test", "SB 13", "", "je_123", "", "", "02/03/2011", "Senate",
+              "", "", "", "", "", "", 38, 0, 0, 0, 1, 38, "True"]],
+        )
+        self._write_csv(
+            tmp_path / "test_votes.csv",
+            self._vote_header(),
+            [["test", "SB 13", "", "je_123", "", "02/03/2011", "Senate", "",
+              "Abrams", "sen_abrams_steve_1", "Yea"]],
+        )
+        self._write_csv(tmp_path / "test_legislators.csv", self._leg_header(), [])
+
+        record = _make_record(vote_num=50, bill_number="SB 99", chamber="S", date="03/15/2011")
+        new_votes, new_rollcalls, new_legs = convert_to_standard([record], "test", {})
+
+        # Run twice
+        merge_gap_fill(tmp_path, "test", new_votes, new_rollcalls, new_legs)
+        merge_gap_fill(tmp_path, "test", new_votes, new_rollcalls, new_legs)
+
+        import csv
+
+        with open(tmp_path / "test_rollcalls.csv", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert len(rows) == 2

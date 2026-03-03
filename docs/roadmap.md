@@ -638,6 +638,7 @@ See `docs/method-evaluation.md` for detailed rationale on each rejection.
 
 | Item | When | Details |
 |------|------|---------|
+| **Resume KanFocus backfill** | **Next session** | 91st complete. Resume from 90th: `PYTHONUNBUFFERED=1 bash scripts/kanfocus_all.sh --delay 12`. Script auto-skips cached pages. 90th had 72 pages cached when stopped. Remaining: 90th→78th (13 bienniums). Use `--delay 12` during business hours. |
 | Update `CURRENT_BIENNIUM_START` | 2027 | Change from 2025 to 2027 in `session.py` |
 | Add special sessions | As needed | Add year to `SPECIAL_SESSION_YEARS` in `session.py`, scrape, then `just merge-special <year>` |
 | Merge special sessions | After scraping | `just merge-special all` merges into parent bienniums (ADR-0082) |

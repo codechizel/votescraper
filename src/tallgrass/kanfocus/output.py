@@ -255,15 +255,28 @@ def merge_gap_fill(
                 if slug:
                     existing_legislators[slug] = dict(row)
 
-    # Merge
-    merged_votes = existing_votes + new_votes
-    merged_rollcalls = existing_rollcalls + new_rollcalls
-    merged_legislators = {**existing_legislators, **new_legislators}
+    # Deduplicate: only keep kf_ rollcalls where no je_ rollcall exists
+    # for the same bill + chamber + date. This is the core gap-fill logic —
+    # we only want votes that kslegislature.gov didn't have.
+    existing_keys = {(rc.bill_number, rc.chamber, rc.vote_date) for rc in existing_rollcalls}
+    gap_rollcalls = [
+        rc
+        for rc in new_rollcalls
+        if (rc.bill_number, rc.chamber, rc.vote_date) not in existing_keys
+    ]
+    gap_vote_ids = {rc.vote_id for rc in gap_rollcalls}
+    gap_votes = [v for v in new_votes if v.vote_id in gap_vote_ids]
 
+    skipped = len(new_rollcalls) - len(gap_rollcalls)
     print(
-        f"  Gap-fill merge: +{len(new_votes)} votes, +{len(new_rollcalls)} rollcalls, "
-        f"+{len(new_legislators)} legislators"
+        f"  Gap-fill merge: {len(gap_rollcalls)} new rollcalls "
+        f"(skipped {skipped} already covered by kslegislature.gov)"
     )
+
+    # Merge
+    merged_votes = existing_votes + gap_votes
+    merged_rollcalls = existing_rollcalls + gap_rollcalls
+    merged_legislators = {**existing_legislators, **new_legislators}
 
     save_csvs(data_dir, output_name, merged_votes, merged_rollcalls, merged_legislators)
 

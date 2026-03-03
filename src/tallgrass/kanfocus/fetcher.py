@@ -207,7 +207,6 @@ class KanFocusFetcher:
         consecutive_empty = 0
         vote_num = 1
         chamber_name = "Senate" if chamber == "S" else "House"
-        import sys
 
         print(f"    {year} {chamber_name}: ", end="", flush=True)
 
