@@ -318,6 +318,54 @@ class TestUpstreamPhases:
         assert set(UPSTREAM_PHASES) == expected
 
 
+class TestManifestKeyConsistency:
+    """Verify manifest keys used in consumer code match UPSTREAM_PHASES.
+
+    ADR-0080 fixed a bug where synthesis.py and synthesis_report.py accessed
+    manifests using short keys ("eda", "indices") that didn't match the full
+    phase IDs stored by synthesis_data.py ("01_eda", "07_indices"). This test
+    class prevents that class of bug from recurring.
+    """
+
+    @staticmethod
+    def _extract_manifest_get_keys(filepath: Path) -> set[str]:
+        """Parse manifests.get("key") calls from a Python source file."""
+        import re
+
+        text = filepath.read_text()
+        return set(re.findall(r'manifests\.get\(["\']([^"\']+)["\']', text))
+
+    def test_synthesis_manifest_keys_are_valid_phases(self):
+        """Every manifests.get() key in synthesis.py must be an UPSTREAM_PHASES entry."""
+        synthesis_py = Path(__file__).parent.parent / "analysis" / "11_synthesis" / "synthesis.py"
+        keys = self._extract_manifest_get_keys(synthesis_py)
+        assert keys, "Expected at least one manifests.get() call in synthesis.py"
+        invalid = keys - set(UPSTREAM_PHASES)
+        assert not invalid, f"synthesis.py uses manifest keys not in UPSTREAM_PHASES: {invalid}"
+
+    def test_synthesis_report_manifest_keys_are_valid_phases(self):
+        """Every manifests.get() key in synthesis_report.py must be an UPSTREAM_PHASES entry."""
+        report_py = (
+            Path(__file__).parent.parent / "analysis" / "11_synthesis" / "synthesis_report.py"
+        )
+        keys = self._extract_manifest_get_keys(report_py)
+        assert keys, "Expected at least one manifests.get() call in synthesis_report.py"
+        invalid = keys - set(UPSTREAM_PHASES)
+        assert not invalid, (
+            f"synthesis_report.py uses manifest keys not in UPSTREAM_PHASES: {invalid}"
+        )
+
+    def test_load_all_upstream_stores_all_phase_keys(self, tmp_path: Path):
+        """load_all_upstream() must store a manifest entry for every UPSTREAM_PHASES entry."""
+        result = load_all_upstream(tmp_path)
+        stored_keys = set(result["manifests"].keys())
+        assert stored_keys == set(UPSTREAM_PHASES), (
+            f"Stored manifest keys don't match UPSTREAM_PHASES.\n"
+            f"  Missing: {set(UPSTREAM_PHASES) - stored_keys}\n"
+            f"  Extra:   {stored_keys - set(UPSTREAM_PHASES)}"
+        )
+
+
 # ── _read_parquet_safe() ────────────────────────────────────────────────────
 
 

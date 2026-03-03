@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-02 (sponsor_slugs integration into Phase 11 Synthesis + Phase 12 Profiles)
+**Last updated:** 2026-03-02 (CQ1 manifest key regression test)
 
 ---
 
@@ -329,6 +329,39 @@ Clustering, bipartite, network, profiles all build lookup dicts the same way. Id
 | Tests (T1-T2) | 2/2 | 2 | T1: slow markers, T2: weak assertions |
 
 1952 tests passing, lint clean, typecheck clean.
+
+---
+
+## Code Quality Backlog (Post-Audit Follow-Up)
+
+Items from the 2026-03-02 code audit follow-up review. The 5 primary findings (A-E) are resolved in ADR-0080; these are the remaining lower-priority opportunities identified during the post-fix assessment.
+
+### ~~CQ1. Manifest key regression test~~ — Done
+
+Three tests in `TestManifestKeyConsistency` parse `manifests.get()` calls from source and assert every key is a valid `UPSTREAM_PHASES` entry. Covers `synthesis.py`, `synthesis_report.py`, and `load_all_upstream()` storage. Prevents ADR-0080 finding A from recurring.
+
+**Files:** `tests/test_synthesis.py`
+
+### CQ2. Consolidate `_resolve_phase_dir()` into `resolve_upstream_dir()`
+
+`synthesis_data.py` has a private `_resolve_phase_dir()` that is functionally identical to the public `resolve_upstream_dir()` in `run_context.py` (same 3-level fallback cascade, minus the CLI override parameter). One import swap eliminates the duplicate and removes a drift vector.
+
+**Files:** `analysis/11_synthesis/synthesis_data.py`, `analysis/run_context.py`
+**Effort:** Single import change, 5 minutes
+
+### CQ3. Leadership suffix regex deduplication
+
+The regex `r"\s*-\s+.*$"` is defined 3 times and the stripping function implemented twice. `run_context.py` already exports `strip_leadership_suffix()`, but `phase_utils.py` redefines `_LEADERSHIP_SUFFIX_RE` locally (line 75) and `external_validation_data.py` has a fully independent implementation. Quick consolidation to a single source of truth.
+
+**Files:** `analysis/phase_utils.py`, `analysis/14_external_validation/external_validation_data.py`
+**Effort:** ~10 minutes
+
+### CQ4. EDA heatmap label lookup — precompute dict
+
+`analysis/01_eda/eda.py` (lines 1682-1687) filters the legislators DataFrame twice per slug inside a list comprehension. Not a performance bottleneck at ~85 legislators, but a precomputed `slug_to_name` dict is cleaner and idiomatic.
+
+**Files:** `analysis/01_eda/eda.py`
+**Effort:** 2-line change, trivial
 
 ---
 
