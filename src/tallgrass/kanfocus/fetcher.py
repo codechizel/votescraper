@@ -28,11 +28,89 @@ DEFAULT_DELAY = 7.0  # seconds between requests
 DEFAULT_MAX_EMPTY = 20  # consecutive empty pages before stopping a stream
 
 
+def load_chrome_cookies(domain: str = "kanfocus.com") -> dict[str, str]:
+    """Extract Chrome cookies for a domain on macOS.
+
+    Reads Chrome's encrypted cookie database using the Keychain-stored
+    encryption key. Returns ``{name: value}`` dict for ``requests.Session``.
+    Requires ``cryptography`` package (already a transitive dependency).
+    """
+    import shutil
+    import sqlite3
+    import subprocess
+    import tempfile
+
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+    # Chrome Safe Storage key from macOS Keychain
+    chrome_key = subprocess.check_output(
+        ["security", "find-generic-password", "-w", "-s", "Chrome Safe Storage", "-a", "Chrome"],
+        stderr=subprocess.DEVNULL,
+    ).strip()
+
+    kdf = PBKDF2HMAC(algorithm=hashes.SHA1(), length=16, salt=b"saltysalt", iterations=1003)
+    aes_key = kdf.derive(chrome_key)
+
+    # Chrome locks the DB — copy to temp file
+    cookie_db = Path.home() / "Library/Application Support/Google/Chrome/Default/Cookies"
+    if not cookie_db.exists():
+        for profile in ["Profile 1", "Profile 2", "Profile 3"]:
+            alt = Path.home() / f"Library/Application Support/Google/Chrome/{profile}/Cookies"
+            if alt.exists():
+                cookie_db = alt
+                break
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+        shutil.copy2(cookie_db, tmp_path)
+
+    try:
+        conn = sqlite3.connect(str(tmp_path))
+        rows = conn.execute(
+            "SELECT name, encrypted_value FROM cookies WHERE host_key LIKE ?",
+            (f"%{domain}%",),
+        ).fetchall()
+        conn.close()
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    cookies: dict[str, str] = {}
+    for name, enc in rows:
+        if not enc or len(enc) < 3:
+            continue
+        if enc[:3] == b"v10":
+            data = enc[3:]
+            iv = b" " * 16
+            cipher = Cipher(algorithms.AES(aes_key), modes.CBC(iv))
+            dec = cipher.decryptor().update(data) + cipher.decryptor().finalize()
+            # Wait — need single decryptor instance
+            cipher2 = Cipher(algorithms.AES(aes_key), modes.CBC(iv))
+            d = cipher2.decryptor()
+            dec = d.update(data) + d.finalize()
+            pad = dec[-1]
+            if isinstance(pad, int) and 1 <= pad <= 16:
+                dec = dec[:-pad]
+            # Skip 32-byte app-bound encryption prefix (Chrome 127+)
+            if len(dec) > 32:
+                dec = dec[32:]
+            value = dec.decode("utf-8", errors="replace")
+            if value.isascii() and value:
+                cookies[name] = value
+
+    return cookies
+
+
 class KanFocusFetcher:
     """HTTP client for fetching KanFocus vote tally pages.
 
     Strictly sequential: one page at a time with configurable delay.
     File-based cache in ``{data_dir}/.cache/kanfocus/`` keyed by URL hash.
+
+    Uses Chrome cookies for authentication (KanFocus is a paid subscription
+    service). Cookies are extracted from Chrome's encrypted cookie database
+    on macOS using the Keychain-stored encryption key.
     """
 
     def __init__(
@@ -50,6 +128,15 @@ class KanFocusFetcher:
         adapter = HTTPAdapter(pool_connections=1, pool_maxsize=1)
         self.http.mount("https://", adapter)
         self.http.mount("http://", adapter)
+
+        # Load Chrome session cookies for authentication
+        try:
+            cookies = load_chrome_cookies()
+            self.http.cookies.update(cookies)
+            print(f"  Loaded {len(cookies)} Chrome cookies for kanfocus.com")
+        except Exception as e:
+            print(f"  Warning: could not load Chrome cookies ({e})")
+            print("  Requests may fail — ensure you're logged into KanFocus in Chrome")
 
         self._rate_lock = threading.Lock()
         self._last_request_time = 0.0
@@ -85,6 +172,13 @@ class KanFocusFetcher:
                 resp.raise_for_status()
 
                 text = resp.text
+
+                # Detect redirect page (unauthenticated / expired session)
+                if "MM_goToURL" in text and len(text) < 500:
+                    if attempt == 0:
+                        print("  Warning: got redirect page — session may have expired")
+                    continue
+
                 try:
                     cache_file.write_text(text, encoding="utf-8")
                 except OSError:

@@ -35,8 +35,21 @@ CATEGORY_MAP: dict[str, str] = {
 }
 
 
+def _html_to_text(html: str) -> str:
+    """Convert HTML to plain text using BeautifulSoup.
+
+    KanFocus pages use ``<table>`` layout and ``document.write()`` JS for
+    column formatting. BeautifulSoup's ``get_text()`` extracts readable text
+    with newline separators that the regex-based parser can process.
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+    return soup.get_text(separator="\n")
+
+
 def parse_vote_page(
-    text: str,
+    html_or_text: str,
     vote_num: int,
     year: int,
     chamber: str,
@@ -44,17 +57,22 @@ def parse_vote_page(
 ) -> KanFocusVoteRecord | None:
     """Parse a KanFocus vote tally page into a ``KanFocusVoteRecord``.
 
-    Operates on the full page text (not HTML — KanFocus pages use JS for layout
-    so we work with extracted text content). Returns ``None`` for empty/nonexistent
-    vote pages.
+    Accepts either raw HTML or pre-extracted text. If the input looks like HTML
+    (starts with ``<`` or contains ``<html``), it is automatically converted to
+    text via BeautifulSoup. Returns ``None`` for empty/nonexistent vote pages.
 
     Args:
-        text: Full page text content.
+        html_or_text: Raw HTML or extracted text from a tally page.
         vote_num: Vote number from URL.
         year: Year from URL.
         chamber: Chamber from URL ("H" or "S").
         source_url: Original URL for provenance.
     """
+    text = html_or_text
+    stripped = text.strip()
+    if stripped.startswith("<!") or stripped.startswith("<html") or "<html" in stripped[:500]:
+        text = _html_to_text(html_or_text)
+
     if is_empty_page(text):
         return None
 
@@ -111,7 +129,7 @@ def _parse_metadata(text: str) -> dict[str, str] | None:
     date_match = re.search(r"Date:\s*(\d{2}/\d{2}/\d{4})", text)
     bill_match = re.search(r"Bill\s*Number:\s*(.+?)(?:\s*Question:)", text, re.DOTALL)
     question_match = re.search(r"Question:\s*(.+?)(?:\s*Result:)", text, re.DOTALL)
-    result_match = re.search(r"Result:\s*(\S+(?:\s+\S+)*?)(?:\s+All\s+Members|\s*$)", text)
+    result_match = re.search(r"Result:\s*(\S+(?:\s+\S+)*?)(?:\s+All\s+Members|\s*\n)", text)
 
     if not vote_match or not date_match:
         return None
@@ -132,16 +150,16 @@ def _parse_counts(text: str) -> dict[str, int]:
     """
     counts: dict[str, int] = {"for": 0, "against": 0, "present": 0, "not_voting": 0}
 
-    # The counts table has rows: For N NN% ..., Against N NN% ..., etc.
-    # We want the first number after each label (the "All Members" count).
+    # The counts table has rows like "For\n\n\n38\n\n\n31%\n..." when extracted
+    # from HTML. We want the first number after each label (the "All Members" count).
     for label, key in [
         ("For", "for"),
         ("Against", "against"),
         ("Present", "present"),
         ("Not Voting", "not_voting"),
     ]:
-        # Match "For 38 100%" or "Against 0 0%" — take the first number
-        pattern = rf"(?:^|\s){re.escape(label)}\s+(\d+)\s"
+        # Handle both inline ("For 38 100%") and newline-separated formats
+        pattern = rf"(?:^|\n|\s){re.escape(label)}\s+(\d+)"
         match = re.search(pattern, text)
         if match:
             counts[key] = int(match.group(1))
