@@ -1,14 +1,14 @@
-"""Kansas Legislature — Posterior Predictive Checks + LOO-CV Model Comparison (Phase 4c)
+"""Kansas Legislature — Posterior Predictive Checks + LOO-CV Model Comparison (Phase 08)
 
 Standalone validation phase that loads InferenceData from upstream IRT phases
 (flat 1D, 2D experimental, hierarchical) and produces a unified PPC battery
 plus LOO-CV model comparison.
 
 Usage:
-  uv run python analysis/04c_ppc/ppc.py [--session 2025-26] [--run-id ...]
+  uv run python analysis/08_ppc/ppc.py [--session 2025-26] [--run-id ...]
       [--skip-loo] [--n-reps 500] [--skip-q3]
 
-Outputs (in results/<session>/<run_id>/04c_ppc/):
+Outputs (in results/<session>/<run_id>/08_ppc/):
   - data/:   JSON summaries, Pareto k parquet, Q3 matrices
   - plots/:  PNG visualizations (calibration, item/person fit, LOO, Pareto k)
   - ppc_report.html
@@ -131,9 +131,9 @@ observations where importance sampling is unreliable.
 
 ## Inputs
 - EDA vote matrices: `results/<session>/<run_id>/01_eda/data/vote_matrix_{chamber}_filtered.parquet`
-- Flat IRT: `results/<session>/<run_id>/04_irt/data/idata_{chamber}.nc`
-- 2D IRT: `results/<session>/<run_id>/04b_irt_2d/data/idata_{chamber}.nc`
-- Hierarchical IRT: `results/<session>/<run_id>/10_hierarchical/data/idata_{chamber}.nc`
+- Flat IRT: `results/<session>/<run_id>/05_irt/data/idata_{chamber}.nc`
+- 2D IRT: `results/<session>/<run_id>/06_irt_2d/data/idata_{chamber}.nc`
+- Hierarchical IRT: `results/<session>/<run_id>/07_hierarchical/data/idata_{chamber}.nc`
 
 ## Outputs
 
@@ -186,7 +186,7 @@ CHAMBERS = ["House", "Senate"]
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="KS Legislature PPC + LOO-CV Model Comparison (Phase 4c)"
+        description="KS Legislature PPC + LOO-CV Model Comparison (Phase 08)"
     )
     parser.add_argument("--session", default="2025-26")
     parser.add_argument("--run-id", default=None, help="Run ID for grouped pipeline output")
@@ -708,7 +708,7 @@ def main() -> None:
         house_path = eda_dir / "data" / "vote_matrix_house_filtered.parquet"
         senate_path = eda_dir / "data" / "vote_matrix_senate_filtered.parquet"
         if not house_path.exists() and not senate_path.exists():
-            print("Phase 04c (PPC): skipping — no EDA vote matrices available")
+            print("Phase 08 (PPC): skipping — no EDA vote matrices available")
             return
         house_matrix = pl.read_parquet(house_path) if house_path.exists() else None
         senate_matrix = pl.read_parquet(senate_path) if senate_path.exists() else None

@@ -1,6 +1,6 @@
 # Latent Class Analysis Deep Dive
 
-A literature survey, ecosystem evaluation, and integration design for Phase 5b of the Kansas Legislature vote analysis pipeline.
+A literature survey, ecosystem evaluation, and integration design for Phase 10 of the Kansas Legislature vote analysis pipeline.
 
 **Date:** 2026-02-28
 **Scope:** Latent Class Mixture Models for legislative roll-call voting data
@@ -69,7 +69,7 @@ With legislative vote matrices (J >> 100), identifiability is never a concern. T
 
 Both LCA and IRT are latent variable models for binary observed data. The key structural difference:
 
-| Feature | IRT (Phase 4) | LCA (Phase 5b) |
+| Feature | IRT (Phase 4) | LCA (Phase 10) |
 |---------|---------------|-----------------|
 | Latent variable | Continuous (xi on the real line) | Categorical (C discrete classes) |
 | What it estimates | Ideal points + bill parameters | Class memberships + class-specific vote profiles |
@@ -209,7 +209,7 @@ Our legislative data (N~130-170 per chamber, J~200-400 bills) is at the lower en
 | glca | EM+NR | Multi-group LCA with measurement invariance |
 | flexmix | EM (pluggable) | General mixture framework |
 
-poLCA is the field standard, but StepMix replicates its core functionality in Python. No R subprocess needed for Phase 5b — unlike Phase 17 (W-NOMINATE) where there is no Python equivalent.
+poLCA is the field standard, but StepMix replicates its core functionality in Python. No R subprocess needed for Phase 10 — unlike Phase 17 (W-NOMINATE) where there is no Python equivalent.
 
 ### 5.3 Why Not Bayesian LCA?
 
@@ -252,7 +252,7 @@ The C x C matrix of average posterior probabilities (assigned-class by true-clas
 
 ### 7.1 Relationship to Phase 5 (Clustering)
 
-Phase 5b is a natural extension of Phase 5, applying model-based clustering (LCA) where Phase 5 used distance-based (hierarchical), centroid-based (k-means), density-based (HDBSCAN), and Gaussian model-based (GMM) methods.
+Phase 10 is a natural extension of Phase 5, applying model-based clustering (LCA) where Phase 5 used distance-based (hierarchical), centroid-based (k-means), density-based (HDBSCAN), and Gaussian model-based (GMM) methods.
 
 **Input:** Binary vote matrix from EDA (same as Phase 5's hierarchical clustering input), not IRT scores (which Phase 5 uses for k-means/GMM). This is the key difference — LCA operates on the raw binary data with the correct generative model, rather than on a continuous projection of it.
 
@@ -271,7 +271,7 @@ Phase 5b is a natural extension of Phase 5, applying model-based clustering (LCA
 
 ### 7.4 What LCA Adds Beyond Phase 5
 
-| Feature | Phase 5 (Clustering) | Phase 5b (LCA) |
+| Feature | Phase 5 (Clustering) | Phase 10 (LCA) |
 |---------|---------------------|----------------|
 | Input data | Kappa distances or IRT scores | Raw binary vote matrix |
 | Generative model | GMM (Gaussian, wrong for binary) | Bernoulli mixture (correct for binary) |

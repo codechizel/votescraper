@@ -312,7 +312,7 @@ Key references:
 - WCAG accessibility: ADR-0079 (alt-text on 132 figures, aria-labels on 8 interactive sections, 23 report builders)
 - W-NOMINATE all-biennium run: ADR-0073 (6 R compatibility bugs fixed, all 8 bienniums validated, PPC expanded to 6/8)
 - Convergence resolution: ADR-0074 (joint model off by default, 2D IRT dropped from pipeline, dynamic IRT prior fixed)
-- Name matcher district tiebreaker: ADR-0075 (Phase 14 + 14b district disambiguation, shrinkage null investigation)
+- Name matcher district tiebreaker: ADR-0075 (Phase 17 + 18 district disambiguation, shrinkage null investigation)
 - Audit findings resolution: ADR-0076 (A6-A18: bridge-builder harmonic centrality, surprising vote split, IRT sensitivity interpretation, small-group warning, BiCM Senate threshold, document-and-accept annotations)
 - Audit findings deep dive: `docs/audit-findings-deep-dive.md` (research classification of all 13 remaining findings)
 - Worktree CWD death prevention: ADR-0077 (update-ref fix, named wt-done, forwarder pattern)

@@ -18,7 +18,7 @@ Ridgeline plots stack density curves vertically by time period, providing a comp
 
 Dynamic IRT Phase 16 already produces the trajectories data:
 
-**File:** `results/kansas/{session}/{run_id}/16_dynamic_irt/trajectories_{chamber}.parquet`
+**File:** `results/kansas/{session}/{run_id}/27_dynamic_irt/trajectories_{chamber}.parquet`
 
 **Columns from `extract_dynamic_ideal_points()` (dynamic_irt.py:503-551):**
 

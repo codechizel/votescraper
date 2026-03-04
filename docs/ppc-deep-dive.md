@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Phase 4c (Standalone Posterior Predictive Checks) adds unified model validation and comparison across the three IRT variants in the Tallgrass pipeline: flat 1D IRT, hierarchical IRT, and 2D IRT. This deep dive surveys the academic literature on posterior predictive model checking (PPMC) for IRT models, evaluates the software ecosystem across Python and R, audits our existing partial implementation, and proposes a concrete implementation plan.
+Phase 08 (Standalone Posterior Predictive Checks) adds unified model validation and comparison across the three IRT variants in the Tallgrass pipeline: flat 1D IRT, hierarchical IRT, and 2D IRT. This deep dive surveys the academic literature on posterior predictive model checking (PPMC) for IRT models, evaluates the software ecosystem across Python and R, audits our existing partial implementation, and proposes a concrete implementation plan.
 
 **Key findings:**
 
@@ -184,7 +184,7 @@ with model:
     pm.sample_posterior_predictive(idata, extend_inferencedata=True)
 ```
 
-**Practical workflow for Phase 4c**:
+**Practical workflow for Phase 08**:
 1. Load saved InferenceData from upstream phases (04, 04b, 10)
 2. Rebuild the PyMC model graph (using existing `build_irt_graph()`, `build_per_chamber_graph()`)
 3. Compute log-likelihood: `pm.compute_log_likelihood(idata, model=model)`
@@ -316,9 +316,9 @@ Extend the test statistic battery beyond global Yea rate:
 
 **APRE** (Aggregate Proportional Reduction in Error): APRE = (errors_null - errors_model) / errors_null, where errors_null counts minority votes as errors. Controls for the 82% Yea base rate that inflates raw accuracy.
 
-### Recommendation 6: Build Phase 4c as a Standalone Comparison Phase
+### Recommendation 6: Build Phase 08 as a Standalone Comparison Phase
 
-Phase 4c should be a **standalone phase** that:
+Phase 08 should be a **standalone phase** that:
 1. Loads InferenceData from Phases 04, 04b, and 10 (via `resolve_upstream_dir()`)
 2. Rebuilds model graphs to compute log-likelihood and posterior predictive samples
 3. Runs the full PPC battery on each model
@@ -387,11 +387,11 @@ Based on our existing external validation and the literature:
 
 **Effort**: Medium. The PPC statistics are computationally simple — the hard part is the integration with nutpie/PyMC for log-likelihood computation and the report assembly.
 
-**Runtime**: Log-likelihood computation adds 2-5 minutes per model. PPC replications (500) add ~1 minute per model. LOO computation is negligible. Total Phase 4c runtime estimate: 15-25 minutes (dominated by model graph rebuilding and log-likelihood computation for 3 models x 2 chambers).
+**Runtime**: Log-likelihood computation adds 2-5 minutes per model. PPC replications (500) add ~1 minute per model. LOO computation is negligible. Total Phase 08 runtime estimate: 15-25 minutes (dominated by model graph rebuilding and log-likelihood computation for 3 models x 2 chambers).
 
 **Dependencies**: No new dependencies. ArviZ, PyMC, numpy, matplotlib, great_tables all already in the environment.
 
-**Test coverage**: Currently zero PPC tests. Phase 4c should ship with tests for:
+**Test coverage**: Currently zero PPC tests. Phase 08 should ship with tests for:
 - PPC statistic computation correctness (synthetic data with known properties)
 - LOO/WAIC computation (at least smoke tests)
 - Report generation

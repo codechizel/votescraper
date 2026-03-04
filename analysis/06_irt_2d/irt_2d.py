@@ -12,10 +12,10 @@ may be unreliable for most legislators.
 See analysis/design/irt_2d.md for full design and docs/2d-irt-deep-dive.md for motivation.
 
 Usage:
-  uv run python analysis/04b_irt_2d/irt_2d.py [--session 2025-26] [--run-id ...]
+  uv run python analysis/06_irt_2d/irt_2d.py [--session 2025-26] [--run-id ...]
       [--eda-dir ...] [--pca-dir ...] [--n-samples 2000] [--n-tune 2000] [--n-chains 4]
 
-Outputs (in results/<session>/04b_irt_2d/<date>/):
+Outputs (in results/<session>/06_irt_2d/<date>/):
   - data/:   Parquet files (ideal_points_2d_{chamber}.parquet) + convergence_summary.json
   - plots/:  PNG visualizations (2d_scatter, dim1_vs_pc1, dim2_vs_pc2 per chamber)
   - irt_2d_report.html

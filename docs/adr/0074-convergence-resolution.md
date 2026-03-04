@@ -21,7 +21,7 @@ The hierarchical report now includes a Stocking-Lord linking section (coefficien
 
 ### 2. 2D IRT: Removed from Pipeline
 
-Phase 06 (`irt-2d`) removed from `just pipeline` and from the dashboard phase listing. The standalone `just irt-2d` recipe is preserved for research use. Phase 4c (PPC) already degrades gracefully when 2D IRT results are missing.
+Phase 06 (`irt-2d`) removed from `just pipeline` and from the dashboard phase listing. The standalone `just irt-2d` recipe is preserved for research use. Phase 08 (PPC) already degrades gracefully when 2D IRT results are missing.
 
 ### 3. Dynamic IRT: Informative Prior Fixed
 

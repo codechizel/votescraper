@@ -1,4 +1,4 @@
-# ADR-0065: Bipartite Bill-Legislator Network (Phase 6b)
+# ADR-0065: Bipartite Bill-Legislator Network (Phase 12)
 
 **Date:** 2026-02-28
 **Status:** Accepted
@@ -9,7 +9,7 @@ Phase 6 (Network) builds a **legislator-only** co-voting network weighted by Coh
 
 ## Decision
 
-Create Phase 6b as a standalone bipartite network analysis phase:
+Create Phase 12 as a standalone bipartite network analysis phase:
 
 1. **Bipartite graph construction** from the binary vote matrix (Yea = edge). Legislator nodes carry party and IRT ideal points; bill nodes carry IRT discrimination and rollcall metadata.
 

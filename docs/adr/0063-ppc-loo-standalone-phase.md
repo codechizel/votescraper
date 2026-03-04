@@ -1,4 +1,4 @@
-# ADR-0063: Standalone PPC + LOO-CV Phase (Phase 4c)
+# ADR-0063: Standalone PPC + LOO-CV Phase (Phase 08)
 
 **Date:** 2026-02-28
 **Status:** Accepted
@@ -11,7 +11,7 @@ Phase 04 had a basic PPC (Yea rate + accuracy) but Phases 04b and 10 had none, a
 
 ## Decision
 
-Create Phase 4c as a standalone validation phase (like Phase 17 W-NOMINATE):
+Create Phase 08 as a standalone validation phase (like Phase 17 W-NOMINATE):
 
 1. **Manual log-likelihood computation** (numpy) instead of rebuilding PyMC models. The Bernoulli log-likelihood is a trivial formula (`y * log(sigmoid(eta)) + (1-y) * log(1-sigmoid(eta))`), and avoiding model reconstruction eliminates anchor reconstruction, party index rebuilding, and PyTensor compilation (~30-60s per model).
 

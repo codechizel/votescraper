@@ -13,15 +13,15 @@ A static code audit (`docs/code-audit-2026-03-02.md`) identified 6 findings at c
 
 **A. Synthesis manifest key mismatch (high priority — BUG)**
 
-`synthesis_data.py` stores manifests under full phase IDs (`"01_eda"`, `"07_indices"`, `"05_clustering"`) but 7 access sites in `synthesis.py` and `synthesis_report.py` used short keys (`"eda"`, `"indices"`, `"clustering"`). Every `.get()` silently returned `{}`, causing the pipeline summary infographic and report intro to display `"?"` or fall back to hardcoded defaults instead of actual counts from the EDA manifest.
+`synthesis_data.py` stores manifests under full phase IDs (`"01_eda"`, `"13_indices"`, `"09_clustering"`) but 7 access sites in `synthesis.py` and `synthesis_report.py` used short keys (`"eda"`, `"indices"`, `"clustering"`). Every `.get()` silently returned `{}`, causing the pipeline summary infographic and report intro to display `"?"` or fall back to hardcoded defaults instead of actual counts from the EDA manifest.
 
 Root cause: `UPSTREAM_PHASES` was refactored from short to full IDs, but consumer code was never updated.
 
 **Fix:** Changed all 7 short-key accesses to full phase IDs:
-- `synthesis.py:483-485` — `"eda"` → `"01_eda"`, `"indices"` → `"07_indices"`, `"clustering"` → `"05_clustering"`
+- `synthesis.py:483-485` — `"eda"` → `"01_eda"`, `"indices"` → `"13_indices"`, `"clustering"` → `"09_clustering"`
 - `synthesis_report.py:157,253,691,1225,1280` — same substitutions
 
-The one correct access (`manifests.get("06_network")` at line 638) was already using the full ID.
+The one correct access (`manifests.get("11_network")` at line 638) was already using the full ID.
 
 ### Also Fixed
 

@@ -16,7 +16,7 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 ### Highest-priority findings (actionable, likely impact)
 
 1. **Synthesis phase manifest-key mismatch (likely bug / silent wrong numbers).**  
-   The synthesis layer appears to read manifests using short keys like `"eda"` / `"indices"` / `"clustering"`, but `load_all_upstream()` stores manifests under phase IDs like `"01_eda"` / `"07_indices"` / `"05_clustering"`. This can silently fall back to defaults and produce incorrect headline numbers in the synthesis report and pipeline summary infographic.
+   The synthesis layer appears to read manifests using short keys like `"eda"` / `"indices"` / `"clustering"`, but `load_all_upstream()` stores manifests under phase IDs like `"01_eda"` / `"13_indices"` / `"09_clustering"`. This can silently fall back to defaults and produce incorrect headline numbers in the synthesis report and pipeline summary infographic.
 
 2. **Monitoring callback mismatch with nutpie sampling (feature appears non-functional).**  
    `analysis/experiment_monitor.py` creates a PyMC callback that updates a status JSON every N draws, but hierarchical sampling uses `nutpie.sample()` which doesn’t support PyMC callbacks. Several call sites pass `callback=` and explicitly print “ignored”. This implies `just monitor` may not reflect real progress for nutpie-based runs (unless another mechanism exists elsewhere).
@@ -84,7 +84,7 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 
 **Evidence**
 - `analysis/24_synthesis/synthesis_data.py` stores manifests as:
-  - `upstream["manifests"]["01_eda"]`, `["07_indices"]`, `["05_clustering"]`, etc.
+  - `upstream["manifests"]["01_eda"]`, `["13_indices"]`, `["09_clustering"]`, etc.
 - `analysis/24_synthesis/synthesis.py` / `synthesis_report.py` contain accesses like:
   - `manifests.get("eda", {})`
   - `manifests.get("indices", {})`
@@ -95,7 +95,7 @@ The main opportunities now are **(a) tightening a few correctness edges where in
 
 **Suggested direction**
 - Introduce a single normalization layer in synthesis:
-  - e.g., build `manifests_short = {"eda": manifests["01_eda"], "indices": manifests["07_indices"], ...}` once.
+  - e.g., build `manifests_short = {"eda": manifests["01_eda"], "indices": manifests["13_indices"], ...}` once.
 - Add a unit test for synthesis that asserts required manifest keys are present and non-empty when upstream exists.
 
 ---

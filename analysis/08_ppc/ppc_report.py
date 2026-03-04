@@ -1,4 +1,4 @@
-"""HTML report builder for Phase 4c Posterior Predictive Checks.
+"""HTML report builder for Phase 08 Posterior Predictive Checks.
 
 Produces a self-contained HTML report with ~13 sections covering PPC battery,
 item/person fit, Q3 local dependence, LOO-CV model comparison, and Pareto k

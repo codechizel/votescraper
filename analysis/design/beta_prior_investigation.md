@@ -135,7 +135,7 @@ Statistical models can pass every standard diagnostic while still having a struc
 **Date:** 2026-02-20
 **Status:** Resolved. Normal(0,1) prior adopted.
 **Script:** `analysis/experimental/irt_beta_experiment.py`
-**Output:** `results/91st_2025-2026/04_irt/beta_experiment/`
+**Output:** `results/91st_2025-2026/05_irt/beta_experiment/`
 **Related files:** `analysis/design/irt.md`, `docs/adr/0006-irt-implementation-choices.md`, `docs/lessons-learned.md` (Lesson 6)
 
 ### Experiment details

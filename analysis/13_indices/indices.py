@@ -1403,7 +1403,7 @@ def plot_co_defection_heatmap(
     save_fig(fig, out_dir / f"co_defection_heatmap_{chamber.lower()}.png")
 
 
-# ── Phase 6b: Bipartisanship Index ───────────────────────────────────────────
+# ── Phase 12: Bipartisanship Index ───────────────────────────────────────────
 
 
 def compute_bipartisanship_index(
@@ -2117,7 +2117,7 @@ def main() -> None:
             chamber_results["maverick"] = maverick_df
             chamber_results["co_defection"] = co_defection
 
-            # ── Phase 6b: Bipartisanship Index ──
+            # ── Phase 12: Bipartisanship Index ──
             print_header(f"PHASE 6b: BIPARTISANSHIP INDEX — {chamber}")
             bpi_df = compute_bipartisanship_index(
                 votes, party_votes_df, legislators, chamber, args.session

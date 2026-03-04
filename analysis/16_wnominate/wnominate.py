@@ -9,10 +9,10 @@ emIRT pattern.
 Does NOT feed into synthesis or profiles — purely a validation exercise.
 
 Usage:
-  uv run python analysis/17_wnominate/wnominate.py --session 2025-26
-  uv run python analysis/17_wnominate/wnominate.py --session 2025-26 --skip-oc
+  uv run python analysis/16_wnominate/wnominate.py --session 2025-26
+  uv run python analysis/16_wnominate/wnominate.py --session 2025-26 --skip-oc
 
-Outputs (in results/<session>/<run_id>/17_wnominate/):
+Outputs (in results/<session>/<run_id>/16_wnominate/):
   - data/:   Parquet files (WNOM coords, OC coords, correlations, comparison table)
   - plots/:  PNG plots (scatter, 2D plot, scree)
   - filtering_manifest.json, run_info.json, run_log.txt
@@ -116,7 +116,7 @@ on congressional and state legislative voting.
 
 - EDA vote matrices: `results/<session>/<run_id>/01_eda/data/vote_matrix_{chamber}_filtered.parquet`
 - PCA scores: `results/<session>/<run_id>/02_pca/data/pc_scores_{chamber}.parquet`
-- IRT ideal points: `results/<session>/<run_id>/04_irt/data/ideal_points_{chamber}.parquet`
+- IRT ideal points: `results/<session>/<run_id>/05_irt/data/ideal_points_{chamber}.parquet`
 
 ## Outputs
 

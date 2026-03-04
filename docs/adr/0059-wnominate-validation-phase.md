@@ -59,5 +59,5 @@ Follows the established convention: phases numbered sequentially after Phase 16 
 
 ### Neutral
 
-- Phase 17 output directory follows run-directory layout (`results/<session>/<run_id>/17_wnominate/`).
+- Phase 17 output directory follows run-directory layout (`results/<session>/<run_id>/16_wnominate/`).
 - `just wnominate --session 2025-26` recipe added for convenience.

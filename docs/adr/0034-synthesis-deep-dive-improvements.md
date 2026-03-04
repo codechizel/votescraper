@@ -39,7 +39,7 @@ Implement 9 of 12 recommendations from the deep dive. Defer 3 lower-priority ite
 - Test count: 975 → 1022. The synthesis data layer and detection orchestrator now have meaningful coverage.
 
 **Negative:**
-- One more module in the `11_synthesis/` directory (4 files instead of 3). The module map in `analysis/__init__.py` grew by one entry.
+- One more module in the `24_synthesis/` directory (4 files instead of 3). The module map in `analysis/__init__.py` grew by one entry.
 - Minority mavericks add report length. In sessions where both parties have very high unity (> 0.95), the section is skipped gracefully.
 
 **Files changed:**

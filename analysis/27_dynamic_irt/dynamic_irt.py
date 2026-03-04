@@ -7,7 +7,7 @@ legislator's career.  Operates in cross-session flat mode, loading data from
 all 8 scraped bienniums (84th–91st, 2011–2026).
 
 Usage:
-  uv run python analysis/16_dynamic_irt/dynamic_irt.py
+  uv run python analysis/27_dynamic_irt/dynamic_irt.py
       [--chambers house|senate|both]
       [--n-samples 1000] [--n-tune 1000] [--n-chains 2]
       [--evolution global|per_party]
@@ -17,7 +17,7 @@ Usage:
 Outputs (in results/kansas/cross-session/dynamic_irt/<date>/):
   - data/:   Parquet files (trajectories, decomposition, bridge coverage) + NetCDF
   - plots/:  PNG visualizations
-  - 16_dynamic_irt_report.html
+  - 27_dynamic_irt_report.html
 """
 
 import argparse
@@ -173,7 +173,7 @@ tighter prior (sigma=0.15) to prevent mode-splitting.
 
 - Vote matrices from 01_eda (all bienniums)
 - PCA scores from 02_pca (for initialization)
-- Static IRT ideal points from 04_irt (for informative prior + sign correction)
+- Static IRT ideal points from 05_irt (for informative prior + sign correction)
 - Legislator CSVs (for party/chamber/name matching)
 
 ## Outputs

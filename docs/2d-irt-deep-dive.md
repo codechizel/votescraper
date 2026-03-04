@@ -234,7 +234,7 @@ The 2D IRT model is integrated as pipeline phase `06_irt_2d` with experimental s
 - **Runs both chambers** (House and Senate) — consistent with all other phases
 - **Sampler:** nutpie (Rust NUTS), consistent with all production MCMC (ADR-0051, ADR-0053)
 - **Pipeline:** `just irt-2d` standalone, or included in `just pipeline`
-- **Results:** `results/kansas/{session}/04b_irt_2d/{YYMMDD}.{n}/`
+- **Results:** `results/kansas/{session}/06_irt_2d/{YYMMDD}.{n}/`
 
 ### Reuse from 1D IRT
 

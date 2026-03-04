@@ -1,4 +1,4 @@
-# Phase 4c: Posterior Predictive Checks + LOO-CV Model Comparison
+# Phase 08: Posterior Predictive Checks + LOO-CV Model Comparison
 
 ## Assumptions
 
@@ -8,7 +8,7 @@
 
 3. **Graceful degradation** — Runs on whatever models are available (1, 2, or 3). Missing models produce warnings, not errors. `az.compare()` requires 2+ models.
 
-4. **Joint hierarchical excluded** — Known convergence issues, different legislator ordering. Phase 4c only compares flat 1D, 2D experimental, and per-chamber hierarchical.
+4. **Joint hierarchical excluded** — Known convergence issues, different legislator ordering. Phase 08 only compares flat 1D, 2D experimental, and per-chamber hierarchical.
 
 ## Parameters & Constants
 
@@ -45,4 +45,4 @@ ArviZ `compare()` requires identical observation counts across all models. In th
 
 ## Downstream Implications
 
-None. Phase 4c is terminal — results are human-interpretable validation, not pipeline inputs.
+None. Phase 08 is terminal — results are human-interpretable validation, not pipeline inputs.

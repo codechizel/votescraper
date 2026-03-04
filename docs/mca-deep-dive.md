@@ -293,7 +293,7 @@ Save parquet files + plots + HTML report
 
 ### Outputs
 
-**Data files** (parquet, in `results/{session}/02c_mca/latest/data/`):
+**Data files** (parquet, in `results/{session}/03_mca/latest/data/`):
 - `mca_scores_{chamber}.parquet` — legislator coordinates on MCA dimensions + metadata
 - `mca_category_coords_{chamber}.parquet` — category coordinates (vote × category)
 - `mca_contributions_{chamber}.parquet` — category contributions to each dimension
@@ -301,7 +301,7 @@ Save parquet files + plots + HTML report
 - `mca_cos2_{chamber}.parquet` — squared cosines for representation quality
 - `filtering_manifest.json` — parameters, dimensions retained, votes/legislators filtered
 
-**Plots** (PNG, in `results/{session}/02c_mca/latest/plots/`):
+**Plots** (PNG, in `results/{session}/03_mca/latest/plots/`):
 - `mca_ideological_map_{chamber}.png` — legislator scatter on Dims 1-2, colored by party
 - `mca_biplot_{chamber}.png` — legislators + top-contributing category points
 - `mca_category_map_{chamber}.png` — category points only, colored by vote type (Yea/Nay/Absent)
@@ -339,7 +339,7 @@ Save parquet files + plots + HTML report
 
 | File | Change |
 |------|--------|
-| `analysis/__init__.py` | Add `"mca": "02c_mca"` and `"mca_report": "02c_mca"` to `_MODULE_MAP` |
+| `analysis/__init__.py` | Add `"mca": "03_mca"` and `"mca_report": "03_mca"` to `_MODULE_MAP` |
 | `pyproject.toml` | Add `prince>=0.13` dependency; add `"prince.**"` to ty `replace-imports-with-any` |
 | `Justfile` | Add `mca *args:` recipe |
 | `CLAUDE.md` | Add MCA to analysis recipes list, update architecture description |

@@ -1,4 +1,4 @@
-"""Text-Based Ideal Points (Phase 18b) HTML report builder.
+"""Text-Based Ideal Points (Phase 21) HTML report builder.
 
 Builds sections for the TBIP report: key findings, methodology,
 Kansas context, dataset summary, correlation table, scatter plots,

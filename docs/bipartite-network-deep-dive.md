@@ -1,6 +1,6 @@
 # Bipartite Bill-Legislator Network Deep Dive
 
-**Phase 6b design research — Literature survey, ecosystem evaluation, and implementation recommendations**
+**Phase 12 design research — Literature survey, ecosystem evaluation, and implementation recommendations**
 
 Last updated: 2026-02-28
 
@@ -12,7 +12,7 @@ A bipartite bill-legislator network treats legislators and bills as two distinct
 
 The literature is clear on the core tradeoff: co-voting projections lose information (bill identity, heterogeneous bill participation, coalition composition) but gain access to mature one-mode algorithms. Bipartite methods preserve information but require specialized tools. The backbone extraction literature (Neal 2014, 2021, 2022) provides a principled bridge: project to one-mode, but use null models to retain only statistically significant edges.
 
-**Key finding for Tallgrass**: The highest-value contribution of Phase 6b is the **bill-centric perspective** — identifying bridge bills, bill clustering by coalition support, and bill polarization scores. This is genuinely new information not available from any current phase. The legislator-centric results will largely confirm what IRT and Phase 6 already show, but the statistically validated backbone provides a cleaner network than raw Kappa thresholding.
+**Key finding for Tallgrass**: The highest-value contribution of Phase 12 is the **bill-centric perspective** — identifying bridge bills, bill clustering by coalition support, and bill polarization scores. This is genuinely new information not available from any current phase. The legislator-centric results will largely confirm what IRT and Phase 6 already show, but the statistically validated backbone provides a cleaner network than raw Kappa thresholding.
 
 ---
 
@@ -386,7 +386,7 @@ IRT and bipartite network analysis were historically separate traditions — IRT
 - **34 veto override votes**: Cross-party coalition votes — ideal candidates for bipartite bridge-bill analysis.
 - **No cosponsorship data**: Unlike Congress, Kansas Legislature data from kslegislature.gov does not include structured cosponsorship information. The bipartite network must be built from roll-call votes.
 
-### What Phase 6b Would Reveal That No Current Phase Does
+### What Phase 12 Would Reveal That No Current Phase Does
 
 1. **Bridge bills**: Which specific bills attracted unusual cross-party coalitions? The veto overrides are obvious candidates, but there may be others.
 2. **Bill polarization scores**: Per-bill measure of how strongly the vote split along party lines (beyond the simple "partisan/bipartisan" binary).
@@ -406,7 +406,7 @@ IRT and bipartite network analysis were historically separate traditions — IRT
 
 ### Architecture
 
-Phase 6b should be a companion to Phase 6 (Network), not a replacement. It uses the same upstream data (vote matrices from EDA, ideal points from IRT) but produces different outputs — bill-centric analysis plus a statistically validated projection.
+Phase 12 should be a companion to Phase 6 (Network), not a replacement. It uses the same upstream data (vote matrices from EDA, ideal points from IRT) but produces different outputs — bill-centric analysis plus a statistically validated projection.
 
 ### Proposed Analysis Components
 

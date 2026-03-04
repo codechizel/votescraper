@@ -13,11 +13,11 @@ Classification: Claude Sonnet via standard or Batch API (optional, requires
 ANTHROPIC_API_KEY).
 
 Usage:
-  uv run python analysis/18_bill_text/bill_text.py [--session 2025-26]
+  uv run python analysis/20_bill_text/bill_text.py [--session 2025-26]
       [--classify] [--batch] [--embedding-model MODEL]
       [--min-cluster-size 15] [--run-id RUN_ID]
 
-Outputs (in results/<session>/<run_id>/18_bill_text/):
+Outputs (in results/<session>/<run_id>/20_bill_text/):
   - data/:   Parquet files (topics, embeddings, CAP classifications, similarity)
   - plots/:  PNG visualizations (topic bars, heatmaps, word clouds, similarity)
   - filtering_manifest.json, run_info.json, run_log.txt
@@ -176,7 +176,7 @@ Reads from `data/kansas/{legislature}_{start}-{end}/`:
 
 ## Outputs
 
-All outputs in `results/<session>/<run_id>/18_bill_text/`:
+All outputs in `results/<session>/<run_id>/20_bill_text/`:
 
 ### `data/` — Parquet intermediates
 

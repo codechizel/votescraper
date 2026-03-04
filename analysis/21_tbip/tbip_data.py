@@ -1,4 +1,4 @@
-"""Pure data logic for text-based ideal point estimation (Phase 18b).
+"""Pure data logic for text-based ideal point estimation (Phase 21).
 
 Embedding-vote approach: multiply vote matrix by bill embeddings to get
 legislator-level text profiles, then extract PC1 as a text-derived ideal point.

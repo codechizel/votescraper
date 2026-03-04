@@ -1,6 +1,6 @@
 """
 Tests for MCA categorical vote matrix, fitting, orientation, contributions,
-horseshoe detection, and PCA validation in analysis/02c_mca/mca.py.
+horseshoe detection, and PCA validation in analysis/03_mca/mca.py.
 
 Run: uv run pytest tests/test_mca.py -v
 """

@@ -386,7 +386,7 @@ The code (`bipartite.py:793-841`) retrieves raw p-values from `bg.get_projected_
 
 ### The Finding
 
-Phase 6b consistently finds 2 bill communities = party voting pattern. Analytically redundant with clustering/IRT.
+Phase 12 consistently finds 2 bill communities = party voting pattern. Analytically redundant with clustering/IRT.
 
 ### Root Cause: Genuinely One-Dimensional Structure
 
@@ -402,16 +402,16 @@ The jump from 2 to 248 communities means there is no sub-party structure in the 
 
 Community profiles confirm the party mirror: one community of Republican-supported bills (R%=0.96, D%=0.13), one of bipartisan/Democrat-supported bills (R%=0.68, D%=0.88).
 
-### Is Phase 6b Redundant?
+### Is Phase 12 Redundant?
 
-**Only the community detection component is redundant.** Phase 6b produces genuinely novel outputs not available from any other phase:
+**Only the community detection component is redundant.** Phase 12 produces genuinely novel outputs not available from any other phase:
 - Bill polarization scores (per-bill, not per-legislator)
 - Bridge bills (bipartite betweenness)
 - BiCM backbone (statistically validated, even if sparse)
 
 ### Assessment
 
-**Genuinely structural — document and accept for community detection. Phase 6b as a whole is not redundant.**
+**Genuinely structural — document and accept for community detection. Phase 12 as a whole is not redundant.**
 
 ### Remediation
 

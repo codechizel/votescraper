@@ -8,15 +8,15 @@ Uses the same BGE embeddings as Phase 18 for cosine similarity, with n-gram
 overlap as secondary confirmation for high-similarity pairs.
 
 Usage:
-  uv run python analysis/20_model_legislation/model_legislation.py
-  uv run python analysis/20_model_legislation/model_legislation.py --session 2025-26
-  uv run python analysis/20_model_legislation/model_legislation.py --alec-only
-  uv run python analysis/20_model_legislation/model_legislation.py --states MO,OK,NE,CO
+  uv run python analysis/23_model_legislation/model_legislation.py
+  uv run python analysis/23_model_legislation/model_legislation.py --session 2025-26
+  uv run python analysis/23_model_legislation/model_legislation.py --alec-only
+  uv run python analysis/23_model_legislation/model_legislation.py --states MO,OK,NE,CO
 
-Outputs (in results/<session>/<run_id>/20_model_legislation/):
+Outputs (in results/<session>/<run_id>/23_model_legislation/):
   - data/:   Parquet files (match tables, similarity matrices)
   - plots/:  PNG histograms, heatmaps
-  - 20_model_legislation_report.html
+  - 23_model_legislation_report.html
 """
 
 import argparse

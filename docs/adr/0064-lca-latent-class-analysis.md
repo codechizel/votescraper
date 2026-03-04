@@ -1,4 +1,4 @@
-# ADR-0064: Latent Class Analysis (Phase 5b)
+# ADR-0064: Latent Class Analysis (Phase 10)
 
 **Date:** 2026-02-28
 **Status:** Accepted
@@ -11,7 +11,7 @@ Additionally, LCA offers the "Salsa effect" diagnostic: when K>2 classes differ 
 
 ## Decision
 
-Create Phase 5b as a standalone LCA phase using StepMix 2.2.3 (Python, MIT, published in JSS 2025):
+Create Phase 10 as a standalone LCA phase using StepMix 2.2.3 (Python, MIT, published in JSS 2025):
 
 1. **Bernoulli mixture model** on the same binary vote matrix used by Phase 5 clustering. StepMix's `measurement="binary_nan"` handles missing votes via full-information maximum likelihood (FIML), avoiding listwise deletion bias.
 

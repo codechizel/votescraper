@@ -9,14 +9,14 @@ making authorship-based models inapplicable. Instead uses vote-weighted embeddin
 projected via PCA to extract a text-informed ideological dimension.
 
 Usage:
-  uv run python analysis/18b_tbip/tbip.py
-  uv run python analysis/18b_tbip/tbip.py --session 2025-26 --irt-model both
+  uv run python analysis/21_tbip/tbip.py
+  uv run python analysis/21_tbip/tbip.py --session 2025-26 --irt-model both
 
-Outputs (in results/<session>/<run_id>/18b_tbip/):
+Outputs (in results/<session>/<run_id>/21_tbip/):
   - data/:   Parquet files (matched legislators, outliers, correlations.json)
   - plots/:  PNG scatter plots, party distributions, PCA scree
   - filtering_manifest.json, run_info.json, run_log.txt
-  - 18b_tbip_report.html
+  - 21_tbip_report.html
 """
 
 import argparse
@@ -124,12 +124,12 @@ legislation is about.
 - Bill texts: `data/kansas/{session}/{prefix}_bill_texts.csv` (from `just text`)
 - Roll calls: `data/kansas/{session}/{prefix}_rollcalls.csv`
 - Votes: `data/kansas/{session}/{prefix}_votes.csv`
-- IRT ideal points: `results/{session}/{run_id}/04_irt/data/ideal_points_{chamber}.parquet`
-- Hierarchical ideal points: `results/{session}/{run_id}/10_hierarchical/data/...`
+- IRT ideal points: `results/{session}/{run_id}/05_irt/data/ideal_points_{chamber}.parquet`
+- Hierarchical ideal points: `results/{session}/{run_id}/07_hierarchical/data/...`
 
 ## Outputs
 
-All outputs land in `results/{session}/{run_id}/18b_tbip/`:
+All outputs land in `results/{session}/{run_id}/21_tbip/`:
 
 | File | Description |
 |------|-------------|

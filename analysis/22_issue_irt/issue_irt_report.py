@@ -209,7 +209,7 @@ def _add_methodology(report: ReportBuilder) -> None:
                 "<li><strong>Cross-topic analysis</strong>: pairwise correlations between "
                 "topic ideal points, ideological profile heatmap, outlier detection.</li>"
                 "</ol>"
-                "<p><strong>Why stratified flat IRT?</strong> Phase 04b already showed Kansas "
+                "<p><strong>Why stratified flat IRT?</strong> Phase 06 already showed Kansas "
                 "voting is fundamentally 1D. Per-topic subsets are too small for multi-dimensional "
                 "models. Reusing the battle-tested Phase 04 infrastructure means zero new model "
                 "code and zero new dependencies.</p>"

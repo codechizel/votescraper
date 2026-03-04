@@ -20,7 +20,7 @@ Old results directories remain on disk as historical artifacts. New runs create 
 
 ## Consequences
 
-- Directory listings now sort by execution order: `01_eda/`, `02_pca/`, ..., `14_external_validation/`
+- Directory listings now sort by execution order: `01_eda/`, `02_pca/`, ..., `17_external_validation/`
 - Source and results directory names match, reducing cognitive overhead
 - Report symlinks change (e.g. `01_eda_report.html` instead of `eda_report.html`)
 - Old un-numbered results are not migrated — they remain as archives of prior runs

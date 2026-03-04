@@ -1,4 +1,4 @@
-# Bipartite Bill-Legislator Network (Phase 6b) Design Choices
+# Bipartite Bill-Legislator Network (Phase 12) Design Choices
 
 ## Assumptions
 
@@ -28,7 +28,7 @@ The Fixed Degree Sequence Model (FDSM) generates null networks by random rewirin
 
 ### Why unsigned bipartite (not signed)
 
-Signed bipartite networks encode both Yea (+1) and Nay (-1) edges. While theoretically richer, signed backbone extraction lacks mature tooling, and the Yea-only encoding is the field standard for co-sponsorship and roll call networks. Phase 6's Kappa network already captures agreement on both Yea and Nay — Phase 6b complements it with the bill-centric perspective.
+Signed bipartite networks encode both Yea (+1) and Nay (-1) edges. While theoretically richer, signed backbone extraction lacks mature tooling, and the Yea-only encoding is the field standard for co-sponsorship and roll call networks. Phase 6's Kappa network already captures agreement on both Yea and Nay — Phase 12 complements it with the bill-centric perspective.
 
 ### Why Newman weighting (not simple overlap)
 
@@ -42,4 +42,4 @@ Barber's bipartite modularity (BRIM) detects communities in the original biparti
 
 - **Phase 11 (Synthesis):** Bill polarization scores and bridge bills could enrich the narrative with bill-centric findings (e.g., "HB 123 was the most bipartisan bill of the session").
 - **Phase 6 cross-reference:** Backbone comparison quantifies how much structure the Kappa threshold misses (or invents). High Jaccard = methods agree; low Jaccard with many BiCM-only edges = Kappa threshold is too conservative.
-- **No new features for downstream phases:** Phase 6b is primarily descriptive and validating. Bill communities do not feed into prediction or profile phases.
+- **No new features for downstream phases:** Phase 12 is primarily descriptive and validating. Bill communities do not feed into prediction or profile phases.

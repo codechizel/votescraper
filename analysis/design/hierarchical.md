@@ -16,7 +16,7 @@
 
 5. **Ordering constraint for identification.** Instead of hard anchors (as in the flat IRT), party means are constrained via `pt.sort(mu_party_raw)` so that the lower-indexed party (Democrat, index 0) always has the lower mean ideal point. This is cleaner than `pm.Potential` with `-inf` penalties and avoids label switching.
 
-6. **Flat IRT ideal points are available.** Shrinkage comparison requires the flat IRT phase to have been run first. The hierarchical phase reads from `04_irt/latest/data/ideal_points_{chamber}.parquet`.
+6. **Flat IRT ideal points are available.** Shrinkage comparison requires the flat IRT phase to have been run first. The hierarchical phase reads from `05_irt/latest/data/ideal_points_{chamber}.parquet`.
 
 ## Parameters & Constants
 

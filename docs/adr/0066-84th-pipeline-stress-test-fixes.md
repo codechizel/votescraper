@@ -15,7 +15,7 @@ Fix all blocking bugs in a single pass. Eight fixes total:
 
 The scraper's `legislators.csv` uses `slug` as its column name, but several newer phases assumed `legislator_slug`:
 
-1. **Phase 5b LCA** (`lca.py`): Added `.rename({"slug": "legislator_slug"})` in `load_metadata()`.
+1. **Phase 10 LCA** (`lca.py`): Added `.rename({"slug": "legislator_slug"})` in `load_metadata()`.
 2. **Phase 15 TSA** (`tsa.py`): Added conditional rename `if "slug" in legislators.columns`.
 3. **Phase 15 TSA** (`tsa.py`): Votes CSV uses `vote` (not `vote_category`). Replaced all 4 occurrences.
 
@@ -29,7 +29,7 @@ The scraper's `legislators.csv` uses `slug` as its column name, but several newe
 
 ### matplotlib Deprecation (1 fix)
 
-**Phase 5b LCA** (`lca.py`): `boxplot(labels=...)` renamed to `tick_labels=` in matplotlib 3.9.
+**Phase 10 LCA** (`lca.py`): `boxplot(labels=...)` renamed to `tick_labels=` in matplotlib 3.9.
 
 ### DIME CSV Party Column Type (1 fix)
 

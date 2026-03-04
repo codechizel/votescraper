@@ -79,6 +79,6 @@ W-NOMINATE uses a random start for MLE optimization. Multiple trials (default 3)
 
 ## Downstream Implications
 
-None. This is a terminal validation phase — no other phase reads from `17_wnominate/` output.
+None. This is a terminal validation phase — no other phase reads from `16_wnominate/` output.
 
 The correlation results may inform narrative claims in external-facing documents (e.g., "our IRT ideal points correlate at r=0.98 with W-NOMINATE"), but this is a human interpretation step, not a pipeline dependency.

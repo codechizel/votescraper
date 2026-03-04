@@ -1,5 +1,5 @@
 """
-Kansas Legislature — Latent Class Analysis (Phase 5b)
+Kansas Legislature — Latent Class Analysis (Phase 10)
 
 Fits Bernoulli mixture models (Latent Class Analysis) directly on the binary
 vote matrix to test for discrete factions. BIC selects the optimal number of
@@ -16,10 +16,10 @@ Library: StepMix (Python, MIT, JSS 2025). scikit-learn API, native
 binary/NaN support, BIC/AIC built in.
 
 Usage:
-  uv run python analysis/05b_lca/lca.py [--session 2025-26] [--k-max 8]
+  uv run python analysis/10_lca/lca.py [--session 2025-26] [--k-max 8]
       [--skip-within-party] [--run-id RUN_ID]
 
-Outputs (in results/<session>/<run_id>/05b_lca/):
+Outputs (in results/<session>/<run_id>/10_lca/):
   - data/:   Parquet files (class assignments, enumeration results, profiles)
   - plots/:  PNG visualizations (BIC elbow, profile heatmap, membership, IRT boxplot)
   - filtering_manifest.json, run_info.json, run_log.txt
@@ -114,7 +114,7 @@ CLASS_CMAP = "Set2"
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 LCA_PRIMER = """\
-# Latent Class Analysis (Phase 5b)
+# Latent Class Analysis (Phase 10)
 
 ## Purpose
 
@@ -175,11 +175,11 @@ Reads from `results/<session>/<run_id>/01_eda/data/`:
 - `vote_matrix_house_filtered.parquet` — Filtered binary vote matrices
 - `vote_matrix_senate_filtered.parquet`
 
-Reads from `results/<session>/<run_id>/04_irt/data/`:
+Reads from `results/<session>/<run_id>/05_irt/data/`:
 - `ideal_points_house.parquet` — IRT ideal points for cross-validation
 - `ideal_points_senate.parquet`
 
-Reads from `results/<session>/<run_id>/05_clustering/data/` (optional):
+Reads from `results/<session>/<run_id>/09_clustering/data/` (optional):
 - `hierarchical_assignments_house.parquet` — For ARI comparison
 - `hierarchical_assignments_senate.parquet`
 - `kmeans_assignments_house.parquet`
@@ -190,7 +190,7 @@ Reads from `data/kansas/{legislature}_{start}-{end}/`:
 
 ## Outputs
 
-All outputs land in `results/<session>/<run_id>/05b_lca/`:
+All outputs land in `results/<session>/<run_id>/10_lca/`:
 
 ### `data/` — Parquet intermediates
 
@@ -242,7 +242,7 @@ All outputs land in `results/<session>/<run_id>/05b_lca/`:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="KS Legislature Latent Class Analysis (Phase 5b)")
+    parser = argparse.ArgumentParser(description="KS Legislature Latent Class Analysis (Phase 10)")
     parser.add_argument("--session", default="2025-26")
     parser.add_argument("--data-dir", default=None, help="Override data directory path")
     parser.add_argument("--eda-dir", default=None, help="Override EDA results directory")
@@ -1112,7 +1112,7 @@ def main() -> None:
         legislators = load_legislators(data_dir)
 
         if vm_house is None and vm_senate is None:
-            print("Phase 05b (LCA): skipping — no EDA vote matrices available")
+            print("Phase 10 (LCA): skipping — no EDA vote matrices available")
             return
 
         for label, df in [("Vote matrix House", vm_house), ("Vote matrix Senate", vm_senate)]:
@@ -1360,7 +1360,7 @@ def main() -> None:
                 manifest[f"{ch}_n_straddlers"] = result["irt_cv"]["n_straddlers"]
 
         if not results:
-            print("Phase 05b (LCA): skipping — no chambers had sufficient data")
+            print("Phase 10 (LCA): skipping — no chambers had sufficient data")
             return
 
         save_filtering_manifest(manifest, ctx.run_dir)

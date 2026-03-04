@@ -1,4 +1,4 @@
-# Latent Class Analysis (Phase 5b) Design Choices
+# Latent Class Analysis (Phase 10) Design Choices
 
 ## Assumptions
 

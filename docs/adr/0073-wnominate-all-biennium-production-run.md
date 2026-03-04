@@ -5,7 +5,7 @@
 
 ## Context
 
-Phase 17 (W-NOMINATE + OC, ADR-0059) was initially developed and tested on the 91st biennium only. Running it across all 8 bienniums (84th-91st) exposed six R compatibility bugs in the interface between Python and the R `wnominate`/`oc`/`pscl` packages. Separately, Phase 4c (PPC + LOO-CV) had only been run for the 84th and 91st bienniums — expanding coverage revealed a LOO observation mismatch limitation in two bienniums.
+Phase 17 (W-NOMINATE + OC, ADR-0059) was initially developed and tested on the 91st biennium only. Running it across all 8 bienniums (84th-91st) exposed six R compatibility bugs in the interface between Python and the R `wnominate`/`oc`/`pscl` packages. Separately, Phase 08 (PPC + LOO-CV) had only been run for the 84th and 91st bienniums — expanding coverage revealed a LOO observation mismatch limitation in two bienniums.
 
 R was installed via Homebrew (`brew install r`) with packages: `wnominate`, `oc`, `pscl`, `jsonlite` (Phase 17), `changepoint`, `strucchange` (Phase 15 TSA).
 
@@ -30,7 +30,7 @@ All 8 bienniums (84th-91st) ran successfully. IRT-vs-WNOM dim1 Pearson r typical
 
 ### PPC expansion (6/8 bienniums)
 
-Phase 4c was run for 6 additional bienniums (85th, 86th, 88th, 89th, 90th). The 87th and 89th failed with an ArviZ `compare()` observation mismatch: the hierarchical model uses a different vote matrix than flat IRT in these bienniums (different lopsided-vote filtering), causing ArviZ to reject the comparison. This is a known limitation of ArviZ's `compare()` — it requires identical observation counts across all models.
+Phase 08 was run for 6 additional bienniums (85th, 86th, 88th, 89th, 90th). The 87th and 89th failed with an ArviZ `compare()` observation mismatch: the hierarchical model uses a different vote matrix than flat IRT in these bienniums (different lopsided-vote filtering), causing ArviZ to reject the comparison. This is a known limitation of ArviZ's `compare()` — it requires identical observation counts across all models.
 
 ### R as optional dependency
 

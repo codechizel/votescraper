@@ -9,11 +9,11 @@ Overlap: 84th-89th bienniums (2011-2022), extending one biennium beyond
 Shor-McCarty coverage.
 
 Usage:
-  uv run python analysis/14b_external_validation_dime/external_validation_dime.py
-  uv run python analysis/14b_external_validation_dime/external_validation_dime.py \
+  uv run python analysis/18_dime/external_validation_dime.py
+  uv run python analysis/18_dime/external_validation_dime.py \
     --all-sessions --irt-model both
 
-Outputs (in results/<session>/<run_id>/14b_external_validation_dime/):
+Outputs (in results/<session>/<run_id>/18_dime/):
   - data/:   Parquet files (matched legislators, correlations, outliers)
   - plots/:  PNG scatter plots (our xi_mean vs DIME CFscore)
   - filtering_manifest.json, run_info.json, run_log.txt
@@ -115,13 +115,13 @@ agrees with the votes.
 ## Inputs
 
 - DIME CSV: `data/external/dime_recipients_1979_2024.csv`
-- IRT ideal points: `results/<session>/<run_id>/04_irt/data/ideal_points_{chamber}.parquet`
+- IRT ideal points: `results/<session>/<run_id>/05_irt/data/ideal_points_{chamber}.parquet`
 - Hierarchical ideal points:
-  `results/<session>/<run_id>/10_hierarchical/data/hierarchical_ideal_points_{chamber}.parquet`
+  `results/<session>/<run_id>/07_hierarchical/data/hierarchical_ideal_points_{chamber}.parquet`
 
 ## Outputs
 
-All outputs land in `results/<session>/<run_id>/14b_external_validation_dime/`:
+All outputs land in `results/<session>/<run_id>/18_dime/`:
 
 ### `data/` — Parquet intermediates
 

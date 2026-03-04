@@ -1,5 +1,5 @@
 """
-Kansas Legislature — Bipartite Bill-Legislator Network Analysis (Phase 6b)
+Kansas Legislature — Bipartite Bill-Legislator Network Analysis (Phase 12)
 
 Preserves the two-mode (bipartite) structure of legislators × bills to enable
 bill-centric analysis — bill polarization scores, bridge bills, bill clustering,
@@ -17,10 +17,10 @@ Key contributions:
 Library: BiCM (Python, MIT, PyPI, Saracco et al. 2015/2017).
 
 Usage:
-  uv run python analysis/06b_network_bipartite/bipartite.py [--session 2025-26]
+  uv run python analysis/12_bipartite/bipartite.py [--session 2025-26]
       [--skip-phase6-comparison] [--run-id RUN_ID]
 
-Outputs (in results/<session>/<run_id>/06b_network_bipartite/):
+Outputs (in results/<session>/<run_id>/12_bipartite/):
   - data/:   Parquet files (polarization, bridge bills, backbone, communities)
   - plots/:  PNG visualizations
   - filtering_manifest.json, run_info.json, run_log.txt
@@ -102,7 +102,7 @@ COMMUNITY_CMAP = "Set2"
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 BIPARTITE_PRIMER = """\
-# Bipartite Bill-Legislator Network Analysis (Phase 6b)
+# Bipartite Bill-Legislator Network Analysis (Phase 12)
 
 ## Purpose
 
@@ -163,7 +163,7 @@ Reads from `results/<session>/<run_id>/01_eda/data/`:
 - `vote_matrix_house_filtered.parquet` — Filtered binary vote matrices
 - `vote_matrix_senate_filtered.parquet`
 
-Reads from `results/<session>/<run_id>/04_irt/data/`:
+Reads from `results/<session>/<run_id>/05_irt/data/`:
 - `ideal_points_house.parquet` — IRT ideal points
 - `ideal_points_senate.parquet`
 - `bill_params_house.parquet` — Bill discrimination parameters
@@ -175,7 +175,7 @@ Reads from `data/kansas/{legislature}_{start}-{end}/`:
 
 ## Outputs
 
-All outputs land in `results/<session>/<run_id>/06b_network_bipartite/`:
+All outputs land in `results/<session>/<run_id>/12_bipartite/`:
 
 ### `data/` — Parquet intermediates
 
@@ -235,7 +235,7 @@ All outputs land in `results/<session>/<run_id>/06b_network_bipartite/`:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="KS Legislature Bipartite Network Analysis (Phase 6b)"
+        description="KS Legislature Bipartite Network Analysis (Phase 12)"
     )
     parser.add_argument("--session", default="2025-26")
     parser.add_argument("--data-dir", default=None, help="Override data directory path")
@@ -1469,10 +1469,10 @@ def main() -> None:
         rollcalls, _legislators = load_metadata(data_dir)
 
         if vm_house is None and vm_senate is None:
-            print("Phase 06b (Bipartite): skipping — no EDA vote matrices available")
+            print("Phase 12 (Bipartite): skipping — no EDA vote matrices available")
             return
         if irt_house is None and irt_senate is None:
-            print("Phase 06b (Bipartite): skipping — no IRT ideal points available")
+            print("Phase 12 (Bipartite): skipping — no IRT ideal points available")
             return
 
         for label, df in [("Vote matrix House", vm_house), ("Vote matrix Senate", vm_senate)]:
@@ -1693,7 +1693,7 @@ def main() -> None:
             results[chamber] = chamber_results
 
         if not results:
-            print("Phase 06b (Bipartite): skipping — no chambers had sufficient data")
+            print("Phase 12 (Bipartite): skipping — no chambers had sufficient data")
             return
 
         # ── Save manifest and build report ──

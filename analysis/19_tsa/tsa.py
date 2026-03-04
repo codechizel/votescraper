@@ -7,13 +7,13 @@ changepoint detection on Rice Index time series. Answers two questions:
   2. Were there structural breaks in party cohesion?
 
 Usage:
-  uv run python analysis/15_tsa/tsa.py [--session 2025-26] [--run-id ID]
+  uv run python analysis/19_tsa/tsa.py [--session 2025-26] [--run-id ID]
       [--skip-drift] [--skip-changepoints] [--penalty 10.0] [--skip-r]
 
-Outputs (in results/<session>/<run_id>/15_tsa/):
+Outputs (in results/<session>/<run_id>/19_tsa/):
   - data/:   Parquet files (drift scores, Rice timeseries, changepoints)
   - plots/:  PNG visualizations (8 per chamber)
-  - 15_tsa_report.html
+  - 19_tsa_report.html
 """
 
 import argparse

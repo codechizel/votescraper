@@ -1,4 +1,4 @@
-"""Tests for Phase 04b: 2D Bayesian IRT (experimental).
+"""Tests for Phase 06: 2D Bayesian IRT (experimental).
 
 Covers sign-flip logic, PCA correlation, and convergence constants.
 Model building and MCMC sampling are not unit-tested.

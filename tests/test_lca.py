@@ -1,7 +1,7 @@
 """
 Tests for LCA (Latent Class Analysis) helper functions using synthetic fixtures.
 
-These tests verify that the non-plotting functions in analysis/05b_lca/lca.py
+These tests verify that the non-plotting functions in analysis/10_lca/lca.py
 produce correct results on known inputs. Plotting and full pipeline execution
 are not tested here; data preparation, class enumeration, Salsa effect
 detection, IRT cross-validation, and ARI comparison are.

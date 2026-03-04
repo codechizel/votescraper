@@ -92,8 +92,8 @@ What are the trade-offs?
 | [0029](0029-leiden-community-detection.md) | Leiden community detection (replacing Louvain) |
 | [0031](0031-prediction-deep-dive-improvements.md) | Prediction deep dive improvements |
 | [0034](0034-synthesis-deep-dive-improvements.md) | Synthesis deep dive improvements |
-| [0064](0064-lca-latent-class-analysis.md) | Latent Class Analysis (Phase 5b) |
-| [0065](0065-bipartite-network-phase.md) | Bipartite Bill-Legislator Network (Phase 6b) |
+| [0064](0064-lca-latent-class-analysis.md) | Latent Class Analysis (Phase 10) |
+| [0065](0065-bipartite-network-phase.md) | Bipartite Bill-Legislator Network (Phase 12) |
 | [0066](0066-84th-pipeline-stress-test-fixes.md) | 84th pipeline stress test fixes (8 bugs, 1 enhancement) |
 | [0081](0081-sponsor-slugs-phase-11-12-integration.md) | Sponsor slugs integration into Synthesis and Profiles |
 
@@ -115,7 +115,7 @@ What are the trade-offs?
 | [0035](0035-cross-session-deep-dive-improvements.md) | Cross-session deep dive improvements |
 | [0039](0039-cross-session-validation-enhancements.md) | Cross-session validation enhancements |
 | [0059](0059-wnominate-validation-phase.md) | W-NOMINATE + OC validation phase |
-| [0063](0063-ppc-loo-standalone-phase.md) | Standalone PPC + LOO-CV phase (Phase 4c) |
+| [0063](0063-ppc-loo-standalone-phase.md) | Standalone PPC + LOO-CV phase (Phase 08) |
 | [0073](0073-wnominate-all-biennium-production-run.md) | W-NOMINATE all-biennium production run + R compatibility fixes |
 | [0075](0075-name-matcher-district-tiebreaker.md) | Name matcher district tiebreaker + shrinkage null investigation |
 | [0076](0076-audit-findings-resolution.md) | Audit findings resolution (A6-A18) |
@@ -218,9 +218,9 @@ What are the trade-offs?
 | [0060](0060-test-suite-expansion.md) | Test suite expansion (markers, integration tests, report structure tests) | Accepted | 2026-02-28 |
 | [0061](0061-tsa-r-enrichment.md) | TSA R enrichment (CROPS penalty selection + Bai-Perron CIs) | Accepted | 2026-02-28 |
 | [0062](0062-dime-cfscore-external-validation.md) | DIME/CFscore external validation (Phase 18, campaign-finance ideology) | Accepted | 2026-02-28 |
-| [0063](0063-ppc-loo-standalone-phase.md) | Standalone PPC + LOO-CV phase (Phase 4c) | Accepted | 2026-02-28 |
-| [0064](0064-lca-latent-class-analysis.md) | Latent Class Analysis (Phase 5b) | Accepted | 2026-02-28 |
-| [0065](0065-bipartite-network-phase.md) | Bipartite Bill-Legislator Network (Phase 6b) | Accepted | 2026-02-28 |
+| [0063](0063-ppc-loo-standalone-phase.md) | Standalone PPC + LOO-CV phase (Phase 08) | Accepted | 2026-02-28 |
+| [0064](0064-lca-latent-class-analysis.md) | Latent Class Analysis (Phase 10) | Accepted | 2026-02-28 |
+| [0065](0065-bipartite-network-phase.md) | Bipartite Bill-Legislator Network (Phase 12) | Accepted | 2026-02-28 |
 | [0066](0066-84th-pipeline-stress-test-fixes.md) | 84th pipeline stress test fixes (8 bugs, 1 enhancement) | Accepted | 2026-03-01 |
 | [0067](0067-open-source-readiness.md) | Open-source readiness polish (LICENSE, README, 9 bug fixes, 16 tests, CI expansion) | Accepted | 2026-03-01 |
 | [0068](0068-dynamic-irt-sign-correction.md) | Dynamic IRT post-hoc sign correction (per-period xi negation, static IRT reference) | Accepted | 2026-03-01 |

@@ -10,15 +10,15 @@ bills to policy areas, then runs `build_irt_graph()` + `build_and_sample()` from
 Phase 04 on each eligible topic.
 
 Usage:
-  uv run python analysis/19_issue_irt/issue_irt.py
-  uv run python analysis/19_issue_irt/issue_irt.py --session 2025-26 --taxonomy bertopic
-  uv run python analysis/19_issue_irt/issue_irt.py --taxonomy both --min-bills 15
+  uv run python analysis/22_issue_irt/issue_irt.py
+  uv run python analysis/22_issue_irt/issue_irt.py --session 2025-26 --taxonomy bertopic
+  uv run python analysis/22_issue_irt/issue_irt.py --taxonomy both --min-bills 15
 
-Outputs (in results/<session>/<run_id>/19_issue_irt/):
+Outputs (in results/<session>/<run_id>/22_issue_irt/):
   - data/:   Parquet files (per-topic ideal points, cross-topic matrix, correlations)
   - plots/:  PNG scatter plots, heatmaps
   - filtering_manifest.json, run_info.json, run_log.txt
-  - 19_issue_irt_report.html
+  - 22_issue_irt_report.html
 """
 
 import argparse
@@ -121,12 +121,12 @@ but moderate on social policy.
 
 - EDA vote matrices: `results/{{session}}/{{run_id}}/01_eda/data/`
 - PCA scores: `results/{{session}}/{{run_id}}/02_pca/data/`
-- Full IRT ideal points: `results/{{session}}/{{run_id}}/04_irt/data/`
-- Phase 18 topics: `results/{{session}}/{{run_id}}/18_bill_text/data/`
+- Full IRT ideal points: `results/{{session}}/{{run_id}}/05_irt/data/`
+- Phase 18 topics: `results/{{session}}/{{run_id}}/20_bill_text/data/`
 
 ## Outputs
 
-All in `results/{{session}}/{{run_id}}/19_issue_irt/`:
+All in `results/{{session}}/{{run_id}}/22_issue_irt/`:
 
 | File | Description |
 |------|-------------|

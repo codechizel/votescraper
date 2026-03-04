@@ -71,7 +71,7 @@ analysis/design/   Per-phase methodology and implementation design docs
 
 ## Testing Conventions
 
-- Tests live in `tests/` with one file per module (e.g., `test_irt.py` for `analysis/04_irt/irt.py`)
+- Tests live in `tests/` with one file per module (e.g., `test_irt.py` for `analysis/05_irt/irt.py`)
 - Class-based organization: `class TestFeatureName:` groups related tests
 - Pytest markers: `@pytest.mark.scraper`, `@pytest.mark.integration`, `@pytest.mark.slow`
 - All HTTP calls are mocked — no real network access in tests
@@ -90,7 +90,7 @@ analysis/design/   Per-phase methodology and implementation design docs
 ## External Data Requirements
 
 - **Shor-McCarty scores** — auto-downloaded on first use (Phase 14)
-- **DIME/CFscores** — manual download from [Stanford DIME project](https://data.stanford.edu/dime) (Phase 14b)
+- **DIME/CFscores** — manual download from [Stanford DIME project](https://data.stanford.edu/dime) (Phase 18)
 - **R + CRAN packages** — required for Phase 16 (Dynamic IRT) and Phase 17 (W-NOMINATE/OC)
 
 ## Reporting Issues

@@ -93,5 +93,5 @@ analysis/23_model_legislation/    — Phase 20 analysis
 
 - `match_summary.parquet` — unified match table
 - `filtering_manifest.json` — reproducibility metadata
-- `20_model_legislation_report.html` — self-contained HTML report
+- `23_model_legislation_report.html` — self-contained HTML report
 - Plots: similarity_distribution.png, topic_match_heatmap.png, match_network.png

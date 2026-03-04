@@ -117,7 +117,7 @@ The core insight: experiments don't need a framework. They need **production fun
 
 ```
 analysis/
-    10_hierarchical/
+    07_hierarchical/
         hierarchical.py          ← production pipeline (unchanged API)
         model_spec.py            ← NEW: model specification as data
     experiment_runner.py         ← NEW: shared experiment infrastructure

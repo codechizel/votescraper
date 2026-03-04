@@ -7,7 +7,7 @@
 
 The `analysis/` directory contained 34 Python files at the root level. For an open-source audience, the pipeline ordering (EDA → PCA → UMAP → IRT → ... → External Validation) was implicit — you had to read CLAUDE.md or the design docs to understand which files ran in what order.
 
-Numbered subdirectories (e.g., `01_eda/`, `07_indices/`) make the pipeline ordering self-documenting in a directory listing.
+Numbered subdirectories (e.g., `01_eda/`, `13_indices/`) make the pipeline ordering self-documenting in a directory listing.
 
 **Problem:** Directory names like `01_eda` are not valid Python identifiers, so `from analysis.01_eda.eda import X` is a syntax error. All existing imports use `from analysis.eda import X`.
 
@@ -28,18 +28,18 @@ analysis/
   design/              ← statistical design docs
   01_eda/              ← Exploratory Data Analysis
   02_pca/              ← Principal Component Analysis
-  03_umap/             ← UMAP dimensionality reduction
-  04_irt/              ← Bayesian IRT ideal points
-  05_clustering/       ← Voting bloc detection
-  06_network/          ← Legislator network analysis
-  07_indices/          ← Classical political science indices
-  08_prediction/       ← Vote prediction (XGBoost)
-  09_beta_binomial/    ← Bayesian party loyalty
-  10_hierarchical/     ← Hierarchical IRT
-  11_synthesis/        ← Narrative synthesis
-  12_profiles/         ← Legislator deep dives
-  13_cross_session/    ← Cross-biennium validation
-  14_external_validation/ ← Shor-McCarty comparison
+  04_umap/             ← UMAP dimensionality reduction
+  05_irt/              ← Bayesian IRT ideal points
+  09_clustering/       ← Voting bloc detection
+  11_network/          ← Legislator network analysis
+  13_indices/          ← Classical political science indices
+  15_prediction/       ← Vote prediction (XGBoost)
+  14_beta_binomial/    ← Bayesian party loyalty
+  07_hierarchical/     ← Hierarchical IRT
+  24_synthesis/        ← Narrative synthesis
+  25_profiles/         ← Legislator deep dives
+  26_cross_session/    ← Cross-biennium validation
+  17_external_validation/ ← Shor-McCarty comparison
   experimental/        ← Experimental scripts
 ```
 

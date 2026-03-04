@@ -1,7 +1,7 @@
 """
-Tests for Bipartite Network (Phase 6b) helper functions using synthetic fixtures.
+Tests for Bipartite Network (Phase 12) helper functions using synthetic fixtures.
 
-These tests verify that the non-plotting functions in analysis/06b_network_bipartite/bipartite.py
+These tests verify that the non-plotting functions in analysis/12_bipartite/bipartite.py
 produce correct results on known inputs. Plotting and full pipeline execution are not tested here;
 graph construction, polarization, betweenness, projection, backbone extraction, and comparison are.
 

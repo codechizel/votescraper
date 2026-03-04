@@ -8,7 +8,7 @@ collapsing to binary. Its key additions over PCA: the absence dimension, categor
 level coordinates, and chi-square weighting of rare vote patterns.
 
 Usage:
-  uv run python analysis/02c_mca/mca.py [--session 2025-26] [--data-dir ...] \
+  uv run python analysis/03_mca/mca.py [--session 2025-26] [--data-dir ...] \
       [--n-components 5] [--skip-sensitivity] [--correction greenacre]
 
 Outputs (in results/<session>/mca/<date>/):

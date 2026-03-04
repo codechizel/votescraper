@@ -1,5 +1,5 @@
 """
-Tests for Phase 4c posterior predictive check computations.
+Tests for Phase 08 posterior predictive check computations.
 
 Uses synthetic InferenceData fixtures with known parameters to verify
 log-likelihood computation, PPC battery, item/person checks, Q3 local

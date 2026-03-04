@@ -1,4 +1,4 @@
-"""Tests for Phase 18b: Text-Based Ideal Points (Embedding-Vote Approach).
+"""Tests for Phase 21: Text-Based Ideal Points (Embedding-Vote Approach).
 
 Synthetic data tests for tbip_data.py — pure functions only, no I/O.
 Follows the class-based pattern from test_external_validation_dime.py.
@@ -605,7 +605,7 @@ class TestConstants:
         assert STRONG_CORRELATION > GOOD_CORRELATION > MODERATE_CORRELATION
 
     def test_lower_than_phase_14(self):
-        """Phase 18b thresholds are lower than Phase 14 (text is more distant)."""
+        """Phase 21 thresholds are lower than Phase 14 (text is more distant)."""
         # Phase 14 uses 0.90, 0.85, 0.70
         assert STRONG_CORRELATION < 0.90
         assert GOOD_CORRELATION < 0.85

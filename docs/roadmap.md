@@ -59,7 +59,7 @@ What's been done, what's next, and what's on the horizon for the Tallgrass analy
 | — | Report Enhancements (R1-R13) | 2026-03-01 | 3 new section types (KeyFindings, InteractiveTable, Interactive), ITables for 10+ large tables, Plotly interactive scatters (IRT, PCA, indices), PyVis network graphs, key findings in all 22+ reports, party density + ICC in flat IRT, cutting lines + swing votes, BPI + plus-minus indices, coalition labeler, absenteeism analysis. 39 new tests (1716 total). ADR-0069. |
 | — | Full Pipeline Audit | 2026-03-02 | 8-biennium × 17-phase review. 18 findings catalogued, 6 code fixes shipped (except syntax, prediction data leakage, sample threshold, logging). ADR-0072. |
 | — | W-NOMINATE All-Biennium Run | 2026-03-02 | All 8 bienniums (84th-91st) validated against W-NOMINATE + OC. 6 R compatibility bugs fixed (rollcall codes, polarity vector, OC matrix access, CSV "NA" parsing, fit stat casting, slug rename). R installed via Homebrew. ADR-0073. |
-| — | PPC All-Biennium Expansion | 2026-03-02 | Phase 4c expanded from 2 to 6 bienniums (85th, 86th, 88th, 90th added). 87th/89th excluded: ArviZ LOO observation mismatch between hierarchical and flat IRT vote matrices. ADR-0073. |
+| — | PPC All-Biennium Expansion | 2026-03-02 | Phase 08 expanded from 2 to 6 bienniums (85th, 86th, 88th, 90th added). 87th/89th excluded: ArviZ LOO observation mismatch between hierarchical and flat IRT vote matrices. ADR-0073. |
 | — | Name Matcher District Tiebreaker | 2026-03-02 | Phase 14 (SM) + Phase 18 (DIME) name matching now uses district-based disambiguation for ambiguous last-name matches. 3 incorrect matches corrected. 6 new tests. |
 | — | Shrinkage Null Investigation | 2026-03-02 | Deep dive confirmed `SHRINKAGE_MIN_DISTANCE=0.5` is statistically justified (24.8% null rate across all bienniums). Accepted as working-as-designed. |
 | — | Report Enhancements (R14-R20) | 2026-03-02 | Folium district choropleths, full voting record in Profiles, iframe dashboard, CSV downloads (28+ exports), freshmen cohort analysis, bloc stability Sankey, scrollytelling synthesis. 4 new deps (folium, geopandas, scrollama via IntersectionObserver). ADR-0071. |
@@ -84,7 +84,7 @@ Completed 2026-02-28. See Completed Phases table above.
 
 Completed 2026-02-28. Campaign-finance-based ideology from Bonica's DIME project (V4.0, ODC-BY). Validates 84th-89th bienniums (6 bienniums, one beyond Shor-McCarty). Reuses Phase 14 infrastructure (correlations, outliers, name normalization). See `docs/dime-cfscore-deep-dive.md`, ADR-0062.
 
-### ~~3. Standalone Posterior Predictive Checks~~ — Done (Phase 4c)
+### ~~3. Standalone Posterior Predictive Checks~~ — Done (Phase 08)
 
 Completed 2026-02-28. PPC battery (Yea rate, accuracy, GMP, APRE) + item/person fit + Yen's Q3 local dependence + LOO-CV model comparison across flat 1D, 2D IRT, and hierarchical IRT. Manual numpy log-likelihood (no PyMC rebuild). Graceful degradation for missing models. 60 tests. See ADR-0063, `analysis/design/ppc.md`.
 
@@ -92,11 +92,11 @@ Completed 2026-02-28. PPC battery (Yea rate, accuracy, GMP, APRE) + item/person 
 
 Completed 2026-02-28. Bundled with W-NOMINATE in Phase 17. See Completed Phases table above.
 
-### ~~5. Latent Class Mixture Models~~ — Done (Phase 5b)
+### ~~5. Latent Class Mixture Models~~ — Done (Phase 10)
 
 Completed 2026-02-28. Bernoulli mixture model (LCA) on binary vote matrix using StepMix. BIC model selection, Salsa effect detection, IRT cross-validation, Phase 5 ARI comparison, within-party LCA. Confirms null result: correct generative model for binary votes. Deep dive: `docs/latent-class-deep-dive.md`, design: `analysis/design/lca.md`.
 
-### ~~6. Bipartite Bill-Legislator Network~~ → Done (Phase 6b)
+### ~~6. Bipartite Bill-Legislator Network~~ → Done (Phase 12)
 
 Completed 2026-02-28. Bipartite bill-legislator network preserving two-mode structure for bill-centric analysis. Bill polarization scores, bridge bills (bipartite betweenness), Newman-weighted bill projection with Leiden community detection, BiCM backbone extraction (maximum-entropy null model with analytical p-values). Phase 6 comparison: edge Jaccard, community NMI/ARI, hidden alliances. 50 new tests. Deep dive: `docs/bipartite-network-deep-dive.md`, design: `analysis/design/bipartite.md`, ADR-0065.
 
@@ -666,21 +666,21 @@ See `docs/method-evaluation.md` for detailed rationale on each rejection.
 | 14 | Beta-Binomial Party Loyalty | BAY | Completed (Beta-Binomial, Phase 7b) |
 | 15 | Bayesian IRT (1D) | BAY | Completed (IRT) |
 | 16 | Hierarchical Bayesian Model | BAY | Completed (Hierarchical IRT, Phase 8) |
-| 17 | Posterior Predictive Checks | BAY | **Done** — Phase 4 basic + Phase 4c standalone (6/8 bienniums) |
+| 17 | Posterior Predictive Checks | BAY | **Done** — Phase 4 basic + Phase 08 standalone (6/8 bienniums) |
 | 18 | Hierarchical Clustering | CLU | Completed (Clustering) |
 | 19 | K-Means / GMM Clustering | CLU | Completed (Clustering) |
 | 20 | Co-Voting Network | NET | Completed (Network) |
-| 21 | Bipartite Bill-Legislator Network | NET | Completed (Phase 6b) |
+| 21 | Bipartite Bill-Legislator Network | NET | Completed (Phase 12) |
 | 22 | Centrality Measures | NET | Completed (Network) |
 | 23 | Community Detection | NET | Completed (Network) |
 | 24 | Vote Prediction | PRD | Completed (Prediction) |
 | 25 | SHAP Analysis | PRD | Completed (Prediction) |
 | 26 | Ideological Drift | TSA | Completed (TSA, Phase 15) |
 | 27 | Changepoint Detection | TSA | Completed (TSA, Phase 15) |
-| 28 | Latent Class Mixture Models | CLU | Completed (LCA, Phase 5b) |
+| 28 | Latent Class Mixture Models | CLU | Completed (LCA, Phase 10) |
 | 29 | Dynamic Ideal Points (Martin-Quinn) | TSA | Completed (Dynamic IRT, Phase 16) |
 | 30 | DIME/CFscores External Validation | VAL | Completed — Phase 18 (ADR-0062) |
-| 31 | Standalone Posterior Predictive Checks | BAY | **Done** — Phase 4c (ADR-0063), 6/8 bienniums (ADR-0073) |
+| 31 | Standalone Posterior Predictive Checks | BAY | **Done** — Phase 08 (ADR-0063), 6/8 bienniums (ADR-0073) |
 | 32 | TSA Hardening (Desposato, CROPS, validation) | TSA | Completed — item #7 above |
 
 | 33 | Bill Text Topic Modeling (BERTopic) | NLP | Completed — Phase 18 (BT2) |

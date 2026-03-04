@@ -1463,7 +1463,7 @@ def plot_gmm_probabilities(
     save_fig(fig, out_dir / f"gmm_probs_{chamber.lower()}.png")
 
 
-# ── Phase 5b: Spectral Clustering ─────────────────────────────────────────
+# ── Phase 10: Spectral Clustering ─────────────────────────────────────────
 
 
 def run_spectral_clustering(
@@ -2479,7 +2479,7 @@ def main() -> None:
             else:
                 print_header(f"PHASE 5: GMM (SKIPPED) — {chamber}")
 
-            # ── Phase 5b: Spectral Clustering ──
+            # ── Phase 10: Spectral Clustering ──
             print_header(f"PHASE 5b: SPECTRAL CLUSTERING — {chamber}")
             spectral_results, spectral_optimal_k = run_spectral_clustering(
                 kappa_mat, K_RANGE, chamber
