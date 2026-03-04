@@ -8,8 +8,8 @@ paths:
 ## Commands
 
 ```bash
-just test                    # run all tests (~2722)
-just test-scraper            # scraper tests only (-m scraper, ~624)
+just test                    # run all tests (~2726)
+just test-scraper            # scraper tests only (-m scraper, ~628)
 just test-fast               # skip slow tests (-m "not slow")
 just test-web                # Django/database tests only (-m web, requires PostgreSQL)
 just check                   # full check (lint + typecheck + tests)
@@ -57,10 +57,10 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 
 - `tests/test_kanfocus_session.py` — session ID mapping (14 bienniums), URL construction, vote_id generation, biennium streams (~27 tests)
 - `tests/test_kanfocus_parser.py` — vote tally page parsing: metadata, counts, legislator extraction, category mapping, empty page detection (~40 tests)
-- `tests/test_kanfocus_slugs.py` — slug generation: standard names, suffixes, nicknames, multi-word, hyphen normalization, cross-reference matching (nickname aliases, chamber validation), CSV loading (~35 tests)
+- `tests/test_kanfocus_slugs.py` — slug generation: standard names, suffixes, nicknames, multi-word, hyphen normalization, cross-reference matching (nickname aliases, chamber validation), CSV loading (~36 tests)
 - `tests/test_kanfocus_output.py` — output conversion: date format, passed derivation, vote_type classification, standard format conversion (~27 tests)
 - `tests/test_kanfocus_fetcher.py` — HTTP caching, vote enumeration, consecutive-empty threshold, rate limiting defaults (~9 tests)
-- `tests/test_kanfocus_crossval.py` — cross-validation: bill number normalization, rollcall matching (multi-motion tally-based), tally comparison, individual vote comparison (ANV/NV compat, name-based fallback), report formatting (~37 tests)
+- `tests/test_kanfocus_crossval.py` — cross-validation: bill number normalization, rollcall matching (multi-motion tally-based), tally comparison, individual vote comparison (ANV/NV compat, name + last-name fallback), report formatting (~40 tests)
 
 ## Bill Text Test Files
 

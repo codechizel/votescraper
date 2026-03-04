@@ -51,6 +51,10 @@ _NICKNAMES: dict[str, list[str]] = {
     "ed": ["edward", "edwin"],
     "ted": ["theodore", "edward"],
     "rob": ["robert"],
+    "marty": ["martin"],
+    "chip": ["charles"],
+    "angel": ["angelina", "angela"],
+    "ricky": ["richard"],
 }
 
 # Reverse map: formal name → list of nicknames

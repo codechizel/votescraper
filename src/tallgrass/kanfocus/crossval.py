@@ -394,7 +394,10 @@ def compare_individual_votes(
     kf_only_set = set(kf_by_slug) - set(je_by_slug)
     je_only_set = set(je_by_slug) - set(kf_by_slug)
 
-    # Name-based fallback: match KF-only slugs to JE-only slugs by name
+    # Name-based fallback: match KF-only slugs to JE-only slugs by name.
+    # JE votes typically store last-name-only ("Barrett") while KF has full
+    # names ("Brad Barrett"). Three strategies: full name, last-name match,
+    # then the remaining unmatched go to kf_only/je_only.
     name_matched_kf: set[str] = set()
     name_matched_je: set[str] = set()
     if kf_only_set and je_only_set:
@@ -408,28 +411,40 @@ def compare_individual_votes(
         for kf_slug in kf_only_set:
             kf_v = kf_by_slug[kf_slug]
             norm = _normalize_legislator_name(kf_v.legislator_name)
-            if norm and norm in je_name_index:
-                je_slug = je_name_index[norm]
-                if je_slug not in name_matched_je:
-                    name_matched_kf.add(kf_slug)
-                    name_matched_je.add(je_slug)
-                    # Compare their votes using the KF slug as the label
-                    je_v = je_by_slug[je_slug]
-                    kf_cat = kf_v.vote
-                    je_cat = je_v.vote
-                    if kf_cat != je_cat:
-                        compatible = (
-                            kf_cat == "Not Voting" and je_cat == "Absent and Not Voting"
-                        ) or (kf_cat == "Absent and Not Voting" and je_cat == "Not Voting")
-                        mismatches.append(
-                            VoteMismatch(
-                                slug=kf_slug,
-                                name=kf_v.legislator_name or je_v.legislator_name,
-                                kf_vote=kf_cat,
-                                je_vote=je_cat,
-                                compatible=compatible,
-                            )
+            if not norm:
+                continue
+
+            # Strategy 1: full normalized name match
+            je_slug = je_name_index.get(norm)
+
+            # Strategy 2: last-name match (KF "Brad Barrett" → last word "barrett" → JE "Barrett")
+            if je_slug is None:
+                parts = norm.split()
+                if parts:
+                    last = parts[-1]
+                    if last in je_name_index:
+                        je_slug = je_name_index[last]
+
+            if je_slug is not None and je_slug not in name_matched_je:
+                name_matched_kf.add(kf_slug)
+                name_matched_je.add(je_slug)
+                # Compare their votes using the KF slug as the label
+                je_v = je_by_slug[je_slug]
+                kf_cat = kf_v.vote
+                je_cat = je_v.vote
+                if kf_cat != je_cat:
+                    compatible = (
+                        kf_cat == "Not Voting" and je_cat == "Absent and Not Voting"
+                    ) or (kf_cat == "Absent and Not Voting" and je_cat == "Not Voting")
+                    mismatches.append(
+                        VoteMismatch(
+                            slug=kf_slug,
+                            name=kf_v.legislator_name or je_v.legislator_name,
+                            kf_vote=kf_cat,
+                            je_vote=je_cat,
+                            compatible=compatible,
                         )
+                    )
 
     kf_only = sorted(kf_only_set - name_matched_kf)
     je_only = sorted(je_only_set - name_matched_je)

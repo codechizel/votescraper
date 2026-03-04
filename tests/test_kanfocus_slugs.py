@@ -178,6 +178,39 @@ class TestLoadExistingSlugs:
         result = load_existing_slugs(tmp_path, "test")
         assert "laura kelly" in result
 
+    def test_loads_both_kf_and_je_entries(self, tmp_path: Path):
+        """Both KF-generated and JE entries are loaded from CSV."""
+        csv_path = tmp_path / "test_legislators.csv"
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "name", "full_name", "slug", "chamber",
+                    "party", "district", "member_url", "ocd_id",
+                ],
+            )
+            writer.writeheader()
+            # KF-generated entry (no member_url)
+            writer.writerow({
+                "name": "Brad Barrett", "full_name": "Brad Barrett",
+                "slug": "rep_barrett_brad_1", "chamber": "House",
+                "party": "Republican", "district": "76th",
+                "member_url": "", "ocd_id": "",
+            })
+            # JE entry (has member_url)
+            writer.writerow({
+                "name": "Barrett", "full_name": "Bradley Barrett",
+                "slug": "rep_barrett_bradley_1", "chamber": "House",
+                "party": "Republican", "district": "76",
+                "member_url": "https://www.kslegislature.gov/li/b2025_26/members/rep_barrett_bradley_1/",
+                "ocd_id": "ocd-person/abc123",
+            })
+
+        result = load_existing_slugs(tmp_path, "test")
+        assert "brad barrett" in result
+        assert "bradley barrett" in result
+        assert result["bradley barrett"] == "rep_barrett_bradley_1"
+
 
 # ── match_to_existing() ───────────────────────────────────────────────────
 

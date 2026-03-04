@@ -416,6 +416,32 @@ class TestCompareIndividualVotes:
         assert len(kf_only) == 0
         assert len(je_only) == 0
 
+    def test_name_fallback_last_name_match(self):
+        """KF full name matches JE last-name-only via last-name fallback."""
+        kf = [_make_vote(slug="rep_barrett_brad_1", name="Brad Barrett", vote="Yea")]
+        je = [_make_vote(slug="rep_barrett_bradley_1", name="Barrett", vote="Yea")]
+        mismatches, kf_only, je_only = compare_individual_votes(kf, je)
+        assert len(kf_only) == 0
+        assert len(je_only) == 0
+
+    def test_name_fallback_last_name_mismatch_reported(self):
+        """Last-name match with different votes → reported as mismatch."""
+        kf = [_make_vote(slug="kf_1", name="Chip VanHouden", vote="Yea")]
+        je = [_make_vote(slug="je_1", name="VanHouden", vote="Nay")]
+        mismatches, kf_only, je_only = compare_individual_votes(kf, je)
+        assert len(mismatches) == 1
+        assert mismatches[0].compatible is False
+        assert len(kf_only) == 0
+        assert len(je_only) == 0
+
+    def test_name_fallback_last_name_no_false_positive(self):
+        """Different last names don't produce false matches."""
+        kf = [_make_vote(slug="kf_1", name="Brad Barrett", vote="Yea")]
+        je = [_make_vote(slug="je_1", name="Smith", vote="Yea")]
+        mismatches, kf_only, je_only = compare_individual_votes(kf, je)
+        assert kf_only == ["kf_1"]
+        assert je_only == ["je_1"]
+
 
 # ── TestFormatReport ─────────────────────────────────────────────────────
 

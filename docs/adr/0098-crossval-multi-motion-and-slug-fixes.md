@@ -37,15 +37,21 @@ Three targeted fixes to `match_to_existing()` and supporting code:
 
 **2c. Hyphen normalization**: `normalize_name()` replaces hyphens with spaces before slug generation. "Oletha Faust-Goudeau" → "Oletha Faust Goudeau" → `sen_faust_goudeau_oletha_1`.
 
-### Fix 3: Name-Based Fallback (`crossval.py`)
+### Fix 3: Name-Based Fallback with Last-Name Matching (`crossval.py`)
 
-For any remaining slug mismatches in `compare_individual_votes()`, a name-based fallback matches KF-only slugs to JE-only slugs by `normalize_name()`. This catches edge cases where slug resolution wasn't sufficient but the legislator is clearly the same person (same normalized name).
+For any remaining slug mismatches in `compare_individual_votes()`, a two-strategy name fallback matches KF-only slugs to JE-only slugs:
+
+1. **Full normalized name**: `normalize_name()` on both sides (handles middle initials, suffixes, hyphens)
+2. **Last-name match**: extracts last word of KF full name, compares against JE last-name-only (kslegislature.gov vote pages store only last names in `legislator_name`)
+
+This catches all cases where slug resolution wasn't sufficient: JE stores "Barrett" while KF stores "Brad Barrett" — the last-name fallback matches them.
 
 ## Consequences
 
 - Multi-motion matching correctly disambiguates amendment votes on the same bill/day
 - Slug resolution handles real-world name variations (nicknames, hyphens, chamber confusion)
-- Name fallback provides a safety net for remaining edge cases in individual vote comparison
-- 21 new tests (12 slug, 9 crossval) — total scraper tests: ~624, total project tests: ~2722
+- Name fallback with last-name matching resolves all slug mismatches (KF-only/JE-only → 0)
+- 91st biennium results: 352 (40.8%) perfect individual match, 506 (58.6%) compatible (ANV/NV only), 5 (0.6%) genuine mismatches (11 total, all on SB 63 multi-motion votes)
+- 25 new tests (13 slug, 12 crossval) — total scraper tests: ~628, total project tests: ~2726
 - Existing test for `generate_slug("Oletha Faust-Goudeau", "S")` updated: now produces `sen_faust_goudeau_oletha_1` (was `sen_faust-goudeau_oletha_1`)
 - No breaking changes to public API — all changes are internal to matching/comparison logic
