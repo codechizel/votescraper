@@ -139,3 +139,11 @@ Jitter on per-URL backoff prevents thundering herd within each wave. See ADR-000
 ## Vote Deduplication
 
 ODT sessions (2011-2014) can link the same vote page from multiple bills. `save_csvs()` deduplicates by `(legislator_slug, vote_id)`, keeping first occurrence.
+
+## Session URL Logic
+
+- Current (2025-26): `/li/b2025_26/...`
+- Historical (2023-24): `/li_2024/b2023_24/...`
+- Special (2024): `/li_2024s/...`
+- API: current uses `/li/api/v13/rev-1`, historical uses `/li_{end_year}/api/v13/rev-1`
+- `CURRENT_BIENNIUM_START` in session.py must be updated when a new biennium becomes current (next: 2027).

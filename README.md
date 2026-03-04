@@ -1,6 +1,6 @@
 # Tallgrass
 
-Kansas Legislature roll call vote scraper and Bayesian analysis platform. Scrapes [kslegislature.gov](https://www.kslegislature.gov) into structured CSV files, then runs a 17-phase statistical pipeline covering IRT ideal points, network analysis, clustering, time series, and more.
+Kansas Legislature roll call vote scraper and Bayesian analysis platform. Scrapes [kslegislature.gov](https://www.kslegislature.gov) into structured CSV files, then runs a 27-phase statistical pipeline covering IRT ideal points, network analysis, clustering, time series, and more.
 
 **Coverage:** 2011-2026 (84th-91st Legislatures)
 
@@ -27,7 +27,7 @@ just pipeline 2025-26
 - **Python 3.14+** — install via `uv python install 3.14`
 - **[uv](https://docs.astral.sh/uv/)** — package manager
 - **[Just](https://github.com/casey/just)** — command runner (optional but recommended)
-- **R** — only required for Phases 16 (Dynamic IRT) and 17 (W-NOMINATE/OC). Install `wnominate`, `pscl`, `oc`, `changepoint`, `strucchange` from CRAN.
+- **R** — only required for Phase 16 (W-NOMINATE/OC) and Phase 19 (TSA enrichment). Install `wnominate`, `pscl`, `oc`, `changepoint`, `strucchange` from CRAN.
 
 ## Scraper
 
@@ -43,20 +43,22 @@ uv run tallgrass 2025 --clear-cache     # re-fetch everything
 
 ### Output
 
-Three CSV files per session in `data/kansas/{legislature}_{start}-{end}/`:
+Five CSV files per session in `data/kansas/{legislature}_{start}-{end}/`:
 
 | File | Contents |
 |------|----------|
 | `*_votes.csv` | One row per legislator per roll call |
 | `*_rollcalls.csv` | One row per roll call (bill, motion, result, tallies) |
 | `*_legislators.csv` | One row per legislator (name, party, district, chamber) |
+| `*_bill_actions.csv` | One row per bill lifecycle action (89th+ only) |
+| `*_bill_texts.csv` | One row per bill document (via `tallgrass-text`) |
 
 ## Analysis Pipeline
 
-17 phases covering descriptive statistics, dimensionality reduction, Bayesian modeling, network analysis, prediction, and cross-session validation.
+27 phases covering descriptive statistics, dimensionality reduction, Bayesian modeling, network analysis, prediction, bill text NLP, and cross-session validation.
 
 ```bash
-just pipeline 2025-26       # run all 17 phases in sequence
+just pipeline 2025-26       # run all 25 single-biennium phases
 just eda                    # single phase
 just irt --n-samples 4000   # with custom arguments
 ```
@@ -65,23 +67,31 @@ just irt --n-samples 4000   # with custom arguments
 |---|-------|--------|
 | 01 | EDA | Descriptive statistics, vote matrix, missingness |
 | 02 | PCA | Principal component analysis |
-| 02c | MCA | Multiple correspondence analysis |
-| 03 | UMAP | Nonlinear dimensionality reduction |
-| 04 | IRT | 1D Bayesian ideal points (PyMC + nutpie) |
-| 04b | 2D IRT | 2D Bayesian IRT with PLT identification |
-| 04c | PPC | Posterior predictive checks + LOO-CV model comparison |
-| 05 | Clustering | Hierarchical, k-means, GMM |
-| 05b | LCA | Latent class analysis (StepMix) |
-| 06 | Network | Co-voting network + community detection |
-| 06b | Bipartite | Bill-legislator bipartite network |
-| 07 | Indices | Rice, party unity, ENP, maverick scores |
-| 08 | Prediction | Vote prediction (logistic + XGBoost + SHAP) |
-| 09 | Beta-Binomial | Bayesian party loyalty shrinkage |
-| 10 | Hierarchical | Hierarchical IRT with partial pooling |
-| 11 | Synthesis | 30-section narrative report joining all phases |
-| 12 | Profiles | Per-legislator deep-dive reports |
-
-Additional standalone phases: cross-session validation (13), external validation against Shor-McCarty (14) and DIME/CFscores (14b), time series analysis (15), dynamic ideal points (16), W-NOMINATE + Optimal Classification (17).
+| 03 | MCA | Multiple correspondence analysis |
+| 04 | UMAP | Nonlinear dimensionality reduction |
+| 05 | IRT | 1D Bayesian ideal points (PyMC + nutpie) |
+| 06 | 2D IRT | 2D Bayesian IRT with PLT identification |
+| 07 | Hierarchical | Hierarchical IRT with partial pooling |
+| 08 | PPC | Posterior predictive checks + LOO-CV model comparison |
+| 09 | Clustering | Hierarchical, k-means, GMM |
+| 10 | LCA | Latent class analysis (StepMix) |
+| 11 | Network | Co-voting network + community detection |
+| 12 | Bipartite | Bill-legislator bipartite network |
+| 13 | Indices | Rice, party unity, ENP, maverick scores |
+| 14 | Beta-Binomial | Bayesian party loyalty shrinkage |
+| 15 | Prediction | Vote prediction (logistic + XGBoost + SHAP) |
+| 16 | W-NOMINATE | W-NOMINATE + Optimal Classification (R) |
+| 17 | External Validation | Shor-McCarty score correlation |
+| 18 | DIME | DIME/CFscore campaign-finance validation |
+| 19 | TSA | Time series analysis + changepoint detection |
+| 20 | Bill Text | BERTopic topic modeling + NLP analysis |
+| 21 | TBIP | Text-based ideal points |
+| 22 | Issue IRT | Issue-specific ideal points (topic-stratified) |
+| 23 | Model Legislation | ALEC + cross-state bill matching |
+| 24 | Synthesis | Narrative report joining all phases |
+| 25 | Profiles | Per-legislator deep-dive reports |
+| 26 | Cross-Session | Cross-biennium legislator matching + shift |
+| 27 | Dynamic IRT | Martin-Quinn state-space IRT across bienniums |
 
 Each phase produces an HTML report with tables, figures, and plain-English interpretation. Reports are written to `results/kansas/{session}/{run_id}/{phase}/`.
 
@@ -89,7 +99,7 @@ Each phase produces an HTML report with tables, figures, and plain-English inter
 
 ```bash
 just check          # lint + typecheck + tests (quality gate)
-just test           # run all ~2458 tests
+just test           # run all ~2664 tests
 just test-fast      # skip slow/integration tests
 just lint           # ruff check --fix + ruff format
 just typecheck      # ty check src/ + ty check analysis/
@@ -100,7 +110,7 @@ just typecheck      # ty check src/ + ty check analysis/
 ```
 src/tallgrass/     # Scraper package (config, session, models, scraper, output, CLI)
 analysis/          # 27 numbered phase subdirectories + shared infrastructure
-tests/             # ~2458 pytest tests (scraper + all analysis phases)
+tests/             # ~2664 pytest tests (scraper + all analysis phases)
 docs/              # Deep dives, ADRs, field surveys, primers
 data/              # Scraped CSV output + external validation data (gitignored)
 results/           # HTML reports + parquet intermediates (gitignored)
@@ -110,7 +120,7 @@ results/           # HTML reports + parquet intermediates (gitignored)
 
 - [Analysis primer](docs/analysis-primer.md) — plain-English guide for general audiences
 - [How IRT works](docs/how-irt-works.md) — general-audience explanation of Bayesian ideal points
-- [Architecture decisions](docs/adr/README.md) — 91 ADRs documenting design choices
+- [Architecture decisions](docs/adr/README.md) — 96 ADRs documenting design choices
 - [Design docs](analysis/design/README.md) — per-phase methodology and implementation
 - [Roadmap](docs/roadmap.md) — completed phases, backlog, rejected methods
 

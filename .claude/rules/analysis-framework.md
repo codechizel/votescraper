@@ -93,6 +93,25 @@ Scraper outputs empty string for non-R/D. Every analysis phase fills to "Indepen
 - 34 veto override votes are analytically rich (cross-party coalitions)
 - Beta-Binomial and Bayesian IRT are the recommended Bayesian starting points
 
+## Experiment Framework
+
+Four components eliminate code duplication in MCMC experiments (ADR-0048):
+
+- **`analysis/07_hierarchical/model_spec.py`** — `BetaPriorSpec` frozen dataclass + `PRODUCTION_BETA`, `JOINT_BETA`. Both `build_per_chamber_model()` and `build_joint_model()` accept `beta_prior=` parameter. Joint model uses `JOINT_BETA` (`lognormal_reparam`: exp(Normal(0,1)) for positive discrimination). `build_per_chamber_graph()` returns the PyMC model without sampling.
+- **`analysis/07_hierarchical/irt_linking.py`** — IRT scale linking (Stocking-Lord, Haebara, Mean-Sigma, Mean-Mean) using shared anchor bills for cross-chamber alignment.
+- **`analysis/experiment_monitor.py`** — `PlatformCheck` (validates Apple Silicon constraints), `ExperimentLifecycle` (PID lock, cleanup). `just monitor` checks experiment status.
+- **`analysis/experiment_runner.py`** — `ExperimentConfig` frozen dataclass + `run_experiment()`. Orchestrates: platform check → data load → per-chamber models → optional joint → HTML report → metrics.json.
+
+All hierarchical experiments produce full production HTML reports via `build_hierarchical_report()` (18-22 sections).
+
+## Concurrency (MCMC)
+
+- **MCMC (all models)**: nutpie Rust NUTS sampler — single process, Rust threads for parallel chains (ADR-0051, ADR-0053). Graph-building functions (`build_per_chamber_graph()`, `build_joint_graph()`, `build_irt_graph()`) return PyMC models without sampling. Sampling functions compile with `nutpie.compile_pymc_model()` and sample with `nutpie.sample()`. PCA-informed init via `initial_points`; `jitter_rvs` excludes the PCA-initialized variable.
+- **Apple Silicon (M3 Pro, 6P+6E)**: run bienniums sequentially; cap thread pools (`OMP_NUM_THREADS=6`); never use `taskpolicy -c background`. See ADR-0022.
+- **PyTensor C compiler**: requires `clang++`/`g++` for C-compiled kernels. Without it, falls back to pure Python (~18x slower). Common failure: Xcode update requires opening Xcode.app to accept license.
+- **R (optional)**: Required for Phase 16 (W-NOMINATE/OC) and Phase 19 TSA enrichment. Not managed by uv. R CSV files use literal "NA" — always pass `null_values="NA"` to `pl.read_csv()` when reading R output (ADR-0073).
+- **StepMix / scikit-learn shim (Phase 10 LCA)**: StepMix 2.2.1 uses deprecated sklearn internals removed in scikit-learn 1.8. Monkey-patch in `analysis/10_lca/lca.py` (guarded, will no-op when StepMix fixes it).
+
 ## Analytics Method Docs
 
 `Analytic_Methods/` has 29 documents (one per method). Naming: `NN_CAT_method_name.md`. Categories: DATA, EDA, IDX, DIM, BAY, CLU, NET, PRD, TSA.

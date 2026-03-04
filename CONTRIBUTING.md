@@ -25,7 +25,7 @@ just check          # lint + typecheck + tests
 just lint           # ruff check --fix + ruff format
 just lint-check     # check without fixing
 just typecheck      # ty check src/ + ty check analysis/
-just test           # ~2458 tests
+just test           # ~2664 tests
 just test-fast      # skip slow/integration tests
 ```
 
@@ -63,9 +63,9 @@ The `N` suffix is sequential within each day, starting at 1.
 ```
 src/tallgrass/     Scraper package (pip-installable)
 analysis/          27 numbered phase subdirectories + shared infrastructure
-tests/             Pytest tests (~2458 total)
+tests/             Pytest tests (~2664 total)
 docs/              Deep dives, ADRs, field surveys, primers
-docs/adr/          Architectural Decision Records (91 decisions)
+docs/adr/          Architectural Decision Records (96 decisions)
 analysis/design/   Per-phase methodology and implementation design docs
 ```
 

@@ -8,8 +8,8 @@ paths:
 ## Commands
 
 ```bash
-just test                    # run all tests (~2636)
-just test-scraper            # scraper tests only (-m scraper, ~312)
+just test                    # run all tests (~2664)
+just test-scraper            # scraper tests only (-m scraper, ~566)
 just test-fast               # skip slow tests (-m "not slow")
 just test-web                # Django/database tests only (-m web, requires PostgreSQL)
 just check                   # full check (lint + typecheck + tests)
@@ -22,7 +22,7 @@ uv run pytest tests/ -m "not scraper"  # analysis tests only
 
 Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-class decorators).
 
-- `@pytest.mark.scraper` — scraper pipeline tests (11 files, ~312 tests)
+- `@pytest.mark.scraper` — scraper pipeline tests (11 files, ~566 tests)
 - `@pytest.mark.integration` — end-to-end and real-data tests (~29 tests)
 - `@pytest.mark.slow` — tests that take >5 seconds (~39 tests, including 15 in test_scraper_http.py)
 - `@pytest.mark.web` — Django/database tests (4 files, ~175 tests; requires PostgreSQL via `just db-up`)
