@@ -366,6 +366,18 @@ db-createsuperuser:
 db-shell:
     docker compose exec db psql -U tallgrass -d tallgrass
 
+# Load one session into PostgreSQL
+db-load *args:
+    DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py load_session {{args}}
+
+# Load all sessions + ALEC corpus into PostgreSQL
+db-load-all *args:
+    DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py load_all {{args}}
+
+# Load ALEC model legislation corpus into PostgreSQL
+db-load-alec *args:
+    DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py load_alec {{args}}
+
 # Generic manage.py passthrough
 django *args:
     DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py {{args}}

@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-03 (PostgreSQL + Django roadmap added, KanFocus backfill in progress)
+**Last updated:** 2026-03-04 (DB2 CSV-to-PostgreSQL loader complete)
 
 ---
 
@@ -530,14 +530,16 @@ Django project at `src/web/` with 8 models (State, Session, Legislator, RollCall
 - Justfile recipes: `db-up`, `db-down`, `db-migrate`, `db-admin`, `db-shell`, `test-web`
 - `web` dependency group (Django 5.2 LTS + psycopg3) — not a core dependency
 
-### DB2. CSV-to-PostgreSQL Loader
+### DB2. CSV-to-PostgreSQL Loader (COMPLETE — 2026-03-04)
 
-Management command (`manage.py load_session`) that bulk-loads existing CSVs into PostgreSQL using `COPY`. Idempotent — re-running for the same biennium replaces that session's data. Handles both kslegislature.gov data (`je_` vote IDs) and KanFocus data (`kf_` vote IDs).
+Three management commands that bulk-load CSVs into PostgreSQL. Delete-and-reload per session inside `@transaction.atomic` — idempotent and safe. Legislators, rollcalls, bill actions, and bill texts use psycopg3 `COPY FROM STDIN`; votes use `bulk_create` for FK resolution (slug→Legislator.id, vote_id→RollCall.id). ADR-0094.
 
 **Deliverables:**
-- `manage.py load_session KS 2025` — loads all 5 CSVs for a biennium
-- `manage.py load_all KS` — loads all bienniums for a state
-- Validation report: row counts, null checks, FK integrity
+- `manage.py load_session 91st_2025-2026` — loads all CSVs for one session
+- `manage.py load_all` — discovers all session directories + loads ALEC corpus
+- `manage.py load_alec` — loads ALEC model legislation corpus
+- `--dry-run` validates CSVs without writing; `--skip-bill-text` skips large bill text files
+- Justfile recipes: `just db-load`, `just db-load-all`, `just db-load-alec`
 
 **Prerequisite:** DB1
 

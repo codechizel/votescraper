@@ -93,9 +93,9 @@ class RollCall(models.Model):
     chamber = models.CharField(max_length=10)
     motion = models.TextField(default="")
     vote_type = models.CharField(max_length=100, default="")
-    result = models.CharField(max_length=100, default="")
-    short_title = models.CharField(max_length=500, default="")
-    sponsor = models.CharField(max_length=200, default="")
+    result = models.TextField(default="")
+    short_title = models.TextField(default="")
+    sponsor = models.TextField(default="")
     sponsor_slugs = models.TextField(default="")  # semicolon-joined, preserves CSV fidelity
     yea_count = models.PositiveSmallIntegerField(default=0)
     nay_count = models.PositiveSmallIntegerField(default=0)
@@ -148,7 +148,7 @@ class BillAction(models.Model):
     committee_names = models.TextField(default="")  # semicolon-joined, preserves CSV fidelity
     occurred_datetime = models.DateTimeField(null=True, blank=True)
     session_date = models.DateField(null=True, blank=True)
-    status = models.CharField(max_length=200, default="")
+    status = models.TextField(default="")
     journal_page_number = models.CharField(max_length=50, default="")
 
     class Meta:
@@ -183,13 +183,13 @@ class ALECModelBill(models.Model):
     embedding similarity, not a natural key.
     """
 
-    title = models.CharField(max_length=500)
+    title = models.TextField()
     text = models.TextField()
     category = models.CharField(max_length=200, default="")
-    bill_type = models.CharField(max_length=100, default="")
+    bill_type = models.TextField(default="")
     date = models.CharField(max_length=20, default="")  # YYYY-MM-DD or empty
     url = models.URLField(max_length=500, default="")
-    task_force = models.CharField(max_length=200, default="")
+    task_force = models.TextField(default="")
 
     class Meta:
         ordering = ["title"]

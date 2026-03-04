@@ -8,7 +8,7 @@ paths:
 ## Commands
 
 ```bash
-just test                    # run all tests (~2458)
+just test                    # run all tests (~2572)
 just test-scraper            # scraper tests only (-m scraper, ~312)
 just test-fast               # skip slow tests (-m "not slow")
 just test-web                # Django/database tests only (-m web, requires PostgreSQL)
@@ -25,7 +25,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `@pytest.mark.scraper` — scraper pipeline tests (11 files, ~312 tests)
 - `@pytest.mark.integration` — end-to-end and real-data tests (~29 tests)
 - `@pytest.mark.slow` — tests that take >5 seconds (~39 tests, including 15 in test_scraper_http.py)
-- `@pytest.mark.web` — Django/database tests (2 files, ~63 tests; requires PostgreSQL via `just db-up`)
+- `@pytest.mark.web` — Django/database tests (3 files, ~111 tests; requires PostgreSQL via `just db-up`)
 
 ## Conventions
 
@@ -120,6 +120,7 @@ Django tests use `pytest.importorskip("django")` at module top — existing test
 
 - `tests/test_django_models.py` — all 8 models: creation, unique constraints, nullable fields, FK cascades, `__str__`, cross-model reverse queries (~53 tests). Marked `@pytest.mark.web` + `@pytest.mark.django_db`.
 - `tests/test_django_admin.py` — admin registration for all 8 models, `list_display`/`list_filter`/`search_fields`/`raw_id_fields` configuration (~10 tests). Marked `@pytest.mark.web` + `@pytest.mark.django_db`.
+- `tests/test_django_loader.py` — CSV-to-PostgreSQL loader (DB2): session name parsing, date/bool/int conversion, load_session (row counts, FK integrity, idempotency, dry-run, skip-bill-text, missing CSVs, special sessions, orphan votes), load_alec, load_all (~48 tests). Marked `@pytest.mark.web` + `@pytest.mark.django_db`.
 
 ## Manual Verification
 
