@@ -81,7 +81,7 @@ src/tallgrass/kanfocus/
 
 Coverage: 78th-91st (1999-2026). Uses `kf_` prefix for vote_ids. Conservative rate limiting (7s default, 12s recommended during business hours). See ADR-0088.
 
-**Cross-validation** (`--mode crossval`): re-parses KanFocus cache and compares overlapping rollcalls against kslegislature.gov CSVs. Matches on `(normalize_bill_number(bill_number), chamber, vote_date)` with tally-based sub-matching `(yea, nay, nv_total)` for multi-motion disambiguation. Individual vote comparison uses slug matching with name-based fallback for remaining slug mismatches. Handles "Sub for" prefix stripping and ANV/NV category ambiguity. No network access, no data mutation. Writes `crossval_report.md` to data dir. See ADR-0097.
+**Cross-validation** (`--mode crossval`): re-parses KanFocus cache and compares overlapping rollcalls against kslegislature.gov CSVs. Matches on `(normalize_bill_number(bill_number), chamber, vote_date)` with tally-based sub-matching `(yea, nay, nv_total)` for multi-motion disambiguation. Individual vote comparison uses slug matching with name-based fallback (full normalized name, then last-name-only match) for remaining slug mismatches. Handles "Sub for" prefix stripping and ANV/NV category ambiguity. No network access, no data mutation. Writes `crossval_report.md` to data dir. See ADR-0097.
 
 **Authentication**: Extracts session cookies from Chrome's encrypted cookie database on macOS (Keychain AES key, PBKDF2, 32-byte app-bound prefix skip). Requires active KanFocus login in Chrome.
 
