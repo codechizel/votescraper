@@ -359,7 +359,11 @@ def main(argv: list[str] | None = None) -> None:
 
         # ── Step 1: Load Kansas bill texts + embeddings ──────────────────
         print("\n[Step 1] Loading Kansas bill texts...")
-        ks_bill_texts = btd.load_bill_texts(data_dir, use_csv=args.csv)
+        try:
+            ks_bill_texts = btd.load_bill_texts(data_dir, use_csv=args.csv)
+        except FileNotFoundError:
+            print("  No bill texts available — skipping Phase 23.")
+            return
         n_ks = len(ks_bill_texts)
         print(f"  Loaded {n_ks} Kansas bill texts")
 
