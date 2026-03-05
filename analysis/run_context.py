@@ -446,12 +446,12 @@ class RunContext:
                 self.report.write(report_path)
 
                 if self.run_id is not None and self._explicit_run_id:
-                    # Run-directory mode: symlink chains through session-level latest
+                    # Run-directory mode: point directly at the concrete report
                     report_link = self._session_root / f"{self.analysis_name}_report.html"
                     if report_link.is_symlink() or report_link.exists():
                         report_link.unlink()
                     report_link.symlink_to(
-                        Path("latest") / self.analysis_name / f"{self.analysis_name}_report.html"
+                        Path(self.run_id) / self.analysis_name / f"{self.analysis_name}_report.html"
                     )
                 elif self.run_id is None:
                     # Flat mode: symlink through phase-level latest

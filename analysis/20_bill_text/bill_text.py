@@ -879,7 +879,11 @@ def main() -> None:
         # ── Load data ────────────────────────────────────────────────────
         print_header("Loading Data")
 
-        bill_texts = load_bill_texts(data_dir, use_csv=args.csv)
+        try:
+            bill_texts = load_bill_texts(data_dir, use_csv=args.csv)
+        except FileNotFoundError:
+            print("  No bill texts available — skipping Phase 20.")
+            return
         print(f"  Bills with text: {len(bill_texts)}")
 
         rollcalls = load_rollcalls(data_dir, use_csv=args.csv)

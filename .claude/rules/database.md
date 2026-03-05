@@ -69,7 +69,7 @@ Read-only public API via Django Ninja at `/api/v1/`. 7 resource routers (session
 
 `analysis/db.py` — Django-free module using raw SQL + psycopg3 + Polars `read_database()`. PostgreSQL is the default data source for all analysis phases; CSV is the automatic fallback when the DB is unavailable.
 
-- **Connection:** `DATABASE_URL` env var (default: `postgresql://localhost:5432/tallgrass`). Connection cached per process.
+- **Connection:** `DATABASE_URL` env var (default: `postgresql://tallgrass:tallgrass@localhost:5432/tallgrass`). Connection cached per process.
 - **Routing:** `load_votes(data_dir, *, use_csv=False)` and siblings try DB first, fall back to CSV on failure. `use_csv=True` skips DB entirely.
 - **CLI:** `--csv` flag on each phase's argparser forces CSV-only mode.
 - **Session mapping:** `data_dir.name` (e.g. `91st_2025-2026`) maps directly to `Session.name` in the DB.

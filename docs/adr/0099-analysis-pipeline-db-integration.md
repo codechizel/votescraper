@@ -15,7 +15,7 @@ The analysis pipeline (27 phases) reads scraper output from CSV files in `data/k
 Django-free module using raw SQL + psycopg3 + Polars `read_database()`. No Django ORM dependency — the analysis pipeline stays independent of the web project.
 
 **Connection management:**
-- `get_connection_uri()` reads `DATABASE_URL` env var (default: `postgresql://localhost:5432/tallgrass`)
+- `get_connection_uri()` reads `DATABASE_URL` env var (default: `postgresql://tallgrass:tallgrass@localhost:5432/tallgrass`)
 - `get_connection()` returns a cached `psycopg.Connection` (one per process, auto-reconnect)
 - `db_available()` lightweight connection test for fallback logic
 

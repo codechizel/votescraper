@@ -159,6 +159,7 @@ What are the trade-offs?
 | [0095](0095-scraper-db-post-hook.md) | Scraper post-hook — auto-load CSVs into PostgreSQL (DB3) |
 | [0096](0096-rest-api-django-ninja.md) | REST API via Django Ninja (DB4) |
 | [0099](0099-analysis-pipeline-db-integration.md) | Analysis pipeline database integration (DB5) |
+| [0100](0100-report-symlink-and-pipeline-resilience.md) | Report symlink stability and pipeline resilience (3 fixes) |
 
 ## Chronological Index
 
@@ -263,6 +264,7 @@ What are the trade-offs?
 | [0097](0097-kanfocus-cross-validation.md) | KanFocus cross-validation diagnostic (KF vs JE data integrity, `--mode crossval`) | Accepted | 2026-03-04 |
 | [0098](0098-crossval-multi-motion-and-slug-fixes.md) | Cross-validation fixes (tally-based multi-motion matching, slug resolution, name fallback) | Accepted | 2026-03-04 |
 | [0099](0099-analysis-pipeline-db-integration.md) | Analysis pipeline database integration (DB5: psycopg3 + Polars, CSV fallback, --csv flag) | Accepted | 2026-03-04 |
+| [0100](0100-report-symlink-and-pipeline-resilience.md) | Report symlink stability and pipeline resilience (DB credentials, graceful skip, concrete symlinks) | Accepted | 2026-03-05 |
 
 ## Creating a New ADR
 

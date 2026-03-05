@@ -26,7 +26,7 @@ import polars as pl
 
 # ── Connection Management ────────────────────────────────────────────────────
 
-_DEFAULT_DATABASE_URL = "postgresql://localhost:5432/tallgrass"
+_DEFAULT_DATABASE_URL = "postgresql://tallgrass:tallgrass@localhost:5432/tallgrass"
 
 
 def get_connection_uri() -> str:

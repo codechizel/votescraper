@@ -427,7 +427,11 @@ def main() -> None:
         # ── Load data ──
         print_header("DATA LOADING")
 
-        bill_texts = load_bill_texts(data_dir)
+        try:
+            bill_texts = load_bill_texts(data_dir)
+        except FileNotFoundError:
+            print("  No bill texts available — skipping Phase 21.")
+            return
         print(f"  Bill texts: {bill_texts.height} bills")
 
         rollcalls = load_rollcalls(data_dir)
