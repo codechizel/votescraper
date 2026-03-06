@@ -79,6 +79,7 @@ What are the trade-offs?
 | [0068](0068-dynamic-irt-sign-correction.md) | Dynamic IRT post-hoc sign correction |
 | [0070](0070-dynamic-irt-convergence-and-identification.md) | Dynamic IRT convergence and identification |
 | [0074](0074-convergence-resolution.md) | Resolve 3 systematic MCMC convergence failures |
+| [0101](0101-party-aware-irt-anchor-selection.md) | Party-aware IRT anchor selection (supermajority sign flip fix) |
 
 ### Classical Analysis
 
@@ -265,6 +266,7 @@ What are the trade-offs?
 | [0098](0098-crossval-multi-motion-and-slug-fixes.md) | Cross-validation fixes (tally-based multi-motion matching, slug resolution, name fallback) | Accepted | 2026-03-04 |
 | [0099](0099-analysis-pipeline-db-integration.md) | Analysis pipeline database integration (DB5: psycopg3 + Polars, CSV fallback, --csv flag) | Accepted | 2026-03-04 |
 | [0100](0100-report-symlink-and-pipeline-resilience.md) | Report symlink stability and pipeline resilience (DB credentials, graceful skip, concrete symlinks) | Accepted | 2026-03-05 |
+| [0101](0101-party-aware-irt-anchor-selection.md) | Party-aware IRT anchor selection (supermajority sign flip fix, dimension collapse analysis) | Accepted | 2026-03-06 |
 
 ## Creating a New ADR
 

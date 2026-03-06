@@ -79,18 +79,19 @@
 - Normal(0, 2.5) — viable but wider prior produces slightly slower convergence than Normal(0, 1) with nearly identical accuracy.
 - Half-Normal — viable but lacks negative support needed for D-Yea bills.
 
-### PCA-based anchor selection
+### PCA-based anchor selection (party-aware)
 
-**Decision:** Fix the most-conservative legislator (highest PCA PC1 score) at xi=+1 and the most-liberal (lowest PC1) at xi=-1. Both must have >= 50% participation.
+**Decision:** After PCA orients PC1 so Republican mean > Democrat mean, select the most extreme Republican (highest PC1) as conservative anchor at xi=+1 and the most extreme Democrat (lowest PC1) as liberal anchor at xi=-1. Both must have >= 50% participation. Falls back to raw PC1 extremes for single-party chambers.
 
-**Why:** Automates anchor selection using existing PCA results. No manual knowledge of Kansas politics required. The 50% participation guard ensures anchors have enough data for tight estimation (their ideal points are fixed, so their data directly informs bill parameters).
+**Why:** Automates anchor selection using existing PCA results. No manual knowledge of Kansas politics required. The 50% participation guard ensures anchors have enough data for tight estimation (their ideal points are fixed, so their data directly informs bill parameters). The party-aware selection prevents sign flip in supermajority chambers where intra-party variation dominates PC1. For example, in the 79th Kansas Senate (30R/10D), the raw PC1 extreme was Tim Huelskamp — a far-right Republican rebel whose voting pattern (opposing establishment bills) resembled Democrats. Without party filtering, Huelskamp would be selected as the "liberal" anchor, mis-identifying the model.
 
 **Alternatives considered:**
+- Raw PC1 extremes without party filtering — the original approach; caused sign flip in the 79th Senate and potentially other supermajority chambers. Replaced in 2026-03-06.
 - Manual anchor selection (e.g., "pick a Freedom Caucus member and a Lawrence Democrat") — rejected for reproducibility; requires human judgment that changes across sessions
 - Soft identification via N(0,1) prior + post-hoc sign correction — rejected because it's fragile with 2 chains
 - Three anchors (conservative, liberal, moderate at 0) — rejected as unnecessary for 1D; two anchors fix location, scale, and sign
 
-**Impact:** If PCA scores are wrong (e.g., the PC1 sign convention flipped incorrectly), the IRT anchors will be wrong. Validated by the PCA-IRT correlation check (r > 0.95 expected).
+**Impact:** If PCA scores are wrong (e.g., the PC1 sign convention flipped incorrectly), the IRT anchors will be wrong. Validated by the PCA-IRT correlation check (r > 0.95 expected). In supermajority chambers, the first IRT dimension may capture establishment-vs-rebel rather than left-vs-right, even with correct anchors — this is a data feature (dimension collapse), not a model failure. See `docs/irt-sign-identification-deep-dive.md`.
 
 ### PCA-informed chain initialization (default: on)
 

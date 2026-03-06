@@ -857,7 +857,13 @@ def select_anchors(
     matrix: pl.DataFrame,
     chamber: str,
 ) -> tuple[int, str, int, str]:
-    """Select conservative and liberal anchors from PCA PC1 extremes.
+    """Select conservative and liberal anchors using party-aware PC1 extremes.
+
+    Convention: PCA orient_pc1() ensures Republican mean > Democrat mean on PC1.
+    We pick the most extreme Republican (highest PC1) as conservative anchor and
+    the most extreme Democrat (lowest PC1) as liberal anchor. This avoids sign
+    flip in supermajority chambers where intra-party variation dominates PC1 and
+    raw extremes may not correspond to ideological extremes.
 
     Guards: anchor must have >= 50% participation in the filtered matrix.
 
@@ -884,16 +890,29 @@ def select_anchors(
         .filter(pl.col("participation") >= MIN_PARTICIPATION_FOR_ANCHOR)
     )
 
-    # Sort by PC1 to find extremes
-    sorted_scores = eligible.sort("PC1", descending=True)
+    # Party-aware anchor selection: most extreme R (highest PC1) and most extreme D
+    # (lowest PC1). Falls back to raw PC1 extremes if a party is missing.
+    republicans = eligible.filter(pl.col("party") == "Republican").sort("PC1", descending=True)
+    democrats = eligible.filter(pl.col("party") == "Democrat").sort("PC1", descending=False)
 
-    cons_slug = sorted_scores["legislator_slug"][0]
-    cons_name = sorted_scores["full_name"][0]
-    cons_pc1 = sorted_scores["PC1"][0]
+    if republicans.height > 0 and democrats.height > 0:
+        cons_slug = republicans["legislator_slug"][0]
+        cons_name = republicans["full_name"][0]
+        cons_pc1 = republicans["PC1"][0]
 
-    lib_slug = sorted_scores["legislator_slug"][-1]
-    lib_name = sorted_scores["full_name"][-1]
-    lib_pc1 = sorted_scores["PC1"][-1]
+        lib_slug = democrats["legislator_slug"][0]
+        lib_name = democrats["full_name"][0]
+        lib_pc1 = democrats["PC1"][0]
+    else:
+        # Fallback: raw PC1 extremes (single-party chamber or missing party data)
+        sorted_scores = eligible.sort("PC1", descending=True)
+        cons_slug = sorted_scores["legislator_slug"][0]
+        cons_name = sorted_scores["full_name"][0]
+        cons_pc1 = sorted_scores["PC1"][0]
+        lib_slug = sorted_scores["legislator_slug"][-1]
+        lib_name = sorted_scores["full_name"][-1]
+        lib_pc1 = sorted_scores["PC1"][-1]
+        print("  WARNING: Single-party chamber — using raw PC1 extremes for anchors")
 
     cons_idx = slugs.index(cons_slug)
     lib_idx = slugs.index(lib_slug)

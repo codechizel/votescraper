@@ -72,7 +72,7 @@ The literature documents three canonical approaches:
 2. **Standardize + signed discrimination:** Constrain ξ to mean 0, sd 1; use skew-normal on β to set direction. More robust to bad anchor choices.
 3. **Standardize + single discrimination sign:** Constrain ξ and restrict the sign of one β parameter.
 
-Our implementation uses Strategy 1 with automated anchor selection via PCA PC1 extremes. This is consistent with `pscl::ideal()` and `idealstan`. The automation is an improvement over most implementations, which require manual anchor specification.
+Our implementation uses Strategy 1 with automated, party-aware anchor selection via PCA PC1 extremes: the most extreme Republican (highest PC1) as conservative anchor, and the most extreme Democrat (lowest PC1) as liberal anchor. This is consistent with `pscl::ideal()` and `idealstan`. The automation is an improvement over most implementations, which require manual anchor specification. The party-aware selection prevents sign flip in supermajority chambers where intra-party variation dominates PC1. See `docs/irt-sign-identification-deep-dive.md`.
 
 **Hard vs. soft constraints:** The PyMC Discourse documents a case where overly tight anchor priors (`sd=0.001`) caused 455 divergences. Our approach — fixing values directly via `pt.set_subtensor()` rather than using spike priors — is cleaner and avoids this numerical issue entirely.
 
