@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-04 (DB4 complete; REST API via Django Ninja)
+**Last updated:** 2026-03-06 (party-aware IRT anchors; 83rd KanFocus loaded; pending 83rd pipeline + duplicate bug)
 
 ---
 
@@ -635,6 +635,15 @@ DB1-DB5 are complete — data flows into PostgreSQL, is queryable via REST API, 
 | TBIP text-based ideal points | ~~No full bill text available~~ — **Unrejected.** Bill text retrieval planned (BT1), TBIP planned as Phase 21 (BT3). See `docs/bill-text-nlp-deep-dive.md`. |
 
 See `docs/method-evaluation.md` for detailed rationale on each rejection.
+
+---
+
+## Pending Operational Tasks
+
+| Item | Command | Context |
+|------|---------|---------|
+| **Run 83rd pipeline** | `just pipeline 2009-10` | KanFocus data downloaded + DB-loaded (1,180 rollcalls, 66,575 votes, 170 legislators). Needs full 27-phase analysis. |
+| **Investigate KanFocus scraper duplicate output** | — | 83rd KanFocus CSV had 4 duplicate rollcalls + 279 duplicate votes + 1 malformed truncated line. Root cause likely in `src/tallgrass/kanfocus/output.py`. Data was cleaned manually for DB load but scraper should be fixed to prevent recurrence. |
 
 ---
 
