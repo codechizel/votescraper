@@ -20,9 +20,9 @@ class SessionAdmin(admin.ModelAdmin):
 
 @admin.register(Legislator)
 class LegislatorAdmin(admin.ModelAdmin):
-    list_display = ["name", "slug", "chamber", "party", "district", "session"]
+    list_display = ["name", "legislator_slug", "chamber", "party", "district", "session"]
     list_filter = ["chamber", "party", "session"]
-    search_fields = ["name", "slug"]
+    search_fields = ["name", "legislator_slug"]
 
 
 @admin.register(RollCall)
@@ -47,9 +47,9 @@ class VoteAdmin(admin.ModelAdmin):
     list_filter = ["vote"]
     raw_id_fields = ["rollcall", "legislator"]
 
-    @admin.display(description="Legislator", ordering="legislator__slug")
+    @admin.display(description="Legislator", ordering="legislator__legislator_slug")
     def get_legislator_slug(self, obj):
-        return obj.legislator.slug
+        return obj.legislator.legislator_slug
 
     @admin.display(description="Roll Call", ordering="rollcall__vote_id")
     def get_vote_id(self, obj):

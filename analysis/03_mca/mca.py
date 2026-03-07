@@ -356,7 +356,7 @@ def orient_dim1(
     Same convention as PCA PC1.
     Returns (oriented_coords, was_flipped).
     """
-    slug_to_party = dict(legislators.select("slug", "party").iter_rows())
+    slug_to_party = dict(legislators.select("legislator_slug", "party").iter_rows())
     parties = [slug_to_party.get(s, "Unknown") for s in slugs]
 
     rep_scores = [row_coords.iloc[i, 0] for i, p in enumerate(parties) if p == "Republican"]
@@ -496,8 +496,8 @@ def run_mca_for_chamber(
     # Build scores DataFrame with metadata
     dim_cols = {f"Dim{i + 1}": row_coords.iloc[:, i].tolist() for i in range(n_comp)}
     scores_df = pl.DataFrame({"legislator_slug": slugs, **dim_cols})
-    meta = legislators.select("slug", "full_name", "party", "district", "chamber")
-    scores_df = scores_df.join(meta, left_on="legislator_slug", right_on="slug", how="left")
+    meta = legislators.select("legislator_slug", "full_name", "party", "district", "chamber")
+    scores_df = scores_df.join(meta, on="legislator_slug", how="left")
 
     # Category coordinates DataFrame
     cat_rows = []

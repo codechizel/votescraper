@@ -132,8 +132,10 @@ def parse_bai_perron_result(
     for i, bp in enumerate(breakpoints):
         # Convert R 1-based to 0-based
         bp_idx = int(bp) - 1
-        lo_idx = int(ci_lower[i]) - 1 if i < len(ci_lower) else bp_idx
-        hi_idx = int(ci_upper[i]) - 1 if i < len(ci_upper) else bp_idx
+        lo_raw = ci_lower[i] if i < len(ci_lower) else None
+        hi_raw = ci_upper[i] if i < len(ci_upper) else None
+        lo_idx = int(lo_raw) - 1 if lo_raw is not None and str(lo_raw) != "NA" else bp_idx
+        hi_idx = int(hi_raw) - 1 if hi_raw is not None and str(hi_raw) != "NA" else bp_idx
 
         # Clamp to valid range
         bp_idx = max(0, min(bp_idx, n - 1))

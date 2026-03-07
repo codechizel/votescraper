@@ -158,7 +158,7 @@ class TestMatchLegislators:
         leg_b = make_legislators(names, chamber="House", prefix="x")
         # Change one legislator's chamber in session B
         leg_b = leg_b.with_columns(
-            pl.when(pl.col("slug") == "x_0")
+            pl.when(pl.col("legislator_slug") == "x_0")
             .then(pl.lit("Senate"))
             .otherwise("chamber")
             .alias("chamber")
@@ -173,7 +173,7 @@ class TestMatchLegislators:
         leg_a = make_legislators(names, party="Republican")
         leg_b = make_legislators(names, party="Republican", prefix="x")
         leg_b = leg_b.with_columns(
-            pl.when(pl.col("slug") == "x_0")
+            pl.when(pl.col("legislator_slug") == "x_0")
             .then(pl.lit("Democrat"))
             .otherwise("party")
             .alias("party")
@@ -182,11 +182,11 @@ class TestMatchLegislators:
         switches = matched.filter(pl.col("is_party_switch"))
         assert switches.height == 1
 
-    def test_slug_column_name_flexibility(self) -> None:
-        """Should handle both 'slug' and 'legislator_slug' column names."""
+    def test_slug_column_name(self) -> None:
+        """Should work with 'legislator_slug' column name."""
         names = [f"M {i}" for i in range(25)]
-        leg_a = make_legislators(names)  # has 'slug' column
-        leg_b = make_legislators(names, prefix="x").rename({"slug": "legislator_slug"})
+        leg_a = make_legislators(names)
+        leg_b = make_legislators(names, prefix="x")
         matched = match_legislators(leg_a, leg_b)
         assert matched.height == 25
 
@@ -240,7 +240,7 @@ class TestMatchLegislators:
             "ocd-person/sen-thompson", "ocd-person/rep-thompson"
         ]
         leg_a = pl.DataFrame({
-            "slug": slugs_a,
+            "legislator_slug": slugs_a,
             "full_name": names,
             "party": ["Republican"] * 25,
             "chamber": ["House"] * 23 + ["Senate", "House"],
@@ -253,7 +253,7 @@ class TestMatchLegislators:
             "ocd-person/sen-thompson", "ocd-person/rep-thompson"
         ]
         leg_b = pl.DataFrame({
-            "slug": slugs_b,
+            "legislator_slug": slugs_b,
             "full_name": names,
             "party": ["Republican"] * 25,
             "chamber": ["House"] * 23 + ["Senate", "House"],
@@ -1719,8 +1719,8 @@ class TestComputeBlocStability:
         assert "party" in switchers.columns
 
     def test_handles_slug_column_name(self):
-        """Should work with 'slug' column (not 'legislator_slug')."""
-        km_a = pl.DataFrame({"slug": [f"r{i}" for i in range(6)], "cluster": [0, 0, 0, 1, 1, 1]})
+        """Should work with 'legislator_slug' column."""
+        km_a = pl.DataFrame({"legislator_slug": [f"r{i}" for i in range(6)], "cluster": [0, 0, 0, 1, 1, 1]})
         km_b = pl.DataFrame(
             {
                 "legislator_slug": [f"r{i}_b" for i in range(6)],

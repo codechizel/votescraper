@@ -120,7 +120,7 @@ class TestLoadExistingSlugs:
                 fieldnames=[
                     "name",
                     "full_name",
-                    "slug",
+                    "legislator_slug",
                     "chamber",
                     "party",
                     "district",
@@ -133,7 +133,7 @@ class TestLoadExistingSlugs:
                 {
                     "name": "Steve Abrams",
                     "full_name": "Steve Abrams",
-                    "slug": "sen_abrams_steve_1",
+                    "legislator_slug": "sen_abrams_steve_1",
                     "chamber": "Senate",
                     "party": "Republican",
                     "district": "32nd",
@@ -153,7 +153,7 @@ class TestLoadExistingSlugs:
                 fieldnames=[
                     "name",
                     "full_name",
-                    "slug",
+                    "legislator_slug",
                     "chamber",
                     "party",
                     "district",
@@ -166,7 +166,7 @@ class TestLoadExistingSlugs:
                 {
                     "name": "Laura Kelly",
                     "full_name": "Laura Kelly",
-                    "slug": "sen_kelly_laura_1",
+                    "legislator_slug": "sen_kelly_laura_1",
                     "chamber": "Senate",
                     "party": "Democrat",
                     "district": "18th",
@@ -185,7 +185,7 @@ class TestLoadExistingSlugs:
             writer = csv.DictWriter(
                 f,
                 fieldnames=[
-                    "name", "full_name", "slug", "chamber",
+                    "name", "full_name", "legislator_slug", "chamber",
                     "party", "district", "member_url", "ocd_id",
                 ],
             )
@@ -193,14 +193,14 @@ class TestLoadExistingSlugs:
             # KF-generated entry (no member_url)
             writer.writerow({
                 "name": "Brad Barrett", "full_name": "Brad Barrett",
-                "slug": "rep_barrett_brad_1", "chamber": "House",
+                "legislator_slug": "rep_barrett_brad_1", "chamber": "House",
                 "party": "Republican", "district": "76th",
                 "member_url": "", "ocd_id": "",
             })
             # JE entry (has member_url)
             writer.writerow({
                 "name": "Barrett", "full_name": "Bradley Barrett",
-                "slug": "rep_barrett_bradley_1", "chamber": "House",
+                "legislator_slug": "rep_barrett_bradley_1", "chamber": "House",
                 "party": "Republican", "district": "76",
                 "member_url": "https://www.kslegislature.gov/li/b2025_26/members/rep_barrett_bradley_1/",
                 "ocd_id": "ocd-person/abc123",

@@ -166,7 +166,7 @@ def parse_odt_votes(
             if member["slug"]:
                 new_legislators.append(
                     {
-                        "slug": member["slug"],
+                        "legislator_slug": member["slug"],
                         "name": member["name"],
                         "chamber": chamber,
                     }

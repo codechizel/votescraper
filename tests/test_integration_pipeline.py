@@ -143,7 +143,7 @@ def _make_votes(
         is_unanimous = "Unanimous" in rc_row["short_title"]
 
         for leg_row in legislators.iter_rows(named=True):
-            slug = leg_row["slug"]
+            slug = leg_row["legislator_slug"]
             name = leg_row["full_name"]
             party = leg_row["party"]
             leg_chamber = leg_row["chamber"]
@@ -324,7 +324,7 @@ class TestPCAFromEDA:
         scores, loadings = orient_pc1(scores, loadings, slugs, synthetic_legislators)
 
         # After orientation, Republicans should have positive mean PC1
-        slug_to_party = dict(synthetic_legislators.select("slug", "party").iter_rows())
+        slug_to_party = dict(synthetic_legislators.select("legislator_slug", "party").iter_rows())
         rep_scores = [
             scores[i, 0] for i, s in enumerate(slugs) if slug_to_party.get(s) == "Republican"
         ]

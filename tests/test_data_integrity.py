@@ -88,6 +88,7 @@ class TestCSVStructure:
             "result",
             "short_title",
             "sponsor",
+            "sponsor_slugs",
             "yea_count",
             "nay_count",
             "present_passing_count",
@@ -102,11 +103,12 @@ class TestCSVStructure:
         expected = {
             "name",
             "full_name",
-            "slug",
+            "legislator_slug",
             "chamber",
             "party",
             "district",
             "member_url",
+            "ocd_id",
         }
         assert set(legislators.columns) == expected
 
@@ -131,7 +133,7 @@ class TestReferentialIntegrity:
     ) -> None:
         """Every legislator_slug in votes.csv must exist in legislators.csv."""
         vote_slugs = set(votes["legislator_slug"].unique().to_list())
-        leg_slugs = set(legislators["slug"].to_list())
+        leg_slugs = set(legislators["legislator_slug"].to_list())
         unknown = vote_slugs - leg_slugs
         assert not unknown, f"Vote slugs not in legislators: {unknown}"
 
@@ -139,7 +141,7 @@ class TestReferentialIntegrity:
         self, votes: pl.DataFrame, legislators: pl.DataFrame
     ) -> None:
         """Every legislator in legislators.csv should have at least one vote."""
-        leg_slugs = set(legislators["slug"].to_list())
+        leg_slugs = set(legislators["legislator_slug"].to_list())
         vote_slugs = set(votes["legislator_slug"].unique().to_list())
         no_votes = leg_slugs - vote_slugs
         assert not no_votes, f"Legislators with zero votes: {no_votes}"
@@ -229,8 +231,13 @@ class TestTallyConsistency:
         assert mismatches.height == 0, f"{mismatches.height} rollcalls with nay count mismatch"
 
     def test_total_votes_match_sum(self, rollcalls: pl.DataFrame) -> None:
-        """total_votes should equal yea + nay + present + absent + not_voting."""
-        computed = rollcalls.with_columns(
+        """total_votes should equal yea + nay + present + absent + not_voting.
+
+        KanFocus (kf_) rollcalls use total_votes = yea + nay (votes cast),
+        so only check kslegislature.gov (je_) rollcalls.
+        """
+        je_rollcalls = rollcalls.filter(pl.col("vote_id").str.starts_with("je_"))
+        computed = je_rollcalls.with_columns(
             (
                 pl.col("yea_count")
                 + pl.col("nay_count")
@@ -284,7 +291,7 @@ class TestNoDuplicates:
 
     def test_legislator_slugs_unique(self, legislators: pl.DataFrame) -> None:
         """Each slug in legislators.csv must be unique."""
-        n_unique = legislators["slug"].n_unique()
+        n_unique = legislators["legislator_slug"].n_unique()
         assert n_unique == legislators.height, (
             f"{legislators.height - n_unique} duplicate slugs in legislators"
         )

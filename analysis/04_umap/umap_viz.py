@@ -346,7 +346,7 @@ def orient_umap1(
     UMAP axes have arbitrary orientation — this convention makes interpretation
     consistent: positive UMAP1 = conservative, negative UMAP1 = liberal.
     """
-    slug_to_party = dict(legislators.select("slug", "party").iter_rows())
+    slug_to_party = dict(legislators.select("legislator_slug", "party").iter_rows())
     parties = [slug_to_party.get(s, "Unknown") for s in slugs]
 
     rep_scores = [embedding[i, 0] for i, p in enumerate(parties) if p == "Republican"]
@@ -379,8 +379,8 @@ def build_embedding_df(
     )
 
     # Join legislator metadata
-    meta = legislators.select("slug", "full_name", "party", "district", "chamber")
-    df = df.join(meta, left_on="legislator_slug", right_on="slug", how="left")
+    meta = legislators.select("legislator_slug", "full_name", "party", "district", "chamber")
+    df = df.join(meta, on="legislator_slug", how="left")
     return df
 
 
@@ -857,7 +857,7 @@ def _plot_sensitivity_grid(
     if n_panels == 1:
         axes = [axes]
 
-    slug_to_party = dict(legislators.select("slug", "party").iter_rows())
+    slug_to_party = dict(legislators.select("legislator_slug", "party").iter_rows())
     parties = [slug_to_party.get(s, "Unknown") for s in slugs]
     colors = [PARTY_COLORS.get(p, "#999999") for p in parties]
 

@@ -60,7 +60,7 @@ class Legislator(models.Model):
     session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name="legislators")
     name = models.CharField(max_length=200)
     full_name = models.CharField(max_length=200, default="")
-    slug = models.CharField(max_length=200)
+    legislator_slug = models.CharField(max_length=200)
     chamber = models.CharField(max_length=10)  # "Senate" or "House"
     party = models.CharField(max_length=50, default="")  # empty = Independent at analysis time
     district = models.CharField(max_length=20, default="")
@@ -68,10 +68,10 @@ class Legislator(models.Model):
     ocd_id = models.CharField(max_length=100, default="")  # OpenStates OCD person ID
 
     class Meta:
-        ordering = ["session", "slug"]
+        ordering = ["session", "legislator_slug"]
         constraints = [
             models.UniqueConstraint(
-                fields=["session", "slug"],
+                fields=["session", "legislator_slug"],
                 name="unique_legislator_slug",
             ),
         ]
@@ -81,7 +81,7 @@ class Legislator(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.slug} ({self.session})"
+        return f"{self.legislator_slug} ({self.session})"
 
 
 class RollCall(models.Model):
@@ -144,7 +144,7 @@ class Vote(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.legislator.slug}: {self.vote} on {self.rollcall.vote_id}"
+        return f"{self.legislator.legislator_slug}: {self.vote} on {self.rollcall.vote_id}"
 
 
 class BillAction(models.Model):

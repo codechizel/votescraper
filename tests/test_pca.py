@@ -144,7 +144,7 @@ class TestOrientPC1:
         slugs = ["rep_a", "rep_b", "dem_x", "dem_y"]
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b", "dem_x", "dem_y"],
+                "legislator_slug": ["rep_a", "rep_b", "dem_x", "dem_y"],
                 "party": ["Republican", "Republican", "Democrat", "Democrat"],
             }
         )
@@ -170,7 +170,7 @@ class TestOrientPC1:
         slugs = ["rep_a", "rep_b", "dem_x"]
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b", "dem_x"],
+                "legislator_slug": ["rep_a", "rep_b", "dem_x"],
                 "party": ["Republican", "Republican", "Democrat"],
             }
         )
@@ -188,7 +188,7 @@ class TestOrientPC1:
         slugs = ["rep_a", "dem_x", "unknown_z"]
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a", "dem_x"],
+                "legislator_slug": ["rep_a", "dem_x"],
                 "party": ["Republican", "Democrat"],
             }
         )
@@ -355,7 +355,7 @@ class TestBuildScoresDf:
         slugs = ["rep_a", "rep_unknown"]
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a"],
+                "legislator_slug": ["rep_a"],
                 "full_name": ["Alice"],
                 "party": ["Republican"],
                 "district": ["1"],
@@ -377,7 +377,7 @@ class TestBuildScoresDf:
         slugs = ["rep_a", "dem_b"]
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a", "dem_b"],
+                "legislator_slug": ["rep_a", "dem_b"],
                 "full_name": ["Alice", "Bob"],
                 "party": ["Republican", "Democrat"],
                 "district": ["1", "2"],

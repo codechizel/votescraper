@@ -50,6 +50,8 @@ just wt-done feature-name                    # merge to main + cleanup (from mai
 
 ## Build Philosophy
 
+- **Correctness over speed.** Do things right, not fast. Never cut corners to save time.
+- **No backward-compatibility shims.** Don't write code that papers over old bugs or stale data. Let it fail, then fix the root cause. Technical debt compounds — don't take it on.
 - **Check for existing open source solutions first.** Don't reinvent the wheel, but don't force a shoehorned dependency either.
 
 ## Code Style

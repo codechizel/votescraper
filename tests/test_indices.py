@@ -72,7 +72,7 @@ def _simple_rollcalls() -> pl.DataFrame:
 def _simple_legislators() -> pl.DataFrame:
     return pl.DataFrame(
         {
-            "slug": ["rep_a", "rep_b", "rep_c", "rep_d", "dem_x", "dem_y"],
+            "legislator_slug": ["rep_a", "rep_b", "rep_c", "rep_d", "dem_x", "dem_y"],
             "party": ["Republican"] * 4 + ["Democrat"] * 2,
         }
     )
@@ -237,7 +237,7 @@ class TestComputeENPSeats:
         """50-50 split → ENP = 2.0."""
         legislators = pl.DataFrame(
             {
-                "slug": [f"rep_{i}" for i in range(5)] + [f"dem_{i}" for i in range(5)],
+                "legislator_slug": [f"rep_{i}" for i in range(5)] + [f"dem_{i}" for i in range(5)],
                 "party": ["Republican"] * 5 + ["Democrat"] * 5,
             }
         )
@@ -254,7 +254,7 @@ class TestComputeENPSeats:
         """80-20 split → ENP = 1 / (0.8^2 + 0.2^2) = 1/0.68 ≈ 1.47."""
         slugs = [f"sen_{i}" for i in range(10)]
         parties = ["Republican"] * 8 + ["Democrat"] * 2
-        legislators = pl.DataFrame({"slug": slugs, "party": parties})
+        legislators = pl.DataFrame({"legislator_slug": slugs, "party": parties})
         result = compute_enp_seats(legislators, "Senate", "test")
         enp = float(result["enp_seats"][0])
         expected = 1.0 / (0.8**2 + 0.2**2)
@@ -263,7 +263,7 @@ class TestComputeENPSeats:
     def test_empty_chamber(self):
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a"],
+                "legislator_slug": ["rep_a"],
                 "party": ["Republican"],
             }
         )
@@ -332,7 +332,7 @@ def _contested_rollcalls() -> pl.DataFrame:
 def _contested_legislators() -> pl.DataFrame:
     return pl.DataFrame(
         {
-            "slug": ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "dem_x", "dem_y", "dem_z"],
+            "legislator_slug": ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "dem_x", "dem_y", "dem_z"],
             "party": ["Republican"] * 5 + ["Democrat"] * 3,
             "full_name": ["Alice", "Bob", "Carol", "Dave", "Eve", "Xena", "Yuri", "Zara"],
             "district": [f"D{i}" for i in range(1, 9)],
@@ -449,7 +449,7 @@ class TestComputeUnityAndMaverick:
         )
         legs = pl.DataFrame(
             {
-                "slug": ["rep_a", "dem_x"],
+                "legislator_slug": ["rep_a", "dem_x"],
                 "party": ["Republican", "Democrat"],
                 "full_name": ["Alice", "Xena"],
                 "district": ["D1", "D2"],
@@ -522,7 +522,7 @@ class TestComputeENPPerVote:
         )
         legs = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b", "rep_c"],
+                "legislator_slug": ["rep_a", "rep_b", "rep_c"],
                 "party": ["Republican"] * 3,
             }
         )
@@ -582,7 +582,7 @@ class TestFindFracturedVotes:
         )
         legs = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b", "rep_c", "rep_d", "dem_x", "dem_y"],
+                "legislator_slug": ["rep_a", "rep_b", "rep_c", "rep_d", "dem_x", "dem_y"],
                 "party": ["Republican"] * 4 + ["Democrat"] * 2,
             }
         )
@@ -723,7 +723,7 @@ class TestComputeCareyUnity:
         )
         legs = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "dem_x", "dem_y"],
+                "legislator_slug": ["rep_a", "rep_b", "rep_c", "rep_d", "rep_e", "dem_x", "dem_y"],
                 "party": ["Republican"] * 5 + ["Democrat"] * 2,
             }
         )
@@ -890,7 +890,7 @@ class TestComputeBipartisanshipIndex:
         )
         legs = pl.DataFrame(
             {
-                "slug": ["rep_a", "dem_x"],
+                "legislator_slug": ["rep_a", "dem_x"],
                 "party": ["Republican", "Democrat"],
                 "full_name": ["Alice", "Xena"],
                 "district": ["D1", "D2"],
@@ -924,7 +924,7 @@ class TestComputeBipartisanshipIndex:
         )
         legs = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b", "ind_z", "dem_x", "dem_y"],
+                "legislator_slug": ["rep_a", "rep_b", "ind_z", "dem_x", "dem_y"],
                 "party": ["Republican", "Republican", "Independent", "Democrat", "Democrat"],
                 "full_name": ["A", "B", "Z", "X", "Y"],
                 "district": ["D1", "D2", "D3", "D4", "D5"],

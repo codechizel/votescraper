@@ -393,7 +393,7 @@ class TestFindVotingNeighbors:
         closest = result["closest"]
         assert len(closest) > 0
         # rep_a always votes 1, so other always-1 voters should be closest
-        closest_slugs = [c["slug"] for c in closest]
+        closest_slugs = [c["legislator_slug"] for c in closest]
         assert "rep_b" in closest_slugs  # also always Yea
 
     def test_most_different_correct(self, votes_long, house_leg_df):
@@ -403,7 +403,7 @@ class TestFindVotingNeighbors:
         most_diff = result["most_different"]
         assert len(most_diff) > 0
         # Democrats always vote 0, so they should be most different from rep_a (always 1)
-        diff_slugs = [c["slug"] for c in most_diff]
+        diff_slugs = [c["legislator_slug"] for c in most_diff]
         assert any(
             s.startswith("rep_h") or s.startswith("rep_i") or s.startswith("rep_j")
             for s in diff_slugs
@@ -413,8 +413,8 @@ class TestFindVotingNeighbors:
         """Target slug should not appear in results."""
         result = find_voting_neighbors("rep_a", votes_long, house_leg_df)
         assert result is not None
-        all_slugs = [c["slug"] for c in result["closest"]] + [
-            c["slug"] for c in result["most_different"]
+        all_slugs = [c["legislator_slug"] for c in result["closest"]] + [
+            c["legislator_slug"] for c in result["most_different"]
         ]
         assert "rep_a" not in all_slugs
 
@@ -532,7 +532,7 @@ class TestResolveNames:
         result = resolve_names(["Alice Smith"], leg_dfs_with_dupes)
         assert len(result) == 1
         assert result[0].status == "ok"
-        assert result[0].matches[0]["slug"] == "rep_smith_alice_1"
+        assert result[0].matches[0]["legislator_slug"] == "rep_smith_alice_1"
 
     def test_exact_full_name_case_insensitive(self, leg_dfs_with_dupes):
         """Case should not matter for full-name matching."""
@@ -546,7 +546,7 @@ class TestResolveNames:
         result = resolve_names(["Unique"], leg_dfs_with_dupes)
         assert len(result) == 1
         assert result[0].status == "ok"
-        assert result[0].matches[0]["slug"] == "sen_unique_gina_1"
+        assert result[0].matches[0]["legislator_slug"] == "sen_unique_gina_1"
 
     def test_last_name_ambiguous(self, leg_dfs_with_dupes):
         """Last name with multiple matches returns ambiguous with all matches."""
@@ -554,7 +554,7 @@ class TestResolveNames:
         assert len(result) == 1
         assert result[0].status == "ambiguous"
         assert len(result[0].matches) == 2
-        slugs = {m["slug"] for m in result[0].matches}
+        slugs = {m["legislator_slug"] for m in result[0].matches}
         assert slugs == {"rep_smith_alice_1", "rep_smith_bob_1"}
 
     def test_first_name_disambiguates(self, leg_dfs_with_dupes):
@@ -562,7 +562,7 @@ class TestResolveNames:
         result = resolve_names(["Dave Carpenter"], leg_dfs_with_dupes)
         assert len(result) == 1
         assert result[0].status == "ok"
-        assert result[0].matches[0]["slug"] == "rep_carpenter_dave_1"
+        assert result[0].matches[0]["legislator_slug"] == "rep_carpenter_dave_1"
 
     def test_no_match(self, leg_dfs_with_dupes):
         """Non-existent name returns no_match."""
@@ -608,7 +608,7 @@ class TestResolveNames:
     def test_resolved_slugs_work_with_gather(self, leg_dfs_with_dupes):
         """Resolved slugs should be accepted by gather_profile_targets()."""
         matches = resolve_names(["Gina Unique"], leg_dfs_with_dupes)
-        slugs = [m["slug"] for nm in matches for m in nm.matches]
+        slugs = [m["legislator_slug"] for nm in matches for m in nm.matches]
         targets = gather_profile_targets(leg_dfs_with_dupes, extra_slugs=slugs)
         target_slugs = [t.slug for t in targets]
         assert "sen_unique_gina_1" in target_slugs

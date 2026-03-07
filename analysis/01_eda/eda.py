@@ -256,7 +256,8 @@ def print_session_summary(
     total = votes.height
     for row in vc.iter_rows(named=True):
         pct = 100 * row["len"] / total
-        print(f"    {row['vote']:28s}  {row['len']:>6,}  ({pct:5.1f}%)")
+        label = row["vote"] or "(null)"
+        print(f"    {label:28s}  {row['len']:>6,}  ({pct:5.1f}%)")
 
 
 # ── 1b. Data Integrity Checks ────────────────────────────────────────────────
@@ -323,9 +324,8 @@ def check_data_integrity(
             pl.len().alias("total_individual_votes"),
         )
         .join(
-            legislators.select("slug", "full_name", "chamber", "party", "district"),
-            left_on="legislator_slug",
-            right_on="slug",
+            legislators.select("legislator_slug", "full_name", "chamber", "party", "district"),
+            on="legislator_slug",
         )
         .sort("chamber", "district", "first_vote")
     )
@@ -380,7 +380,7 @@ def check_data_integrity(
     # ── 3. Referential integrity ──
     # Every slug in votes.csv should exist in legislators.csv and vice versa.
     # Mismatches indicate a name-matching failure in the scraper.
-    all_slugs = set(legislators["slug"].to_list())
+    all_slugs = set(legislators["legislator_slug"].to_list())
     voted_slugs = set(votes["legislator_slug"].unique().to_list())
 
     no_votes = all_slugs - voted_slugs
@@ -640,9 +640,8 @@ def compute_rice_cohesion(votes: pl.DataFrame, legislators: pl.DataFrame) -> pl.
     """
     # Only count substantive Yea/Nay votes — abstentions excluded per Rice formula
     substantive = votes.filter(pl.col("vote").is_in(["Yea", "Nay"])).join(
-        legislators.select("slug", "party"),
-        left_on="legislator_slug",
-        right_on="slug",
+        legislators.select("legislator_slug", "party"),
+        on="legislator_slug",
     )
 
     rice = (
@@ -725,7 +724,7 @@ def check_statistical_quality(
     if not perfect.is_empty():
         print("\n  Perfect partisans (100% party-line, >=50 contested votes):")
         for row in perfect.iter_rows(named=True):
-            name_row = legislators.filter(pl.col("slug") == row["legislator_slug"])
+            name_row = legislators.filter(pl.col("legislator_slug") == row["legislator_slug"])
             name = name_row["full_name"][0] if name_row.height > 0 else row["legislator_slug"]
             party = name_row["party"][0] if name_row.height > 0 else "?"
             print(
@@ -765,9 +764,8 @@ def _detect_perfect_partisans(
     """
     # Join votes with party info, keep only Yea/Nay
     v = votes.filter(pl.col("vote").is_in(["Yea", "Nay"])).join(
-        legislators.select("slug", "party"),
-        left_on="legislator_slug",
-        right_on="slug",
+        legislators.select("legislator_slug", "party"),
+        on="legislator_slug",
     )
 
     # Compute party majority direction per rollcall:
@@ -825,9 +823,8 @@ def compute_party_unity_scores(
 
     # Get party-line classification
     vote_with_party = votes.join(
-        legislators.select("slug", "party"),
-        left_on="legislator_slug",
-        right_on="slug",
+        legislators.select("legislator_slug", "party"),
+        on="legislator_slug",
     )
     substantive = vote_with_party.filter(pl.col("vote").is_in(["Yea", "Nay"]))
 
@@ -889,9 +886,8 @@ def compute_party_unity_scores(
             pl.len().alias("n_party_line_votes"),
         )
         .join(
-            legislators.select("slug", "full_name", "chamber", "party"),
-            left_on="legislator_slug",
-            right_on="slug",
+            legislators.select("legislator_slug", "full_name", "chamber", "party"),
+            on="legislator_slug",
         )
         .sort("party_unity_score")
     )
@@ -1003,9 +999,8 @@ def compute_strategic_absence(
     # For each legislator, count absences on party-line votes vs all votes
     # "Absent" = any non-Yea/Nay vote
     v = votes.join(
-        legislators.select("slug", "full_name", "chamber", "party"),
-        left_on="legislator_slug",
-        right_on="slug",
+        legislators.select("legislator_slug", "full_name", "chamber", "party"),
+        on="legislator_slug",
     )
     v = v.with_columns(
         (~pl.col("vote").is_in(["Yea", "Nay"])).alias("is_absent"),
@@ -1066,9 +1061,8 @@ def compute_desposato_rice_correction(votes: pl.DataFrame, legislators: pl.DataF
     print_header("DESPOSATO RICE CORRECTION")
 
     substantive = votes.filter(pl.col("vote").is_in(["Yea", "Nay"])).join(
-        legislators.select("slug", "party"),
-        left_on="legislator_slug",
-        right_on="slug",
+        legislators.select("legislator_slug", "party"),
+        on="legislator_slug",
     )
 
     # Count party sizes
@@ -1420,9 +1414,8 @@ def classify_party_line(
       - mixed: everything else (significant cross-party voting)
     """
     vote_with_party = votes.join(
-        legislators.select("slug", "party"),
-        left_on="legislator_slug",
-        right_on="slug",
+        legislators.select("legislator_slug", "party"),
+        on="legislator_slug",
     )
 
     # Only Yea/Nay — abstentions don't indicate party direction
@@ -1499,9 +1492,8 @@ def analyze_participation(
         substantive.group_by("legislator_slug")
         .agg(pl.len().alias("substantive_votes"))
         .join(
-            legislators.select("slug", "full_name", "chamber", "party"),
-            left_on="legislator_slug",
-            right_on="slug",
+            legislators.select("legislator_slug", "full_name", "chamber", "party"),
+            on="legislator_slug",
         )
     )
 
@@ -1541,9 +1533,8 @@ def analyze_participation(
     # Vote category breakdown by party — shows asymmetric absence patterns
     total_votes_per_party = (
         votes.join(
-            legislators.select("slug", "party"),
-            left_on="legislator_slug",
-            right_on="slug",
+            legislators.select("legislator_slug", "party"),
+            on="legislator_slug",
         )
         .group_by("party", "vote")
         .agg(pl.len())
@@ -1566,9 +1557,8 @@ def analyze_participation(
     if not pnp.is_empty():
         pnp_detail = (
             pnp.join(
-                legislators.select("slug", "full_name", "party"),
-                left_on="legislator_slug",
-                right_on="slug",
+                legislators.select("legislator_slug", "full_name", "party"),
+                on="legislator_slug",
             )
             .select("full_name", "party", "bill_number", "vote_datetime", "vote_date", "chamber")
             .sort("vote_datetime", "full_name")
@@ -1665,7 +1655,7 @@ def plot_agreement_heatmap(
 
     # Map each slug to its party color for the annotation sidebar
     slug_to_party = dict(
-        legislators.select("slug", "party").filter(pl.col("slug").is_in(slugs)).iter_rows()
+        legislators.select("legislator_slug", "party").filter(pl.col("legislator_slug").is_in(slugs)).iter_rows()
     )
     parties = [slug_to_party.get(s, "Unknown") for s in slugs]
     row_colors = [PARTY_COLORS.get(p, "#999999") for p in parties]
@@ -1678,7 +1668,7 @@ def plot_agreement_heatmap(
 
     # Resolve slugs to human-readable names for axis labels
     slug_to_name = dict(
-        legislators.select("slug", "full_name").filter(pl.col("slug").is_in(slugs)).iter_rows()
+        legislators.select("legislator_slug", "full_name").filter(pl.col("legislator_slug").is_in(slugs)).iter_rows()
     )
     labels = [slug_to_name.get(s, s) for s in slugs]
     df = pd.DataFrame(agreement_clean, index=labels, columns=labels)
@@ -1870,9 +1860,8 @@ def plot_party_vote_breakdown(
     Yea% (supermajority often passes their bills) and Ds to have higher Nay%.
     """
     vote_with_party = votes.join(
-        legislators.select("slug", "party"),
-        left_on="legislator_slug",
-        right_on="slug",
+        legislators.select("legislator_slug", "party"),
+        on="legislator_slug",
     )
     breakdown = vote_with_party.group_by("party", "vote").agg(pl.len())
 

@@ -152,7 +152,7 @@ class TestConvertToStandard:
     """Convert KanFocus records to standard tallgrass format."""
 
     def test_produces_rollcall(self):
-        record = _make_record()
+        record = _make_record(legislators=(_make_legislator(),))
         votes, rollcalls, legislators = convert_to_standard([record], "84th (2011-2012)", {})
         assert len(rollcalls) == 1
         assert rollcalls[0].vote_id == "kf_33_2011_S"
@@ -167,18 +167,18 @@ class TestConvertToStandard:
         assert votes[0].legislator_name == "Steve Abrams"
 
     def test_vote_datetime_format(self):
-        record = _make_record(date="02/03/2011")
+        record = _make_record(date="02/03/2011", legislators=(_make_legislator(),))
         _, rollcalls, _ = convert_to_standard([record], "test", {})
         assert rollcalls[0].vote_datetime == "2011-02-03T00:00:00"
         assert rollcalls[0].vote_date == "02/03/2011"
 
     def test_passed_derived(self):
-        record = _make_record(result="Passed")
+        record = _make_record(result="Passed", legislators=(_make_legislator(),))
         _, rollcalls, _ = convert_to_standard([record], "test", {})
         assert rollcalls[0].passed is True
 
     def test_failed_derived(self):
-        record = _make_record(result="Failed")
+        record = _make_record(result="Failed", legislators=(_make_legislator(),))
         _, rollcalls, _ = convert_to_standard([record], "test", {})
         assert rollcalls[0].passed is False
 
@@ -192,33 +192,35 @@ class TestConvertToStandard:
         assert legislators[slug]["chamber"] == "Senate"
 
     def test_house_chamber_name(self):
-        record = _make_record(chamber="H")
+        record = _make_record(chamber="H", legislators=(_make_legislator(),))
         _, rollcalls, _ = convert_to_standard([record], "test", {})
         assert rollcalls[0].chamber == "House"
 
     def test_session_label_preserved(self):
-        record = _make_record()
+        record = _make_record(legislators=(_make_legislator(),))
         _, rollcalls, _ = convert_to_standard([record], "84th (2011-2012)", {})
         assert rollcalls[0].session == "84th (2011-2012)"
 
     def test_source_url_preserved(self):
-        record = _make_record()
+        record = _make_record(legislators=(_make_legislator(),))
         _, rollcalls, _ = convert_to_standard([record], "test", {})
         assert rollcalls[0].vote_url == "https://kanfocus.com/test"
 
     def test_deduplicates_by_vote_id(self):
         """Records with the same vote_num/year/chamber are deduplicated."""
-        r1 = _make_record(vote_num=1, year=2011, chamber="S", bill_number="SB 1")
-        r2 = _make_record(vote_num=1, year=2011, chamber="S", bill_number="SB 99")
+        leg = _make_legislator()
+        r1 = _make_record(vote_num=1, year=2011, chamber="S", bill_number="SB 1", legislators=(leg,))
+        r2 = _make_record(vote_num=1, year=2011, chamber="S", bill_number="SB 99", legislators=(leg,))
         votes, rollcalls, _ = convert_to_standard([r1, r2], "test", {})
         assert len(rollcalls) == 1
         assert rollcalls[0].bill_number == "SB 1"  # first occurrence kept
 
     def test_different_vote_ids_preserved(self):
         """Records with different vote_num/year/chamber are all preserved."""
-        r1 = _make_record(vote_num=1, year=2011, chamber="S")
-        r2 = _make_record(vote_num=2, year=2011, chamber="S")
-        r3 = _make_record(vote_num=1, year=2011, chamber="H")
+        leg = _make_legislator()
+        r1 = _make_record(vote_num=1, year=2011, chamber="S", legislators=(leg,))
+        r2 = _make_record(vote_num=2, year=2011, chamber="S", legislators=(leg,))
+        r3 = _make_record(vote_num=1, year=2011, chamber="H", legislators=(leg,))
         _, rollcalls, _ = convert_to_standard([r1, r2, r3], "test", {})
         assert len(rollcalls) == 3
 
@@ -312,7 +314,7 @@ class TestGapFillDedup:
         ]
 
     def _leg_header(self):
-        return ["name", "full_name", "slug", "chamber", "party", "district", "member_url", "ocd_id"]
+        return ["name", "full_name", "legislator_slug", "chamber", "party", "district", "member_url", "ocd_id"]
 
     def test_skips_duplicate_rollcalls(self, tmp_path):
         """kf_ rollcalls matching existing je_ by bill+chamber+date are skipped."""
@@ -332,7 +334,8 @@ class TestGapFillDedup:
         self._write_csv(tmp_path / "test_legislators.csv", self._leg_header(), [])
 
         # New kf_ rollcall for same bill+chamber+date — should be skipped
-        record = _make_record(bill_number="SB 13", chamber="S", date="02/03/2011")
+        leg = _make_legislator()
+        record = _make_record(bill_number="SB 13", chamber="S", date="02/03/2011", legislators=(leg,))
         new_votes, new_rollcalls, new_legs = convert_to_standard([record], "test", {})
 
         merge_gap_fill(tmp_path, "test", new_votes, new_rollcalls, new_legs)
@@ -363,7 +366,8 @@ class TestGapFillDedup:
         self._write_csv(tmp_path / "test_legislators.csv", self._leg_header(), [])
 
         # New kf_ rollcall for SB 99 — different bill, should be kept
-        record = _make_record(vote_num=50, bill_number="SB 99", chamber="S", date="03/15/2011")
+        leg = _make_legislator()
+        record = _make_record(vote_num=50, bill_number="SB 99", chamber="S", date="03/15/2011", legislators=(leg,))
         new_votes, new_rollcalls, new_legs = convert_to_standard([record], "test", {})
 
         merge_gap_fill(tmp_path, "test", new_votes, new_rollcalls, new_legs)
@@ -393,7 +397,8 @@ class TestGapFillDedup:
         )
         self._write_csv(tmp_path / "test_legislators.csv", self._leg_header(), [])
 
-        record = _make_record(vote_num=50, bill_number="SB 99", chamber="S", date="03/15/2011")
+        leg = _make_legislator()
+        record = _make_record(vote_num=50, bill_number="SB 99", chamber="S", date="03/15/2011", legislators=(leg,))
         new_votes, new_rollcalls, new_legs = convert_to_standard([record], "test", {})
 
         # Run twice

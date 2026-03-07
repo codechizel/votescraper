@@ -1516,20 +1516,14 @@ def main() -> None:
                     print("\n  Building PCA-informed initial values...")
                     # Map PCA scores to global indices
                     init_vals = np.zeros(stacked["n_legislators"])
-                    slug_col = (
-                        "legislator_slug" if "legislator_slug" in pca_scores.columns else "slug"
-                    )
                     for row in pca_scores.iter_rows(named=True):
-                        slug = row.get(slug_col, "")
+                        slug = row.get("legislator_slug", "")
                         # Find this slug in the first biennium's legislator data
                         leg_df = all_legislators[first_t]
                         if "chamber" in leg_df.columns:
                             leg_df = leg_df.filter(pl.col("chamber") == chamber_cap)
                         for lr in leg_df.iter_rows(named=True):
-                            lr_slug_col = (
-                                "legislator_slug" if "legislator_slug" in leg_df.columns else "slug"
-                            )
-                            if lr.get(lr_slug_col, "") == slug:
+                            if lr.get("legislator_slug", "") == slug:
                                 nn = normalize_name(lr.get("full_name", ""))
                                 if nn in name_to_global:
                                     gidx = name_to_global[nn]

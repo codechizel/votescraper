@@ -132,7 +132,7 @@ def load_existing_slugs(data_dir: Path, output_name: str) -> dict[str, str]:
     with open(csv_path, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            slug = row.get("slug", "")
+            slug = row.get("legislator_slug", "")
             name = row.get("name", "")
             full_name = row.get("full_name", "")
             if slug and name:

@@ -373,16 +373,16 @@ def build_joint_vote_matrix(
 
     # Identify bridging legislators (same person with both rep_ and sen_ slugs)
     # Match by name from legislators table
-    house_legs = legislators.filter(pl.col("chamber") == "House").select("slug", "full_name")
-    senate_legs = legislators.filter(pl.col("chamber") == "Senate").select("slug", "full_name")
+    house_legs = legislators.filter(pl.col("chamber") == "House").select("legislator_slug", "full_name")
+    senate_legs = legislators.filter(pl.col("chamber") == "Senate").select("legislator_slug", "full_name")
     bridging: list[dict] = []
     for h_row in house_legs.iter_rows(named=True):
         match = senate_legs.filter(pl.col("full_name") == h_row["full_name"])
         if match.height > 0:
             bridging.append(
                 {
-                    "house_slug": h_row["slug"],
-                    "senate_slug": match["slug"][0],
+                    "house_slug": h_row["legislator_slug"],
+                    "senate_slug": match["legislator_slug"][0],
                     "full_name": h_row["full_name"],
                 }
             )
@@ -524,7 +524,7 @@ def unmerge_bridging_legislators(
         senate_row["legislator_slug"] = senate_slug
         senate_row["chamber"] = "Senate"
         # Update district from legislators table
-        sen_meta = legislators.filter(pl.col("slug") == senate_slug)
+        sen_meta = legislators.filter(pl.col("legislator_slug") == senate_slug)
         if sen_meta.height > 0:
             senate_row["district"] = sen_meta["district"][0]
         expanded_rows.append(senate_row)
@@ -1177,8 +1177,8 @@ def extract_ideal_points(
     df = pl.DataFrame(rows)
 
     # Join legislator metadata
-    meta = legislators.select("slug", "full_name", "party", "district", "chamber")
-    df = df.join(meta, left_on="legislator_slug", right_on="slug", how="left")
+    meta = legislators.select("legislator_slug", "full_name", "party", "district", "chamber")
+    df = df.join(meta, on="legislator_slug", how="left")
 
     return df.sort("xi_mean", descending=True)
 
@@ -1511,7 +1511,7 @@ def find_paradox_legislator(
         return None
 
     return {
-        "slug": slug,
+        "legislator_slug": slug,
         "full_name": candidate["full_name"],
         "party": candidate["party"],
         "xi_mean": candidate["xi_mean"],
@@ -1625,7 +1625,7 @@ def plot_paradox_spotlight(
 
     for i, row in enumerate(majority.iter_rows(named=True)):
         slug = row["legislator_slug"]
-        is_paradox = slug == paradox["slug"]
+        is_paradox = slug == paradox["legislator_slug"]
 
         ax_right.hlines(
             i,
@@ -1647,12 +1647,12 @@ def plot_paradox_spotlight(
         )
 
     # Annotate the paradox legislator
-    paradox_row = majority.filter(pl.col("legislator_slug") == paradox["slug"])
+    paradox_row = majority.filter(pl.col("legislator_slug") == paradox["legislator_slug"])
     if paradox_row.height > 0:
         pr = paradox_row.row(0, named=True)
         # Find position in sorted list
         sorted_slugs = majority.sort("xi_mean")["legislator_slug"].to_list()
-        y_idx = sorted_slugs.index(paradox["slug"])
+        y_idx = sorted_slugs.index(paradox["legislator_slug"])
 
         ax_right.annotate(
             f"Most {direction} by IRT,\nyet contrarian on routine bills",
@@ -2813,9 +2813,6 @@ def main() -> None:
         from analysis.db import load_votes as db_load_votes
 
         raw_votes = db_load_votes(data_dir, use_csv=args.csv)
-        if "legislator_slug" not in raw_votes.columns and "slug" in raw_votes.columns:
-            raw_votes = raw_votes.rename({"slug": "legislator_slug"})
-
         print(f"  House filtered: {house_matrix.height} x {len(house_matrix.columns) - 1}")
         print(f"  Senate filtered: {senate_matrix.height} x {len(senate_matrix.columns) - 1}")
         print(f"  Full matrix: {full_matrix.height} x {len(full_matrix.columns) - 1}")

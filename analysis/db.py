@@ -84,7 +84,7 @@ SELECT
     TO_CHAR(rc.vote_datetime AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') AS vote_datetime,
     TO_CHAR(rc.vote_date, 'MM/DD/YYYY') AS vote_date,
     rc.chamber, rc.motion,
-    l.name AS legislator_name, l.slug AS legislator_slug,
+    l.name AS legislator_name, l.legislator_slug,
     v.vote
 FROM legislature_vote v
 JOIN legislature_rollcall rc ON v.rollcall_id = rc.id
@@ -112,7 +112,7 @@ WHERE s.name = %s
 _LEGISLATORS_SQL = """\
 SELECT
     REPLACE(s.name, '_', ' (') || ')' AS session,
-    l.name, l.full_name, l.slug, l.chamber, l.party,
+    l.name, l.full_name, l.legislator_slug, l.chamber, l.party,
     l.district, l.member_url, l.ocd_id
 FROM legislature_legislator l
 JOIN legislature_session s ON l.session_id = s.id
@@ -290,12 +290,9 @@ def _clean_legislators_df(df: pl.DataFrame) -> pl.DataFrame:
 
     - Strips leadership suffixes from full_name
     - Fills null/empty party to "Independent"
-    - Ensures ocd_id column exists and nulls are filled
+    - Fills null ocd_id to empty string
     """
     from analysis.run_context import strip_leadership_suffix
-
-    if "ocd_id" not in df.columns:
-        df = df.with_columns(pl.lit("").alias("ocd_id"))
 
     return df.with_columns(
         pl.col("full_name")

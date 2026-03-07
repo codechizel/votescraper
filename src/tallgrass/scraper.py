@@ -716,7 +716,7 @@ class KSVoteScraper:
                                 leg_chamber = "House"
                             new_legislators[slug] = {
                                 "name": name,
-                                "slug": slug,
+                                "legislator_slug": slug,
                                 "chamber": leg_chamber,
                                 "member_url": (
                                     f"{BASE_URL}{href}" if not href.startswith("http") else href
@@ -982,11 +982,11 @@ class KSVoteScraper:
             self.individual_votes.extend(votes)
 
             for leg in new_legs:
-                slug = leg["slug"]
+                slug = leg["legislator_slug"]
                 if slug and slug not in self.legislators:
                     self.legislators[slug] = {
                         "name": leg["name"],
-                        "slug": slug,
+                        "legislator_slug": slug,
                         "chamber": leg["chamber"],
                         "member_url": (f"{BASE_URL}{self.session.li_prefix}/members/{slug}/"),
                     }

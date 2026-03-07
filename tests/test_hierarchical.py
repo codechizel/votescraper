@@ -77,7 +77,7 @@ def legislators() -> pl.DataFrame:
         {
             "name": ["A", "B", "C", "D", "E", "F", "G", "H"],
             "full_name": ["A A", "B B", "C C", "D D", "E E", "F F", "G G", "H H"],
-            "slug": [
+            "legislator_slug": [
                 "rep_a_a_1",
                 "rep_b_b_1",
                 "rep_c_c_1",
@@ -390,7 +390,7 @@ class TestBuildJointGraph:
             {
                 "name": ["I", "J", "K", "L"],
                 "full_name": ["I I", "J J", "K K", "L L"],
-                "slug": ["sen_i_i_1", "sen_j_j_1", "sen_k_k_1", "sen_l_l_1"],
+                "legislator_slug": ["sen_i_i_1", "sen_j_j_1", "sen_k_k_1", "sen_l_l_1"],
                 "chamber": ["Senate"] * 4,
                 "party": ["Republican"] * 2 + ["Democrat"] * 2,
                 "district": [9, 10, 11, 12],
@@ -785,7 +785,7 @@ class TestSmallGroupWarning:
             {
                 "name": [f"L{i}" for i in range(n_r + n_d)],
                 "full_name": [f"L{i} L{i}" for i in range(n_r + n_d)],
-                "slug": all_slugs,
+                "legislator_slug": all_slugs,
                 "chamber": ["House"] * (n_r + n_d),
                 "party": ["Republican"] * n_r + ["Democrat"] * n_d,
                 "district": list(range(1, n_r + n_d + 1)),
@@ -971,7 +971,7 @@ class TestIndependentExclusion:
             {
                 "name": ["R1", "R2", "D1", "I1"],
                 "full_name": ["R R1", "R R2", "D D1", "I I1"],
-                "slug": ["rep_r_1", "rep_r_2", "rep_d_1", "rep_i_1"],
+                "legislator_slug": ["rep_r_1", "rep_r_2", "rep_d_1", "rep_i_1"],
                 "chamber": ["House"] * 4,
                 "party": ["Republican", "Republican", "Democrat", "Independent"],
                 "district": [1, 2, 3, 4],
@@ -1169,7 +1169,7 @@ class TestFixJointSignConvention:
         }
         legislators = pl.DataFrame(
             {
-                "slug": slugs,
+                "legislator_slug": slugs,
                 "full_name": [f"Leg {i}" for i in range(6)],
                 "party": [
                     "Democrat",

@@ -369,9 +369,8 @@ def _add_vote_alignment(
     """Table 8: Vote alignment classification (bipartisan / party-line / mixed)."""
     # Replicate the classify_party_line logic to get alignment counts
     vote_with_party = votes.join(
-        legislators.select("slug", "party"),
-        left_on="legislator_slug",
-        right_on="slug",
+        legislators.select("legislator_slug", "party"),
+        on="legislator_slug",
     )
     substantive = vote_with_party.filter(pl.col("vote").is_in(["Yea", "Nay"]))
     party_agg = (
@@ -929,9 +928,8 @@ def _generate_key_findings(
 
     # Party-line vs bipartisan
     vote_with_party = votes.join(
-        legislators.select("slug", "party"),
-        left_on="legislator_slug",
-        right_on="slug",
+        legislators.select("legislator_slug", "party"),
+        on="legislator_slug",
     )
     substantive = vote_with_party.filter(pl.col("vote").is_in(["Yea", "Nay"]))
     party_agg = (

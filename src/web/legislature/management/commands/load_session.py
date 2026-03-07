@@ -185,7 +185,7 @@ class Command(BaseCommand):
             bill_texts_df = pl.read_csv(bill_texts_csv, infer_schema_length=0, null_values=[""])
 
         # Validate required columns
-        self._validate_columns(legs_df, ["name", "slug", "chamber"], "legislators")
+        self._validate_columns(legs_df, ["name", "legislator_slug", "chamber"], "legislators")
         self._validate_columns(rcs_df, ["bill_number", "vote_id", "chamber"], "rollcalls")
         self._validate_columns(votes_df, ["legislator_slug", "vote_id", "vote"], "votes")
 
@@ -246,7 +246,7 @@ class Command(BaseCommand):
                     "session_id",
                     "name",
                     "full_name",
-                    "slug",
+                    "legislator_slug",
                     "chamber",
                     "party",
                     "district",
@@ -345,7 +345,7 @@ class Command(BaseCommand):
             pl.lit(session_id).alias("session_id"),
             pl.col("name").fill_null(""),
             pl.col("full_name").fill_null(""),
-            pl.col("slug"),
+            pl.col("legislator_slug"),
             pl.col("chamber").fill_null(""),
             pl.col("party").fill_null(""),
             pl.col("district").fill_null(""),
@@ -396,7 +396,9 @@ class Command(BaseCommand):
     def _load_votes(self, df: pl.DataFrame, session) -> tuple[int, int]:
         """Load votes via bulk_create with FK resolution. Returns (loaded, skipped)."""
         # Build lookup dicts
-        slug_to_pk = dict(Legislator.objects.filter(session=session).values_list("slug", "id"))
+        slug_to_pk = dict(
+            Legislator.objects.filter(session=session).values_list("legislator_slug", "id")
+        )
         voteid_to_pk = dict(RollCall.objects.filter(session=session).values_list("vote_id", "id"))
 
         vote_objects = []

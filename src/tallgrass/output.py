@@ -70,7 +70,7 @@ def save_csvs(
         fieldnames = [
             "name",
             "full_name",
-            "slug",
+            "legislator_slug",
             "chamber",
             "party",
             "district",

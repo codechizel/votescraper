@@ -38,7 +38,7 @@ class RollCallFilter(FilterSchema):
 class VoteFilter(FilterSchema):
     session: Annotated[int | None, FilterLookup(q="rollcall__session_id")] = None
     legislator: Annotated[int | None, FilterLookup(q="legislator_id")] = None
-    legislator_slug: Annotated[str | None, FilterLookup(q="legislator__slug")] = None
+    legislator_slug: Annotated[str | None, FilterLookup(q="legislator__legislator_slug")] = None
     rollcall: Annotated[int | None, FilterLookup(q="rollcall_id")] = None
     vote: str | None = None
 

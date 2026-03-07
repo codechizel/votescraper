@@ -295,7 +295,7 @@ def compute_party_majority_positions(
 
     # Join votes with legislator party
     vote_party = votes.join(
-        legislators.select(pl.col("slug").alias("legislator_slug"), "party"),
+        legislators.select(pl.col("legislator_slug"), "party"),
         on="legislator_slug",
         how="left",
     ).filter(pl.col("vote_id").is_in(chamber_vote_ids) & pl.col("vote").is_in(["Yea", "Nay"]))
@@ -531,13 +531,13 @@ def compute_carey_unity(
     chamber_vote_ids = set(chamber_rollcalls["vote_id"].to_list())
 
     # Count party members in this chamber (total possible voters)
-    chamber_legs = legislators.filter(pl.col("slug").str.starts_with(chamber_prefix))
+    chamber_legs = legislators.filter(pl.col("legislator_slug").str.starts_with(chamber_prefix))
     party_agg = chamber_legs.group_by("party").agg(pl.len().alias("n"))
     party_sizes = dict(zip(party_agg["party"].to_list(), party_agg["n"].to_list()))
 
     # Count Yea/Nay per vote per party (same as party_majority_positions)
     vote_party = votes.join(
-        legislators.select(pl.col("slug").alias("legislator_slug"), "party"),
+        legislators.select(pl.col("legislator_slug"), "party"),
         on="legislator_slug",
         how="left",
     ).filter(pl.col("vote_id").is_in(chamber_vote_ids) & pl.col("vote").is_in(["Yea", "Nay"]))
@@ -782,7 +782,7 @@ def compute_unity_and_maverick(
     d_majority = dict(zip(pv["vote_id"].to_list(), pv["d_majority"].to_list()))
     closeness = dict(zip(pv["vote_id"].to_list(), pv["closeness_weight"].to_list()))
 
-    leg_party = dict(zip(legislators["slug"].to_list(), legislators["party"].to_list()))
+    leg_party = dict(zip(legislators["legislator_slug"].to_list(), legislators["party"].to_list()))
 
     indiv = votes.filter(pl.col("vote_id").is_in(pv_ids) & pl.col("vote").is_in(["Yea", "Nay"]))
 
@@ -879,7 +879,7 @@ def compute_unity_and_maverick(
 
     # Join metadata
     combined_df = combined_df.join(
-        legislators.select(pl.col("slug").alias("legislator_slug"), "full_name", "district"),
+        legislators.select(pl.col("legislator_slug"), "full_name", "district"),
         on="legislator_slug",
         how="left",
     ).with_columns(pl.lit(session).alias("session"))
@@ -1003,7 +1003,7 @@ def compute_enp_seats(
 ) -> pl.DataFrame:
     """Compute static seat-based ENP (Laakso-Taagepera)."""
     chamber_prefix = "sen_" if chamber == "Senate" else "rep_"
-    chamber_legs = legislators.filter(pl.col("slug").str.starts_with(chamber_prefix))
+    chamber_legs = legislators.filter(pl.col("legislator_slug").str.starts_with(chamber_prefix))
 
     party_counts = chamber_legs.group_by("party").agg(pl.len().alias("seats"))
     total = float(party_counts["seats"].sum())
@@ -1046,7 +1046,7 @@ def compute_enp_per_vote(
     chamber_vote_ids = set(chamber_rollcalls["vote_id"].to_list())
 
     vote_party = votes.join(
-        legislators.select(pl.col("slug").alias("legislator_slug"), "party"),
+        legislators.select(pl.col("legislator_slug"), "party"),
         on="legislator_slug",
         how="left",
     ).filter(pl.col("vote_id").is_in(chamber_vote_ids) & pl.col("vote").is_in(["Yea", "Nay"]))
@@ -1431,7 +1431,7 @@ def compute_bipartisanship_index(
     r_majority = dict(zip(pv["vote_id"].to_list(), pv["r_majority"].to_list()))
     d_majority = dict(zip(pv["vote_id"].to_list(), pv["d_majority"].to_list()))
 
-    leg_party = dict(zip(legislators["slug"].to_list(), legislators["party"].to_list()))
+    leg_party = dict(zip(legislators["legislator_slug"].to_list(), legislators["party"].to_list()))
 
     indiv = votes.filter(pl.col("vote_id").is_in(pv_ids) & pl.col("vote").is_in(["Yea", "Nay"]))
 
@@ -1466,8 +1466,8 @@ def compute_bipartisanship_index(
         return pl.DataFrame()
 
     rows = []
-    leg_names = dict(zip(legislators["slug"].to_list(), legislators["full_name"].to_list()))
-    leg_districts = dict(zip(legislators["slug"].to_list(), legislators["district"].to_list()))
+    leg_names = dict(zip(legislators["legislator_slug"].to_list(), legislators["full_name"].to_list()))
+    leg_districts = dict(zip(legislators["legislator_slug"].to_list(), legislators["district"].to_list()))
     for slug, d in leg_data.items():
         n = d["party_votes_present"]
         if n == 0:

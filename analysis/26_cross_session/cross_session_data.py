@@ -58,8 +58,6 @@ Correlations use abs() so a sign flip doesn't masquerade as instability."""
 
 def _normalize_slug_col(df: pl.DataFrame) -> pl.DataFrame:
     """Ensure the slug column is named ``legislator_slug``."""
-    if "slug" in df.columns and "legislator_slug" not in df.columns:
-        return df.rename({"slug": "legislator_slug"})
     return df
 
 

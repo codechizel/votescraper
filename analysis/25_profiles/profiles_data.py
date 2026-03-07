@@ -183,7 +183,7 @@ def _build_name_lookup(
     for chamber, df in leg_dfs.items():
         for row in df.select("legislator_slug", "full_name", "party", "district").to_dicts():
             info = {
-                "slug": row["legislator_slug"],
+                "legislator_slug": row["legislator_slug"],
                 "full_name": row["full_name"],
                 "party": row["party"],
                 "district": row["district"],
@@ -598,7 +598,7 @@ def find_voting_neighbors(
         info = name_lookup.get(other_slug, {})
         agreements.append(
             {
-                "slug": other_slug,
+                "legislator_slug": other_slug,
                 "full_name": info.get("full_name", other_slug),
                 "party": info.get("party", "Unknown"),
                 "agreement": float(agreement),

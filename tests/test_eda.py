@@ -129,7 +129,7 @@ def simple_legislators() -> pl.DataFrame:
         {
             "name": ["A", "B", "C", "D", "E", "F"],
             "full_name": ["A A", "B B", "C C", "D D", "E E", "F F"],
-            "slug": [
+            "legislator_slug": [
                 "sen_a_a_1",
                 "sen_b_b_1",
                 "sen_c_c_1",
@@ -410,7 +410,7 @@ class TestRiceCohesion:
         )
         legislators = pl.DataFrame(
             {
-                "slug": [f"rep_{i}_x_1" for i in range(10)],
+                "legislator_slug": [f"rep_{i}_x_1" for i in range(10)],
                 "party": ["Republican"] * 10,
             }
         )
@@ -480,7 +480,7 @@ class TestClassifyPartyLine:
         )
         legislators = pl.DataFrame(
             {
-                "slug": slugs_r + slugs_d,
+                "legislator_slug": slugs_r + slugs_d,
                 "full_name": [f"R{i}" for i in range(10)] + [f"D{i}" for i in range(5)],
                 "chamber": ["House"] * 15,
                 "party": ["Republican"] * 10 + ["Democrat"] * 5,
@@ -686,7 +686,7 @@ class TestDesposato:
         votes = pl.DataFrame(rows)
         legislators = pl.DataFrame(
             {
-                "slug": slugs_r + slugs_d,
+                "legislator_slug": slugs_r + slugs_d,
                 "party": ["Republican"] * 20 + ["Democrat"] * 5,
             }
         )

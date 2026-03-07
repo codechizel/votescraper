@@ -399,12 +399,12 @@ class TestBuildMatchedDf:
         assert "xi_mean" in matched.columns
         assert "party" in matched.columns
 
-    def test_slug_column_rename(self):
-        """Handles IRT DataFrames with 'slug' instead of 'legislator_slug'."""
+    def test_legislator_slug_column(self):
+        """Handles IRT DataFrames with 'legislator_slug' column."""
         text_scores = np.array([0.5])
         slugs = ["rep_a_1"]
         irt_df = pl.DataFrame(
-            {"slug": ["rep_a_1"], "xi_mean": [1.0], "full_name": ["A"], "party": ["R"]}
+            {"legislator_slug": ["rep_a_1"], "xi_mean": [1.0], "full_name": ["A"], "party": ["R"]}
         )
         matched = build_matched_df(text_scores, slugs, irt_df)
         assert matched.height == 1

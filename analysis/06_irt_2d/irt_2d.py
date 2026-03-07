@@ -423,8 +423,8 @@ def extract_2d_ideal_points(
     party_map = {}
     name_map = {}
     for row in legislators.iter_rows(named=True):
-        party_map[row["slug"]] = row.get("party", "Unknown")
-        name_map[row["slug"]] = row.get("full_name", row["slug"])
+        party_map[row["legislator_slug"]] = row.get("party", "Unknown")
+        name_map[row["legislator_slug"]] = row.get("full_name", row["legislator_slug"])
 
     records = []
     for i, slug in enumerate(slugs):

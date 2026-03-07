@@ -745,9 +745,6 @@ def main() -> None:
         irt_house, irt_senate = load_irt_ideal_points(irt_dir)
 
         legislators = load_legislators(ks.data_dir)
-        if "slug" in legislators.columns and "legislator_slug" not in legislators.columns:
-            legislators = legislators.rename({"slug": "legislator_slug"})
-
         # ── Process chambers ──
         all_results: dict[str, dict] = {}
 

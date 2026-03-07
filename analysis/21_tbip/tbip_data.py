@@ -100,14 +100,13 @@ def build_vote_embedding_profiles(
     valid_vote_ids = {vid for vid, bn in vote_to_bill.items() if bn in matched_bills}
 
     # Filter votes to valid vote_ids
-    vote_col = "vote" if "vote" in votes.columns else "vote_category"
     filtered = votes.filter(pl.col("vote_id").is_in(list(valid_vote_ids)))
 
     # Encode votes: Yea → +1, Nay → -1, else → 0
     filtered = filtered.with_columns(
-        pl.when(pl.col(vote_col) == "Yea")
+        pl.when(pl.col("vote") == "Yea")
         .then(pl.lit(1))
-        .when(pl.col(vote_col) == "Nay")
+        .when(pl.col("vote") == "Nay")
         .then(pl.lit(-1))
         .otherwise(pl.lit(0))
         .alias("vote_numeric")
@@ -195,8 +194,7 @@ def align_sign_convention(
     # Build a quick lookup
     irt_lookup = {}
     for row in irt_df.iter_rows(named=True):
-        slug_col = "legislator_slug" if "legislator_slug" in irt_df.columns else "slug"
-        irt_lookup[row[slug_col]] = row.get("xi_mean", 0.0)
+        irt_lookup[row["legislator_slug"]] = row.get("xi_mean", 0.0)
 
     matched_text = []
     matched_irt = []
@@ -233,9 +231,6 @@ def build_matched_df(
 
     # Normalize IRT slug column name
     irt = irt_df
-    if "slug" in irt.columns and "legislator_slug" not in irt.columns:
-        irt = irt.rename({"slug": "legislator_slug"})
-
     # Select columns available in IRT
     keep_cols = ["legislator_slug", "xi_mean"]
     for optional in ["full_name", "party", "district", "chamber"]:

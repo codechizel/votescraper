@@ -283,7 +283,7 @@ class TestOrientDim1:
         slugs = ["rep_a", "rep_b", "dem_x", "dem_y"]
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b", "dem_x", "dem_y"],
+                "legislator_slug": ["rep_a", "rep_b", "dem_x", "dem_y"],
                 "party": ["Republican", "Republican", "Democrat", "Democrat"],
             }
         )
@@ -302,7 +302,7 @@ class TestOrientDim1:
         slugs = ["rep_a", "rep_b", "dem_x", "dem_y"]
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b", "dem_x", "dem_y"],
+                "legislator_slug": ["rep_a", "rep_b", "dem_x", "dem_y"],
                 "party": ["Republican", "Republican", "Democrat", "Democrat"],
             }
         )
@@ -320,7 +320,7 @@ class TestOrientDim1:
         slugs = ["rep_a", "unknown_b"]
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a"],
+                "legislator_slug": ["rep_a"],
                 "party": ["Republican"],
             }
         )

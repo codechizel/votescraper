@@ -61,7 +61,7 @@ def _make_legislator(slug: str, name: str, party: str = "Republican") -> dict:
     return {
         "name": name.split()[-1],
         "full_name": name,
-        "slug": slug,
+        "legislator_slug": slug,
         "chamber": "Senate",
         "party": party,
         "district": "1",
@@ -138,7 +138,7 @@ class TestSaveCsvs:
             assert reader.fieldnames == [
                 "name",
                 "full_name",
-                "slug",
+                "legislator_slug",
                 "chamber",
                 "party",
                 "district",
@@ -187,7 +187,7 @@ class TestSaveCsvs:
         )
         with open(tmp_path / "test_legislators.csv") as f:
             rows = list(csv.DictReader(f))
-            slugs = [r["slug"] for r in rows]
+            slugs = [r["legislator_slug"] for r in rows]
             assert slugs == ["sen_a_a_1", "sen_m_m_1", "sen_z_z_1"]
 
     def test_empty_data(self, tmp_path):
@@ -252,7 +252,7 @@ class TestSaveCsvs:
 
     def test_missing_legislator_fields_default_empty(self, tmp_path):
         """Legislators with missing keys get empty strings."""
-        legs = {"sen_x_x_1": {"name": "X", "slug": "sen_x_x_1"}}
+        legs = {"sen_x_x_1": {"name": "X", "legislator_slug": "sen_x_x_1"}}
         save_csvs(
             output_dir=tmp_path,
             output_name="test",

@@ -319,7 +319,7 @@ def orient_pc1(
     PCA components have arbitrary sign — this convention makes interpretation
     consistent: positive PC1 = conservative, negative PC1 = liberal.
     """
-    slug_to_party = dict(legislators.select("slug", "party").iter_rows())
+    slug_to_party = dict(legislators.select("legislator_slug", "party").iter_rows())
     parties = [slug_to_party.get(s, "Unknown") for s in slugs]
 
     rep_scores = [scores[i, 0] for i, p in enumerate(parties) if p == "Republican"]
@@ -349,8 +349,8 @@ def build_scores_df(
     df = pl.DataFrame({"legislator_slug": slugs, **pc_cols})
 
     # Join legislator metadata
-    meta = legislators.select("slug", "full_name", "party", "district", "chamber")
-    df = df.join(meta, left_on="legislator_slug", right_on="slug", how="left")
+    meta = legislators.select("legislator_slug", "full_name", "party", "district", "chamber")
+    df = df.join(meta, on="legislator_slug", how="left")
     return df
 
 

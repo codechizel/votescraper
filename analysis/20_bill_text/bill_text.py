@@ -441,10 +441,6 @@ def compute_topic_party_cohesion(
 
     Caucus-splitting score = 1 - Rice(majority party) for each topic.
     """
-    # Ensure consistent column names
-    if "slug" in votes.columns and "legislator_slug" not in votes.columns:
-        votes = votes.rename({"slug": "legislator_slug"})
-
     # Join bill topics → rollcalls → votes → legislators
     # rollcalls has bill_number and vote_id
     rc_cols = ["bill_number", "vote_id"]
@@ -889,8 +885,6 @@ def main() -> None:
         rollcalls = load_rollcalls(data_dir, use_csv=args.csv)
         votes = load_votes(data_dir, use_csv=args.csv)
         legislators = load_legislators(data_dir, use_csv=args.csv)
-        if "slug" in legislators.columns and "legislator_slug" not in legislators.columns:
-            legislators = legislators.rename({"slug": "legislator_slug"})
         print(f"  Roll calls: {len(rollcalls)}")
         print(f"  Legislators: {len(legislators)}")
 

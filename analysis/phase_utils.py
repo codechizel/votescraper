@@ -130,8 +130,6 @@ def match_sponsor_to_slug(sponsor_text: str, legislators: pl.DataFrame) -> str |
     if name is None or chamber is None:
         return None
 
-    slug_col = "legislator_slug" if "legislator_slug" in legislators.columns else "slug"
-
     # Normalize for matching
     name_lower = name.strip().lower()
 
@@ -146,7 +144,7 @@ def match_sponsor_to_slug(sponsor_text: str, legislators: pl.DataFrame) -> str |
         # full_name is "Last" or "Last, First" — check if our name ends with the last name
         last_name = full_name.split(",")[0].strip() if full_name else ""
         if last_name and last_name == name_lower.split()[-1].lower():
-            return row.get(slug_col)
+            return row.get("legislator_slug")
 
     return None
 
@@ -163,8 +161,7 @@ def match_sponsor_to_party(sponsor_text: str, legislators: pl.DataFrame) -> str 
     if slug is None:
         return None
 
-    slug_col = "legislator_slug" if "legislator_slug" in legislators.columns else "slug"
-    matched = legislators.filter(pl.col(slug_col) == slug)
+    matched = legislators.filter(pl.col("legislator_slug") == slug)
     if matched.height == 0:
         return None
     return matched[0, "party"]

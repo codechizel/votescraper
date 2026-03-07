@@ -167,15 +167,14 @@ def create_district_maps(
         district_data[dist_int] = {
             "full_name": row.get("full_name", "Unknown"),
             "party": row.get("party", "Unknown"),
-            "slug": row.get("legislator_slug", row.get("slug", "")),
+            "slug": row.get("legislator_slug", ""),
         }
 
     # Join with ideal points if available
     if ideal_points is not None and "xi_mean" in ideal_points.columns:
-        slug_col = "legislator_slug" if "legislator_slug" in ideal_points.columns else "slug"
         for dist, info in district_data.items():
             slug = info.get("slug", "")
-            xi_row = ideal_points.filter(pl.col(slug_col) == slug)
+            xi_row = ideal_points.filter(pl.col("legislator_slug") == slug)
             if xi_row.height > 0:
                 info["xi_mean"] = float(xi_row["xi_mean"][0])
 

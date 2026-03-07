@@ -646,14 +646,14 @@ def _resolve_name_args(
                 f"  Resolved '{match.query}' -> "
                 f"{m['full_name']} ({m['party'][0]}-{m['district']}, {m['chamber']})"
             )
-            resolved_slugs.append(m["slug"])
+            resolved_slugs.append(m["legislator_slug"])
         elif match.status == "ambiguous":
             print(
                 f"  NOTE: '{match.query}' matched {len(match.matches)} legislators (all included):"
             )
             for m in match.matches:
                 print(f"    - {m['full_name']} ({m['party'][0]}-{m['district']}, {m['chamber']})")
-                resolved_slugs.append(m["slug"])
+                resolved_slugs.append(m["legislator_slug"])
         else:
             print(f"  WARNING: No legislator found matching '{match.query}'")
 

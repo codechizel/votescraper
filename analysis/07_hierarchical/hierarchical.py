@@ -297,7 +297,7 @@ def prepare_hierarchical_data(
     """
     # Filter out non-major-party legislators (e.g. Independent) before IRT prep
     major_party_slugs = set(
-        legislators.filter(pl.col("party").is_in(PARTY_NAMES))["slug"].to_list()
+        legislators.filter(pl.col("party").is_in(PARTY_NAMES))["legislator_slug"].to_list()
     )
     all_slugs = set(matrix["legislator_slug"].to_list())
     non_major = all_slugs - major_party_slugs
@@ -309,8 +309,8 @@ def prepare_hierarchical_data(
     data["n_excluded"] = len(non_major)
 
     # Map legislator slugs to parties
-    meta = legislators.select("slug", "party").unique(subset=["slug"])
-    slug_to_party = dict(zip(meta["slug"].to_list(), meta["party"].to_list()))
+    meta = legislators.select("legislator_slug", "party").unique(subset=["legislator_slug"])
+    slug_to_party = dict(zip(meta["legislator_slug"].to_list(), meta["party"].to_list()))
 
     party_idx = np.array(
         [PARTY_IDX_MAP[slug_to_party[s]] for s in data["leg_slugs"]],
@@ -1064,8 +1064,8 @@ def extract_hierarchical_ideal_points(
     df = pl.DataFrame(rows)
 
     # Join legislator metadata
-    meta = legislators.select("slug", "full_name", "party", "district", "chamber")
-    df = df.join(meta, left_on="legislator_slug", right_on="slug", how="left")
+    meta = legislators.select("legislator_slug", "full_name", "party", "district", "chamber")
+    df = df.join(meta, on="legislator_slug", how="left")
 
     # Shrinkage comparison with flat IRT
     if flat_ip is not None:

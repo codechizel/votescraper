@@ -150,11 +150,11 @@ class TestMatchSponsorToSlug:
         result = match_sponsor_to_slug("", legislators)
         assert result is None
 
-    def test_scraper_slug_column(self):
-        """Works with 'slug' column (scraper convention)."""
+    def test_legislator_slug_column(self):
+        """Works with 'legislator_slug' column."""
         legs = pl.DataFrame(
             {
-                "slug": ["sen_tyson_caryn_1"],
+                "legislator_slug": ["sen_tyson_caryn_1"],
                 "full_name": ["Tyson"],
                 "chamber": ["Senate"],
                 "party": ["Republican"],

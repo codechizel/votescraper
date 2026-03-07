@@ -89,7 +89,6 @@ def build_global_roster(
         has_ocd = "ocd_id" in ch_df.columns
 
         for row in ch_df.iter_rows(named=True):
-            slug_col = "legislator_slug" if "legislator_slug" in ch_df.columns else "slug"
             name = row.get("full_name", "")
             ocd_id = row.get("ocd_id", "") if has_ocd else ""
             records.append(
@@ -98,7 +97,7 @@ def build_global_roster(
                     "full_name": name,
                     "party": row.get("party", ""),
                     "time_idx": t,
-                    "slug": row.get(slug_col, ""),
+                    "slug": row.get("legislator_slug", ""),
                     "ocd_id": ocd_id or "",
                 }
             )
@@ -265,10 +264,9 @@ def stack_bienniums(
             leg_df_t = leg_df_t.filter(pl.col("chamber") == chamber)
 
         # Build slug -> name_norm mapping for this biennium
-        slug_col = "legislator_slug" if "legislator_slug" in leg_df_t.columns else "slug"
         slug_to_name: dict[str, str] = {}
         for row in leg_df_t.iter_rows(named=True):
-            slug = row.get(slug_col, "")
+            slug = row.get("legislator_slug", "")
             nn = normalize_name(row.get("full_name", ""))
             slug_to_name[slug] = nn
 

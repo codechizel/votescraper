@@ -29,7 +29,7 @@ def get_rollcall(request, rollcall_id: int):
     votes = [
         NestedVoteOut(
             id=v.id,
-            legislator_slug=v.legislator.slug,
+            legislator_slug=v.legislator.legislator_slug,
             legislator_name=v.legislator.name,
             vote=v.vote,
         )

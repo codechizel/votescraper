@@ -19,7 +19,7 @@ router = Router()
 def list_votes(request, filters: VoteFilter = Query(...)):
     qs = filters.filter(Vote.objects.select_related("rollcall", "legislator"))
     return qs.annotate(
-        legislator_slug=F("legislator__slug"),
+        legislator_slug=F("legislator__legislator_slug"),
         legislator_name=F("legislator__name"),
         rollcall_vote_id=F("rollcall__vote_id"),
         rollcall_bill_number=F("rollcall__bill_number"),

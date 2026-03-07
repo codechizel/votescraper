@@ -120,7 +120,7 @@ def legislators() -> pl.DataFrame:
         {
             "name": ["A", "B", "C", "D", "E", "F"],
             "full_name": ["A A", "B B", "C C", "D D", "E E", "F F"],
-            "slug": [
+            "legislator_slug": [
                 "sen_a_a_1",
                 "sen_b_b_1",
                 "sen_c_c_1",
@@ -554,7 +554,7 @@ def joint_legislators() -> pl.DataFrame:
         {
             "name": ["A", "B", "C", "X_H", "D", "E", "X_S"],
             "full_name": ["A A", "B B", "C C", "X X", "D D", "E E", "X X"],
-            "slug": [
+            "legislator_slug": [
                 "rep_a_a_1",
                 "rep_b_b_1",
                 "rep_c_c_1",
@@ -864,7 +864,7 @@ class TestUnmergeBridgingLegislators:
         info = {"bridging_legislators": []}
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a_a_1", "sen_b_b_1"],
+                "legislator_slug": ["rep_a_a_1", "sen_b_b_1"],
                 "full_name": ["A A", "B B"],
                 "chamber": ["House", "Senate"],
                 "party": ["Republican", "Democrat"],
@@ -1055,7 +1055,7 @@ class TestFindParadoxLegislator:
             paradox_data_with_gap,
         )
         assert result is not None
-        assert result["slug"] == "rep_a_a_1"
+        assert result["legislator_slug"] == "rep_a_a_1"
         assert result["gap"] > PARADOX_YEA_GAP
 
     def test_no_paradox_when_consistent(
@@ -1130,7 +1130,7 @@ class TestFindParadoxLegislator:
         )
         assert result is not None
         expected_keys = {
-            "slug",
+            "legislator_slug",
             "full_name",
             "party",
             "xi_mean",
@@ -1316,7 +1316,7 @@ class TestExtractIdealPoints:
             {
                 "name": ["A", "B", "C", "D", "E", "F"],
                 "full_name": ["A A", "B B", "C C", "D D", "E E", "F F"],
-                "slug": [f"sen_{chr(97 + i)}_{chr(97 + i)}_1" for i in range(6)],
+                "legislator_slug": [f"sen_{chr(97 + i)}_{chr(97 + i)}_1" for i in range(6)],
                 "chamber": ["Senate"] * 6,
                 "party": ["Republican"] * 3 + ["Democrat"] * 3,
                 "district": list(range(1, 7)),
@@ -1505,7 +1505,7 @@ class TestEquateChambers:
         }
         legislators = pl.DataFrame(
             {
-                "slug": [
+                "legislator_slug": [
                     "rep_a_a_1",
                     "rep_b_b_1",
                     "rep_c_c_1",

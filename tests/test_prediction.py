@@ -43,7 +43,7 @@ def synthetic_legislators() -> pl.DataFrame:
             {
                 "name": f"R{i}",
                 "full_name": f"Rep Republican{i}",
-                "slug": f"rep_r{i}_1",
+                "legislator_slug": f"rep_r{i}_1",
                 "chamber": "House",
                 "party": "Republican",
                 "district": str(i + 1),
@@ -55,7 +55,7 @@ def synthetic_legislators() -> pl.DataFrame:
             {
                 "name": f"D{i}",
                 "full_name": f"Rep Democrat{i}",
-                "slug": f"rep_d{i}_1",
+                "legislator_slug": f"rep_d{i}_1",
                 "chamber": "House",
                 "party": "Democrat",
                 "district": str(i + 11),
@@ -70,7 +70,7 @@ def synthetic_votes(synthetic_legislators: pl.DataFrame) -> pl.DataFrame:
     """20 legislators × 50 rollcalls with party-line voting + noise."""
     rng = np.random.default_rng(RANDOM_SEED)
     rows = []
-    slugs = synthetic_legislators["slug"].to_list()
+    slugs = synthetic_legislators["legislator_slug"].to_list()
     parties = synthetic_legislators["party"].to_list()
 
     for j in range(N_ROLLCALLS):

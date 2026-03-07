@@ -50,7 +50,7 @@ def legislators_df() -> pl.DataFrame:
     """Minimal legislator metadata for 3 reps."""
     return pl.DataFrame(
         {
-            "slug": ["rep_a", "rep_b", "rep_c"],
+            "legislator_slug": ["rep_a", "rep_b", "rep_c"],
             "full_name": ["Alice Smith", "Bob Jones", "Carol Davis"],
             "party": ["Republican", "Democrat", "Republican"],
             "district": ["1", "2", "3"],
@@ -149,7 +149,7 @@ class TestOrientUmap1:
         """Legislators with unknown party don't affect orientation."""
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b"],
+                "legislator_slug": ["rep_a", "rep_b"],
                 "full_name": ["A", "B"],
                 "party": ["Republican", "Democrat"],
                 "district": ["1", "2"],
@@ -462,7 +462,7 @@ class TestSensitivitySweep:
         X = rng.random((10, 5))  # Only 10 samples
         legislators = pl.DataFrame(
             {
-                "slug": [f"rep_{i}" for i in range(10)],
+                "legislator_slug": [f"rep_{i}" for i in range(10)],
                 "full_name": [f"Name {i}" for i in range(10)],
                 "party": ["Republican"] * 5 + ["Democrat"] * 5,
                 "district": [str(i) for i in range(10)],
@@ -488,7 +488,7 @@ class TestSensitivitySweep:
         X = rng.random((30, 10))
         legislators = pl.DataFrame(
             {
-                "slug": [f"rep_{i}" for i in range(30)],
+                "legislator_slug": [f"rep_{i}" for i in range(30)],
                 "full_name": [f"Name {i}" for i in range(30)],
                 "party": ["Republican"] * 15 + ["Democrat"] * 15,
                 "district": [str(i) for i in range(30)],
@@ -524,7 +524,7 @@ class TestStabilitySweep:
         X = rng.random((20, 10))
         legislators = pl.DataFrame(
             {
-                "slug": [f"rep_{i}" for i in range(20)],
+                "legislator_slug": [f"rep_{i}" for i in range(20)],
                 "full_name": [f"Name {i}" for i in range(20)],
                 "party": ["Republican"] * 10 + ["Democrat"] * 10,
                 "district": [str(i) for i in range(20)],
@@ -549,7 +549,7 @@ class TestThreePartyScenario:
         """build_embedding_df handles Independent party correctly."""
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b", "rep_c"],
+                "legislator_slug": ["rep_a", "rep_b", "rep_c"],
                 "full_name": ["Alice", "Bob", "Carol"],
                 "party": ["Republican", "Democrat", "Independent"],
                 "district": ["1", "2", "3"],
@@ -568,7 +568,7 @@ class TestThreePartyScenario:
         """Orientation ignores Independent legislators."""
         legislators = pl.DataFrame(
             {
-                "slug": ["rep_a", "rep_b", "rep_c"],
+                "legislator_slug": ["rep_a", "rep_b", "rep_c"],
                 "full_name": ["Alice", "Bob", "Carol"],
                 "party": ["Republican", "Democrat", "Independent"],
                 "district": ["1", "2", "3"],

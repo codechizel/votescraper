@@ -88,13 +88,10 @@ def load_rollcalls(data_dir: Path, *, use_csv: bool = False) -> pl.DataFrame:
 
 
 def load_votes(data_dir: Path, *, use_csv: bool = False) -> pl.DataFrame:
-    """Load votes with column rename (slug -> legislator_slug). DB default, CSV fallback."""
+    """Load votes. DB default, CSV fallback."""
     from analysis.db import load_votes as db_load_votes
 
-    df = db_load_votes(data_dir, use_csv=use_csv)
-    if "slug" in df.columns and "legislator_slug" not in df.columns:
-        df = df.rename({"slug": "legislator_slug"})
-    return df
+    return db_load_votes(data_dir, use_csv=use_csv)
 
 
 # ── Text Preprocessing ───────────────────────────────────────────────────────

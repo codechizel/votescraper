@@ -165,14 +165,6 @@ class TestCleanLegislatorsDf:
         assert result["party"][0] == "Independent"
         assert result["ocd_id"][0] == ""
 
-    def test_adds_ocd_id_column(self):
-        from analysis.db import _clean_legislators_df
-
-        df = pl.DataFrame({"full_name": ["Smith"], "party": ["Republican"]})
-        result = _clean_legislators_df(df)
-        assert "ocd_id" in result.columns
-
-
 class TestTryDb:
     def test_returns_none_on_exception(self):
         from analysis.db import _try_db

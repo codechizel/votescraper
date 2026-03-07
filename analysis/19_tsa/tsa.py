@@ -172,9 +172,6 @@ def load_data(
     votes = load_votes(data_dir, use_csv=use_csv)
     rollcalls = load_rollcalls(data_dir, use_csv=use_csv)
     legislators = load_legislators(data_dir, use_csv=use_csv)
-    if "slug" in legislators.columns:
-        legislators = legislators.rename({"slug": "legislator_slug"})
-
     # Fill Independent party in votes (DB/CSV may have nulls)
     if "party" in votes.columns:
         votes = votes.with_columns(

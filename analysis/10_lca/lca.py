@@ -1110,9 +1110,6 @@ def main() -> None:
         vm_house, vm_senate = load_vote_matrices(eda_dir)
         irt_house, irt_senate = load_irt_ideal_points(irt_dir)
         legislators = load_legislators(data_dir)
-        if "slug" in legislators.columns and "legislator_slug" not in legislators.columns:
-            legislators = legislators.rename({"slug": "legislator_slug"})
-
         if vm_house is None and vm_senate is None:
             print("Phase 10 (LCA): skipping — no EDA vote matrices available")
             return

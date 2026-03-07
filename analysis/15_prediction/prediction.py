@@ -345,7 +345,7 @@ def build_vote_features(
 
     # Join legislator features: party
     leg_features = legislators.select(
-        pl.col("slug").alias("legislator_slug"),
+        pl.col("legislator_slug"),
         pl.when(pl.col("party") == "Republican").then(1).otherwise(0).alias("party_binary"),
     )
     chamber_votes = chamber_votes.join(leg_features, on="legislator_slug", how="left")
@@ -500,10 +500,8 @@ def build_bill_features(
             rc = rc.with_columns(
                 pl.col("sponsor_slugs").str.split("; ").list.first().alias("_first_slug")
             )
-            # Determine the slug column name in legislators
-            slug_col = "legislator_slug" if "legislator_slug" in legislators.columns else "slug"
             slug_party = legislators.select(
-                pl.col(slug_col).alias("_first_slug"), pl.col("party")
+                pl.col("legislator_slug").alias("_first_slug"), pl.col("party")
             ).unique(subset=["_first_slug"])
             rc = rc.join(slug_party, on="_first_slug", how="left")
             rc = rc.with_columns(
@@ -523,9 +521,8 @@ def build_bill_features(
                 for row in rc.iter_rows(named=True)
             ]
             rc = rc.with_columns(pl.Series("_first_slug", resolved_slugs))
-            slug_col = "legislator_slug" if "legislator_slug" in legislators.columns else "slug"
             slug_party = legislators.select(
-                pl.col(slug_col).alias("_first_slug"), pl.col("party")
+                pl.col("legislator_slug").alias("_first_slug"), pl.col("party")
             ).unique(subset=["_first_slug"])
             rc = rc.join(slug_party, on="_first_slug", how="left")
             rc = rc.with_columns(

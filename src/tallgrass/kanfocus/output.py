@@ -125,6 +125,10 @@ def convert_to_standard(
         vote_type, motion_result = _classify_vote_type(record.question)
         passed = _derive_passed(record.result)
 
+        # Skip voice votes / unrecorded votes (no individual legislator data)
+        if not record.legislators:
+            continue
+
         # Warn if tally counts don't match parsed legislator list
         n_legislators = len(record.legislators)
         expected_total = (
@@ -188,7 +192,7 @@ def convert_to_standard(
                 legislators[slug] = {
                     "name": kf_leg.name,
                     "full_name": kf_leg.name,
-                    "slug": slug,
+                    "legislator_slug": slug,
                     "chamber": chamber_name,
                     "party": party_full,
                     "district": kf_leg.district,
@@ -282,7 +286,7 @@ def merge_gap_fill(
         with open(legislators_path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                slug = row.get("slug", "")
+                slug = row.get("legislator_slug", "")
                 if slug:
                     existing_legislators[slug] = dict(row)
 
