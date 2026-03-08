@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-06 (KanFocus duplicate bug investigated + 3 defensive fixes; pending 83rd pipeline)
+**Last updated:** 2026-03-07 (IRT sign flip fix roadmapped; 3 pipeline bug fixes; LOO-CV + sign flip docs)
 
 ---
 
@@ -644,6 +644,33 @@ See `docs/method-evaluation.md` for detailed rationale on each rejection.
 |------|---------|---------|
 | **Run 83rd pipeline** | `just pipeline 2009-10` | KanFocus data downloaded + DB-loaded (1,180 rollcalls, 66,575 votes, 170 legislators). Needs full 27-phase analysis. |
 | ~~**Investigate KanFocus scraper duplicate output**~~ | — | **Resolved.** Deep dive confirmed the original duplicates were an operational issue (write interruption), not a reproducible code bug. A clean re-run from cache produces 1,186 rollcalls with 0 duplicates. Three defensive improvements shipped: (1) rollcall dedup by `vote_id` in `save_csvs()`, (2) early dedup + tally-mismatch warning in `convert_to_standard()`, (3) parser fix for `Result:` regex bleeding into "All Members" table header (8 affected records across 5 bienniums). 7 new tests. |
+
+---
+
+## IRT Sign Flip Fix (Supermajority Chambers)
+
+**Status:** Documented, code fix pending.
+
+PCA-based anchor selection produces sign flips in supermajority chambers where a rebel faction within the majority party votes with the minority. The horseshoe effect folds far-right rebels onto the same end of the latent dimension as Democrats, and `orient_pc1()` + `select_anchors()` lock in the wrong polarity. The model's shape is correct — only the sign is wrong.
+
+**Evidence:** In the 79th Kansas Senate (2001-02), Tim Huelskamp (ultra-conservative, later Freedom Caucus) is placed at xi = -3.26 ("most liberal"), while Sandy Praeger (moderate R) is the conservative anchor at +1.00. Cross-party contested vote agreement confirms this is inverted: Huelskamp has low agreement with Democrats on contested votes, Praeger has high agreement.
+
+**Proposed fix — post-hoc sign validation:**
+
+1. After MCMC, identify contested votes (both parties split, ≥10% threshold)
+2. Compute per-legislator cross-party agreement rate on contested votes
+3. Correlate agreement rate with ideal point magnitude
+4. If correlation is positive (extremes agree more with the other party), negate all ideal points and discrimination parameters — selecting the other posterior mode
+5. Add supermajority diagnostic: flag when within-party variance > between-party gap
+
+**Affected code:**
+- `analysis/05_irt/irt.py` — `select_anchors()`, post-MCMC validation
+- `analysis/07_hierarchical/hierarchical.py` — post-MCMC validation
+- `analysis/02_pca/pca.py` — `orient_pc1()` (upstream, may need awareness)
+
+**Documentation:**
+- Deep dive: [`docs/irt-sign-identification-deep-dive.md`](irt-sign-identification-deep-dive.md)
+- ADR-0101: Party-aware IRT anchor selection (needs update to reflect sign flip finding)
 
 ---
 
