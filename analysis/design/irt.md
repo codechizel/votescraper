@@ -121,6 +121,22 @@
 
 All strategies pass through `validate_sign()` as a post-hoc safety net. Every run prints a rationale table showing why the selected strategy was chosen and why alternatives were passed over.
 
+### Robustness flags (CLI-driven diagnostics)
+
+**Decision:** Optional CLI flags enable runtime robustness analyses without code changes. All flags are always visible in the HTML report (ON/OFF), so the exact configuration is recorded with every run. See ADR-0104.
+
+| Flag | CLI arg | Purpose |
+|------|---------|---------|
+| `contested_only` | `--contested-only` | Re-fit IRT on cross-party contested votes only (strips intra-party rebel dynamics) |
+| `horseshoe_diagnostic` | `--horseshoe-diagnostic` | Compute 6 quantitative horseshoe metrics (Democrat wrong-side fraction, overlap, eigenvalue ratio) |
+| `promote_2d` | `--promote-2d` | Cross-reference 1D rankings with 2D IRT Dim 1 rankings; flag legislators with large rank shifts |
+
+**Why flags, not always-on:** Contested-only refit doubles MCMC runtime. 2D cross-reference requires Phase 04b results. Horseshoe diagnostic is cheap but adds report clutter for balanced chambers where it always passes. Making these opt-in keeps the default report focused.
+
+**Extensibility:** New flags follow the `RobustnessFlag` frozen dataclass + `RobustnessFlags` registry pattern. Add to `ALL_FLAGS`, add CLI arg, add logic block in `main()`.
+
+**Always-on report additions:** The identification summary (strategy, anchors, sign flip status) and robustness flags table are always shown regardless of flag state. This closes a prior reporting oversight where anchor identity and method were not recorded.
+
 ### PCA-informed chain initialization (default: on)
 
 **Decision:** Initialize MCMC chains with standardized PCA PC1 scores (mean-0, sd-1) as starting values for the free ideal point parameters (`xi_free`). On by default; disable with `--no-pca-init`.

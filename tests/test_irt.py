@@ -25,27 +25,35 @@ from analysis.irt import (
     CONTESTED_VOTE_THRESHOLD,
     HOLDOUT_FRACTION,
     HOLDOUT_SEED,
+    HORSESHOE_DEM_WRONG_SIDE_FRAC,
     MAX_DIVERGENCES,
     MIN_CONTESTED_FOR_AGREEMENT,
+    MIN_CONTESTED_FOR_REFIT,
     MIN_CONTESTED_VOTES_PER_LEG,
     PARADOX_YEA_GAP,
+    PROMOTE_2D_RANK_SHIFT,
     RHAT_THRESHOLD,
     SUPERMAJORITY_THRESHOLD,
     IdentificationStrategy,
+    RobustnessFlag,
+    RobustnessFlags,
     _detect_forest_highlights,
     build_irt_graph,
     build_joint_vote_matrix,
     check_convergence,
     compute_cross_party_agreement,
+    cross_reference_2d,
+    detect_horseshoe,
     detect_supermajority,
     equate_chambers,
     extract_bill_parameters,
     extract_ideal_points,
+    filter_contested_votes,
     filter_vote_matrix_for_sensitivity,
     find_paradox_legislator,
     prepare_irt_data,
-    select_identification_strategy,
     select_anchors,
+    select_identification_strategy,
     unmerge_bridging_legislators,
     validate_sign,
 )
@@ -311,10 +319,12 @@ class TestComputeCrossPartyAgreement:
         slugs = [f"sen_r{i}_1" for i in range(n_r)] + [f"sen_d{i}_1" for i in range(n_d)]
         parties = ["Republican"] * n_r + ["Democrat"] * n_d
 
-        xi_true = np.concatenate([
-            np.linspace(0.5, 2.5, n_r),
-            np.linspace(-2.5, -0.5, n_d),
-        ])
+        xi_true = np.concatenate(
+            [
+                np.linspace(0.5, 2.5, n_r),
+                np.linspace(-2.5, -0.5, n_d),
+            ]
+        )
 
         vote_matrix = np.full((n_legs, n_votes), np.nan)
         alphas = rng.normal(0, 0.5, n_votes)
@@ -327,13 +337,15 @@ class TestComputeCrossPartyAgreement:
             matrix_data[f"v{j}"] = vote_matrix[:, j].tolist()
         matrix = pl.DataFrame(matrix_data)
 
-        legislators = pl.DataFrame({
-            "legislator_slug": slugs,
-            "full_name": [f"R{i}" for i in range(n_r)] + [f"D{i}" for i in range(n_d)],
-            "party": parties,
-            "district": list(range(1, n_legs + 1)),
-            "chamber": ["Senate"] * n_legs,
-        })
+        legislators = pl.DataFrame(
+            {
+                "legislator_slug": slugs,
+                "full_name": [f"R{i}" for i in range(n_r)] + [f"D{i}" for i in range(n_d)],
+                "party": parties,
+                "district": list(range(1, n_legs + 1)),
+                "chamber": ["Senate"] * n_legs,
+            }
+        )
 
         return matrix, legislators
 
@@ -367,17 +379,21 @@ class TestComputeCrossPartyAgreement:
     def test_empty_with_too_few_parties(self) -> None:
         """Should return empty when one party has < 3 legislators."""
         slugs = ["sen_r0_1", "sen_r1_1", "sen_r2_1", "sen_d0_1", "sen_d1_1"]
-        matrix = pl.DataFrame({
-            "legislator_slug": slugs,
-            "v1": [1, 1, 1, 0, 0],
-        })
-        legislators = pl.DataFrame({
-            "legislator_slug": slugs,
-            "full_name": slugs,
-            "party": ["Republican"] * 3 + ["Democrat"] * 2,
-            "district": list(range(1, 6)),
-            "chamber": ["Senate"] * 5,
-        })
+        matrix = pl.DataFrame(
+            {
+                "legislator_slug": slugs,
+                "v1": [1, 1, 1, 0, 0],
+            }
+        )
+        legislators = pl.DataFrame(
+            {
+                "legislator_slug": slugs,
+                "full_name": slugs,
+                "party": ["Republican"] * 3 + ["Democrat"] * 2,
+                "district": list(range(1, 6)),
+                "chamber": ["Senate"] * 5,
+            }
+        )
         rates, _ = compute_cross_party_agreement(matrix, legislators)
         assert rates == {}
 
@@ -415,10 +431,12 @@ class TestSelectAnchorsAgreement:
         parties = ["Republican"] * n_r + ["Democrat"] * n_d
 
         # True ideology: r0 most moderate, r14 most conservative
-        xi_true = np.concatenate([
-            np.linspace(0.2, 3.0, n_r),
-            np.linspace(-3.0, -0.2, n_d),
-        ])
+        xi_true = np.concatenate(
+            [
+                np.linspace(0.2, 3.0, n_r),
+                np.linspace(-3.0, -0.2, n_d),
+            ]
+        )
 
         # Generate votes based on true ideology
         vote_matrix = np.full((n_legs, n_votes), np.nan)
@@ -434,24 +452,28 @@ class TestSelectAnchorsAgreement:
 
         # PCA scores: horseshoe effect — most moderate R (r0) gets highest PC1
         # (establishment-aligned), most extreme R (r14) gets mid-range PC1
-        pca_scores = pl.DataFrame({
-            "legislator_slug": slugs,
-            "full_name": [f"R{i}" for i in range(n_r)] + [f"D{i}" for i in range(n_d)],
-            "party": parties,
-            "PC1": (
-                list(np.linspace(8.0, 2.0, n_r))  # r0=8.0 (highest), r14=2.0
-                + list(np.linspace(-6.0, -2.0, n_d))
-            ),
-            "PC2": [0.0] * n_legs,
-        })
+        pca_scores = pl.DataFrame(
+            {
+                "legislator_slug": slugs,
+                "full_name": [f"R{i}" for i in range(n_r)] + [f"D{i}" for i in range(n_d)],
+                "party": parties,
+                "PC1": (
+                    list(np.linspace(8.0, 2.0, n_r))  # r0=8.0 (highest), r14=2.0
+                    + list(np.linspace(-6.0, -2.0, n_d))
+                ),
+                "PC2": [0.0] * n_legs,
+            }
+        )
 
-        legislators = pl.DataFrame({
-            "legislator_slug": slugs,
-            "full_name": [f"R{i}" for i in range(n_r)] + [f"D{i}" for i in range(n_d)],
-            "party": parties,
-            "district": list(range(1, n_legs + 1)),
-            "chamber": ["Senate"] * n_legs,
-        })
+        legislators = pl.DataFrame(
+            {
+                "legislator_slug": slugs,
+                "full_name": [f"R{i}" for i in range(n_r)] + [f"D{i}" for i in range(n_d)],
+                "party": parties,
+                "district": list(range(1, n_legs + 1)),
+                "chamber": ["Senate"] * n_legs,
+            }
+        )
 
         return matrix, pca_scores, legislators
 
@@ -465,8 +487,7 @@ class TestSelectAnchorsAgreement:
         # an extreme R (high index) since they have lowest D-agreement.
         cons_r_idx = int(cons_slug.split("_")[1][1:])  # extract number from "sen_rN_1"
         assert cons_r_idx >= 7, (
-            f"Expected agreement to pick an extreme R (index ≥7), got r{cons_r_idx} "
-            f"({cons_slug})"
+            f"Expected agreement to pick an extreme R (index ≥7), got r{cons_r_idx} ({cons_slug})"
         )
 
     def test_agreement_picks_genuine_extreme_d(self, supermajority_data: tuple) -> None:
@@ -478,8 +499,7 @@ class TestSelectAnchorsAgreement:
         # Most extreme D should be d0 (xi=-3.0, lowest R-agreement)
         lib_d_idx = int(lib_slug.split("_")[1][1:])
         assert lib_d_idx <= 2, (
-            f"Expected agreement to pick an extreme D (index ≤2), got d{lib_d_idx} "
-            f"({lib_slug})"
+            f"Expected agreement to pick an extreme D (index ≤2), got d{lib_d_idx} ({lib_slug})"
         )
 
     def test_pca_fallback_when_no_legislators(self, supermajority_data: tuple) -> None:
@@ -2123,8 +2143,12 @@ class TestIdentificationStrategy:
         """Strategy string values should be valid CLI choices."""
         IS = IdentificationStrategy
         expected_cli = {
-            "anchor-pca", "anchor-agreement", "sort-constraint",
-            "positive-beta", "hierarchical-prior", "unconstrained",
+            "anchor-pca",
+            "anchor-agreement",
+            "sort-constraint",
+            "positive-beta",
+            "hierarchical-prior",
+            "unconstrained",
             "external-prior",
         }
         assert set(IS.ALL_STRATEGIES) == expected_cli
@@ -2144,33 +2168,39 @@ class TestDetectSupermajority:
 
     def test_balanced_chamber(self) -> None:
         """50/50 split should not be supermajority."""
-        legs = pl.DataFrame({
-            "legislator_slug": [f"s{i}" for i in range(10)],
-            "party": ["Republican"] * 5 + ["Democrat"] * 5,
-            "chamber": ["Senate"] * 10,
-        })
+        legs = pl.DataFrame(
+            {
+                "legislator_slug": [f"s{i}" for i in range(10)],
+                "party": ["Republican"] * 5 + ["Democrat"] * 5,
+                "chamber": ["Senate"] * 10,
+            }
+        )
         is_super, frac = detect_supermajority(legs, "Senate")
         assert not is_super
         assert frac == pytest.approx(0.5)
 
     def test_supermajority_detected(self) -> None:
         """75% R should trigger supermajority."""
-        legs = pl.DataFrame({
-            "legislator_slug": [f"s{i}" for i in range(20)],
-            "party": ["Republican"] * 15 + ["Democrat"] * 5,
-            "chamber": ["Senate"] * 20,
-        })
+        legs = pl.DataFrame(
+            {
+                "legislator_slug": [f"s{i}" for i in range(20)],
+                "party": ["Republican"] * 15 + ["Democrat"] * 5,
+                "chamber": ["Senate"] * 20,
+            }
+        )
         is_super, frac = detect_supermajority(legs, "Senate")
         assert is_super
         assert frac == pytest.approx(0.75)
 
     def test_exactly_at_threshold(self) -> None:
         """Exactly 70% should trigger supermajority."""
-        legs = pl.DataFrame({
-            "legislator_slug": [f"s{i}" for i in range(10)],
-            "party": ["Republican"] * 7 + ["Democrat"] * 3,
-            "chamber": ["Senate"] * 10,
-        })
+        legs = pl.DataFrame(
+            {
+                "legislator_slug": [f"s{i}" for i in range(10)],
+                "party": ["Republican"] * 7 + ["Democrat"] * 3,
+                "chamber": ["Senate"] * 10,
+            }
+        )
         is_super, frac = detect_supermajority(legs, "Senate")
         assert is_super
         assert frac == pytest.approx(0.7)
@@ -2179,33 +2209,39 @@ class TestDetectSupermajority:
         """69% should NOT trigger supermajority."""
         # 69/100 = 0.69
         n_r, n_d = 69, 31
-        legs = pl.DataFrame({
-            "legislator_slug": [f"s{i}" for i in range(100)],
-            "party": ["Republican"] * n_r + ["Democrat"] * n_d,
-            "chamber": ["Senate"] * 100,
-        })
+        legs = pl.DataFrame(
+            {
+                "legislator_slug": [f"s{i}" for i in range(100)],
+                "party": ["Republican"] * n_r + ["Democrat"] * n_d,
+                "chamber": ["Senate"] * 100,
+            }
+        )
         is_super, frac = detect_supermajority(legs, "Senate")
         assert not is_super
         assert frac == pytest.approx(0.69)
 
     def test_empty_chamber(self) -> None:
         """Empty chamber should return False, 0.0."""
-        legs = pl.DataFrame({
-            "legislator_slug": pl.Series([], dtype=pl.Utf8),
-            "party": pl.Series([], dtype=pl.Utf8),
-            "chamber": pl.Series([], dtype=pl.Utf8),
-        })
+        legs = pl.DataFrame(
+            {
+                "legislator_slug": pl.Series([], dtype=pl.Utf8),
+                "party": pl.Series([], dtype=pl.Utf8),
+                "chamber": pl.Series([], dtype=pl.Utf8),
+            }
+        )
         is_super, frac = detect_supermajority(legs, "Senate")
         assert not is_super
         assert frac == 0.0
 
     def test_wrong_chamber_filtered(self) -> None:
         """Should only consider legislators from the specified chamber."""
-        legs = pl.DataFrame({
-            "legislator_slug": [f"s{i}" for i in range(10)],
-            "party": ["Republican"] * 8 + ["Republican", "Democrat"],
-            "chamber": ["House"] * 8 + ["Senate"] * 2,
-        })
+        legs = pl.DataFrame(
+            {
+                "legislator_slug": [f"s{i}" for i in range(10)],
+                "party": ["Republican"] * 8 + ["Republican", "Democrat"],
+                "chamber": ["House"] * 8 + ["Senate"] * 2,
+            }
+        )
         is_super, frac = detect_supermajority(legs, "Senate")
         # 2 Senate legislators, 1 R + 1 D → 50%
         assert not is_super
@@ -2229,20 +2265,24 @@ class TestSelectIdentificationStrategy:
         slugs = [f"sen_r{i}_1" for i in range(n_r)] + [f"sen_d{i}_1" for i in range(n_d)]
         parties = ["Republican"] * n_r + ["Democrat"] * n_d
 
-        legs = pl.DataFrame({
-            "legislator_slug": slugs,
-            "full_name": slugs,
-            "party": parties,
-            "district": list(range(1, n + 1)),
-            "chamber": ["Senate"] * n,
-        })
+        legs = pl.DataFrame(
+            {
+                "legislator_slug": slugs,
+                "full_name": slugs,
+                "party": parties,
+                "district": list(range(1, n + 1)),
+                "chamber": ["Senate"] * n,
+            }
+        )
 
         # Generate vote matrix with contested votes
         rng = np.random.default_rng(42)
-        xi_true = np.concatenate([
-            np.linspace(0.5, 2.0, n_r),
-            np.linspace(-2.0, -0.5, n_d),
-        ])
+        xi_true = np.concatenate(
+            [
+                np.linspace(0.5, 2.0, n_r),
+                np.linspace(-2.0, -0.5, n_d),
+            ]
+        )
         matrix_data: dict = {"legislator_slug": slugs}
         for j in range(max(n_contested + 5, 30)):
             alpha = rng.normal(0, 0.3)
@@ -2255,7 +2295,10 @@ class TestSelectIdentificationStrategy:
         """Balanced chamber should auto-select anchor-pca."""
         legs, matrix = self._make_chamber_data(n_r=20, n_d=20)
         strategy, rationale = select_identification_strategy(
-            "auto", legs, matrix, "Senate",
+            "auto",
+            legs,
+            matrix,
+            "Senate",
         )
         assert strategy == IdentificationStrategy.ANCHOR_PCA
         assert "SELECTED" in rationale[strategy]
@@ -2264,7 +2307,10 @@ class TestSelectIdentificationStrategy:
         """Supermajority with contested votes should auto-select anchor-agreement."""
         legs, matrix = self._make_chamber_data(n_r=30, n_d=10, n_contested=30)
         strategy, rationale = select_identification_strategy(
-            "auto", legs, matrix, "Senate",
+            "auto",
+            legs,
+            matrix,
+            "Senate",
         )
         assert strategy == IdentificationStrategy.ANCHOR_AGREEMENT
         assert "SELECTED" in rationale[strategy]
@@ -2273,7 +2319,11 @@ class TestSelectIdentificationStrategy:
         """External scores available should auto-select external-prior."""
         legs, matrix = self._make_chamber_data(n_r=20, n_d=20)
         strategy, rationale = select_identification_strategy(
-            "auto", legs, matrix, "Senate", external_scores_available=True,
+            "auto",
+            legs,
+            matrix,
+            "Senate",
+            external_scores_available=True,
         )
         assert strategy == IdentificationStrategy.EXTERNAL_PRIOR
 
@@ -2281,7 +2331,10 @@ class TestSelectIdentificationStrategy:
         """Explicit strategy should override auto-detection."""
         legs, matrix = self._make_chamber_data(n_r=20, n_d=20)
         strategy, rationale = select_identification_strategy(
-            "sort-constraint", legs, matrix, "Senate",
+            "sort-constraint",
+            legs,
+            matrix,
+            "Senate",
         )
         assert strategy == IdentificationStrategy.SORT_CONSTRAINT
         assert "user override" in rationale[strategy]
@@ -2290,7 +2343,10 @@ class TestSelectIdentificationStrategy:
         """Rationale dict should have an entry for every strategy."""
         legs, matrix = self._make_chamber_data(n_r=20, n_d=20)
         _, rationale = select_identification_strategy(
-            "auto", legs, matrix, "Senate",
+            "auto",
+            legs,
+            matrix,
+            "Senate",
         )
         for s in IdentificationStrategy.ALL_STRATEGIES:
             assert s in rationale, f"Missing rationale for {s}"
@@ -2299,7 +2355,10 @@ class TestSelectIdentificationStrategy:
         """Exactly one strategy should be marked SELECTED in the rationale."""
         legs, matrix = self._make_chamber_data(n_r=20, n_d=20)
         _, rationale = select_identification_strategy(
-            "auto", legs, matrix, "Senate",
+            "auto",
+            legs,
+            matrix,
+            "Senate",
         )
         selected_count = sum(1 for v in rationale.values() if v.startswith("SELECTED"))
         assert selected_count == 1
@@ -2308,7 +2367,10 @@ class TestSelectIdentificationStrategy:
         """Non-selected strategies should be prefixed with 'Not selected.'."""
         legs, matrix = self._make_chamber_data(n_r=20, n_d=20)
         strategy, rationale = select_identification_strategy(
-            "auto", legs, matrix, "Senate",
+            "auto",
+            legs,
+            matrix,
+            "Senate",
         )
         for s, desc in rationale.items():
             if s != strategy:
@@ -2342,7 +2404,9 @@ class TestBuildIrtGraphStrategies:
         """Anchor-PCA strategy should build a model with anchored xi."""
         anchors = [(0, 1.0), (9, -1.0)]
         model = build_irt_graph(
-            irt_data, anchors, strategy=IdentificationStrategy.ANCHOR_PCA,
+            irt_data,
+            anchors,
+            strategy=IdentificationStrategy.ANCHOR_PCA,
         )
         assert "xi" in model.named_vars
         assert "xi_free" in model.named_vars
@@ -2355,7 +2419,9 @@ class TestBuildIrtGraphStrategies:
         """Anchor-agreement should produce the same graph structure as anchor-pca."""
         anchors = [(2, 1.0), (7, -1.0)]
         model = build_irt_graph(
-            irt_data, anchors, strategy=IdentificationStrategy.ANCHOR_AGREEMENT,
+            irt_data,
+            anchors,
+            strategy=IdentificationStrategy.ANCHOR_AGREEMENT,
         )
         assert "xi_free" in model.named_vars
         assert model.named_vars["xi_free"].shape.eval().item() == 8
@@ -2364,7 +2430,9 @@ class TestBuildIrtGraphStrategies:
         """Sort-constraint should have party_order potential and all-free xi."""
         party_indices = {"Republican": [0, 1, 2, 3, 4], "Democrat": [5, 6, 7, 8, 9]}
         model = build_irt_graph(
-            irt_data, [], strategy=IdentificationStrategy.SORT_CONSTRAINT,
+            irt_data,
+            [],
+            strategy=IdentificationStrategy.SORT_CONSTRAINT,
             party_indices=party_indices,
         )
         assert "xi_free" in model.named_vars
@@ -2375,12 +2443,12 @@ class TestBuildIrtGraphStrategies:
 
     def test_positive_beta_model(self, irt_data: dict) -> None:
         """Positive-beta should use HalfNormal for beta."""
-        import pymc as pm
 
         model = build_irt_graph(
-            irt_data, [], strategy=IdentificationStrategy.POSITIVE_BETA,
+            irt_data,
+            [],
+            strategy=IdentificationStrategy.POSITIVE_BETA,
         )
-        beta_rv = model.named_vars["beta"]
         # HalfNormal is a distribution — check that it's bounded positive
         assert "beta" in model.named_vars
         # xi_free should be fully free (no anchors)
@@ -2390,7 +2458,9 @@ class TestBuildIrtGraphStrategies:
         """Hierarchical-prior should set party-aware mu for xi_free."""
         party_indices = {"Republican": [0, 1, 2, 3, 4], "Democrat": [5, 6, 7, 8, 9]}
         model = build_irt_graph(
-            irt_data, [], strategy=IdentificationStrategy.HIERARCHICAL_PRIOR,
+            irt_data,
+            [],
+            strategy=IdentificationStrategy.HIERARCHICAL_PRIOR,
             party_indices=party_indices,
         )
         assert "xi_free" in model.named_vars
@@ -2402,7 +2472,9 @@ class TestBuildIrtGraphStrategies:
     def test_unconstrained_model(self, irt_data: dict) -> None:
         """Unconstrained should have all-free xi with no potentials."""
         model = build_irt_graph(
-            irt_data, [], strategy=IdentificationStrategy.UNCONSTRAINED,
+            irt_data,
+            [],
+            strategy=IdentificationStrategy.UNCONSTRAINED,
         )
         assert "xi_free" in model.named_vars
         assert model.named_vars["xi_free"].shape.eval().item() == 10
@@ -2413,7 +2485,9 @@ class TestBuildIrtGraphStrategies:
         """External-prior should use provided prior means."""
         priors = np.linspace(1.0, -1.0, 10)
         model = build_irt_graph(
-            irt_data, [], strategy=IdentificationStrategy.EXTERNAL_PRIOR,
+            irt_data,
+            [],
+            strategy=IdentificationStrategy.EXTERNAL_PRIOR,
             external_priors=priors,
         )
         assert "xi_free" in model.named_vars
@@ -2422,7 +2496,9 @@ class TestBuildIrtGraphStrategies:
     def test_external_prior_defaults_to_zero(self, irt_data: dict) -> None:
         """External-prior with None priors should default to zero means."""
         model = build_irt_graph(
-            irt_data, [], strategy=IdentificationStrategy.EXTERNAL_PRIOR,
+            irt_data,
+            [],
+            strategy=IdentificationStrategy.EXTERNAL_PRIOR,
             external_priors=None,
         )
         assert "xi_free" in model.named_vars
@@ -2437,7 +2513,310 @@ class TestBuildIrtGraphStrategies:
             a = anchors if strategy.startswith("anchor") else []
             pi = party_indices if strategy in ("sort-constraint", "hierarchical-prior") else None
             ep = priors if strategy == "external-prior" else None
-            model = build_irt_graph(irt_data, a, strategy=strategy, party_indices=pi,
-                                    external_priors=ep)
+            model = build_irt_graph(
+                irt_data, a, strategy=strategy, party_indices=pi, external_priors=ep
+            )
             assert "xi" in model.named_vars, f"Strategy {strategy} missing xi"
             assert "obs" in model.named_vars, f"Strategy {strategy} missing obs"
+
+
+# -- Robustness Flags (ADR-0104) --
+
+
+class TestRobustnessFlag:
+    """Test RobustnessFlag dataclass and RobustnessFlags registry.
+
+    Run: uv run pytest tests/test_irt.py::TestRobustnessFlag -v
+    """
+
+    def test_flag_is_frozen(self) -> None:
+        """RobustnessFlag should be immutable."""
+        flag = RobustnessFlag(
+            name="test",
+            label="Test",
+            description="A test flag",
+            enabled=True,
+        )
+        with pytest.raises(AttributeError):
+            flag.enabled = False  # type: ignore[misc]
+
+    def test_build_flags_all_off(self) -> None:
+        """With no CLI flags set, all robustness flags should be OFF."""
+        import argparse
+
+        args = argparse.Namespace(
+            contested_only=False,
+            horseshoe_diagnostic=False,
+            promote_2d=False,
+        )
+        flags = RobustnessFlags.build_flags(args)
+        assert len(flags) == 3
+        assert all(not f.enabled for f in flags)
+
+    def test_build_flags_selective(self) -> None:
+        """Enabling one flag should not affect others."""
+        import argparse
+
+        args = argparse.Namespace(
+            contested_only=True,
+            horseshoe_diagnostic=False,
+            promote_2d=False,
+        )
+        flags = RobustnessFlags.build_flags(args)
+        by_name = {f.name: f for f in flags}
+        assert by_name["contested-only"].enabled is True
+        assert by_name["horseshoe-diagnostic"].enabled is False
+        assert by_name["promote-2d"].enabled is False
+
+    def test_all_flags_have_labels_and_descriptions(self) -> None:
+        """Every flag in the registry must have a label and description."""
+        for name in RobustnessFlags.ALL_FLAGS:
+            assert name in RobustnessFlags.LABELS
+            assert name in RobustnessFlags.DESCRIPTIONS
+            assert len(RobustnessFlags.LABELS[name]) > 0
+            assert len(RobustnessFlags.DESCRIPTIONS[name]) > 0
+
+    def test_constants_exist(self) -> None:
+        """Robustness flag constants should be defined."""
+        assert MIN_CONTESTED_FOR_REFIT == 50
+        assert HORSESHOE_DEM_WRONG_SIDE_FRAC == 0.20
+        assert PROMOTE_2D_RANK_SHIFT == 10
+
+
+class TestFilterContestedVotes:
+    """Test filter_contested_votes() function.
+
+    Run: uv run pytest tests/test_irt.py::TestFilterContestedVotes -v
+    """
+
+    @pytest.fixture
+    def partisan_matrix(self) -> tuple[pl.DataFrame, pl.DataFrame]:
+        """Matrix with clear party-line votes + some near-unanimous votes."""
+        matrix = pl.DataFrame(
+            {
+                "legislator_slug": [
+                    "rep_a_1",
+                    "rep_b_1",
+                    "rep_c_1",
+                    "dem_d_1",
+                    "dem_e_1",
+                    "dem_f_1",
+                ],
+                # v1: contested (3R Yea / 3D Nay)
+                "v1": [1, 1, 1, 0, 0, 0],
+                # v2: near-unanimous (5 Yea / 1 Nay)
+                "v2": [1, 1, 1, 1, 1, 0],
+                # v3: contested (2R Yea, 1R Nay / 2D Nay, 1D Yea)
+                "v3": [1, 1, 0, 0, 0, 1],
+                # v4: unanimous (all Yea)
+                "v4": [1, 1, 1, 1, 1, 1],
+            }
+        )
+        legislators = pl.DataFrame(
+            {
+                "legislator_slug": [
+                    "rep_a_1",
+                    "rep_b_1",
+                    "rep_c_1",
+                    "dem_d_1",
+                    "dem_e_1",
+                    "dem_f_1",
+                ],
+                "party": [
+                    "Republican",
+                    "Republican",
+                    "Republican",
+                    "Democrat",
+                    "Democrat",
+                    "Democrat",
+                ],
+            }
+        )
+        return matrix, legislators
+
+    def test_filters_to_contested_only(self, partisan_matrix) -> None:
+        """Should keep only contested votes."""
+        matrix, legislators = partisan_matrix
+        filtered, n_contested, n_total = filter_contested_votes(matrix, legislators)
+        assert n_total == 4
+        # v1 and v3 are contested; v2 and v4 are not
+        assert n_contested >= 1
+        assert "legislator_slug" in filtered.columns
+        # Filtered should have fewer vote columns
+        vote_cols = [c for c in filtered.columns if c != "legislator_slug"]
+        assert len(vote_cols) == n_contested
+
+    def test_returns_original_when_no_parties(self) -> None:
+        """With only one party, should return full matrix."""
+        matrix = pl.DataFrame(
+            {
+                "legislator_slug": ["rep_a_1", "rep_b_1"],
+                "v1": [1, 0],
+            }
+        )
+        legislators = pl.DataFrame(
+            {
+                "legislator_slug": ["rep_a_1", "rep_b_1"],
+                "party": ["Republican", "Republican"],
+            }
+        )
+        filtered, n_contested, n_total = filter_contested_votes(matrix, legislators)
+        assert n_contested == 0
+        assert n_total == 1
+
+
+class TestDetectHorseshoe:
+    """Test detect_horseshoe() function.
+
+    Run: uv run pytest tests/test_irt.py::TestDetectHorseshoe -v
+    """
+
+    def test_no_horseshoe_in_balanced_chamber(self) -> None:
+        """Balanced chamber with proper separation should not detect horseshoe."""
+        ideal_points = pl.DataFrame(
+            {
+                "legislator_slug": ["r1", "r2", "r3", "d1", "d2", "d3"],
+                "xi_mean": [2.0, 1.5, 1.0, -1.0, -1.5, -2.0],
+                "party": ["Republican"] * 3 + ["Democrat"] * 3,
+                "full_name": ["R1", "R2", "R3", "D1", "D2", "D3"],
+            }
+        )
+        pca_scores = pl.DataFrame(
+            {
+                "legislator_slug": ["r1", "r2", "r3", "d1", "d2", "d3"],
+                "PC1": [2.0, 1.5, 1.0, -1.0, -1.5, -2.0],
+                "PC2": [0.1, -0.1, 0.2, -0.2, 0.1, -0.1],
+            }
+        )
+        result = detect_horseshoe(ideal_points, pca_scores, "Senate")
+        assert result["detected"] is False
+        assert result["dem_wrong_side_frac"] == 0.0
+        assert not result["r_more_liberal_than_d_mean"]
+
+    def test_detects_horseshoe_when_dems_wrong_side(self) -> None:
+        """Should detect horseshoe when Democrats are on the conservative side."""
+        ideal_points = pl.DataFrame(
+            {
+                "legislator_slug": ["r1", "r2", "r3", "d1", "d2", "d3"],
+                "xi_mean": [-3.0, -2.0, 1.0, 0.5, 0.3, -0.5],
+                "party": ["Republican"] * 3 + ["Democrat"] * 3,
+                "full_name": ["R1-rebel", "R2-rebel", "R3-moderate", "D1", "D2", "D3"],
+            }
+        )
+        pca_scores = pl.DataFrame(
+            {
+                "legislator_slug": ["r1", "r2", "r3", "d1", "d2", "d3"],
+                "PC1": [-3.0, -2.0, 1.0, 0.5, 0.3, -0.5],
+                "PC2": [0.1, -0.1, 0.2, -0.2, 0.1, -0.1],
+            }
+        )
+        result = detect_horseshoe(ideal_points, pca_scores, "Senate")
+        assert result["detected"] is True
+        # At least one of the detection criteria should trigger
+        assert (
+            result["dem_wrong_side_frac"] > 0.20
+            or result["r_more_liberal_than_d_mean"]
+            or result["overlap_frac"] > 0.30
+        )
+
+    def test_detects_r_more_liberal_than_d_mean(self) -> None:
+        """Should flag when a Republican is more liberal than Democrat mean."""
+        ideal_points = pl.DataFrame(
+            {
+                "legislator_slug": ["r1", "r2", "d1", "d2"],
+                "xi_mean": [1.0, -2.0, -0.5, -1.0],
+                "party": ["Republican", "Republican", "Democrat", "Democrat"],
+                "full_name": ["R-normal", "R-rebel", "D1", "D2"],
+            }
+        )
+        pca_scores = pl.DataFrame(
+            {
+                "legislator_slug": ["r1", "r2", "d1", "d2"],
+                "PC1": [1.0, -2.0, -0.5, -1.0],
+                "PC2": [0.1, -0.1, 0.2, -0.2],
+            }
+        )
+        result = detect_horseshoe(ideal_points, pca_scores, "Senate")
+        assert result["r_more_liberal_than_d_mean"] is True
+        assert result["most_neg_r_name"] == "R-rebel"
+
+
+class TestCrossReference2D:
+    """Test cross_reference_2d() function.
+
+    Run: uv run pytest tests/test_irt.py::TestCrossReference2D -v
+    """
+
+    def test_returns_none_when_no_2d_results(self, tmp_path) -> None:
+        """Should return None when 2D results don't exist."""
+        ideal_points = pl.DataFrame(
+            {
+                "legislator_slug": ["s1"],
+                "xi_mean": [1.0],
+                "full_name": ["S1"],
+                "party": ["R"],
+            }
+        )
+        result = cross_reference_2d(ideal_points, tmp_path, "Senate")
+        assert result is None
+
+    def test_cross_references_matching_legislators(self, tmp_path) -> None:
+        """Should compute rank shifts between 1D and 2D models."""
+        # Create 1D ideal points
+        ideal_points_1d = pl.DataFrame(
+            {
+                "legislator_slug": ["s1", "s2", "s3", "s4"],
+                "xi_mean": [3.0, 2.0, -1.0, -2.0],
+                "full_name": ["S1", "S2", "S3", "S4"],
+                "party": ["R", "R", "D", "D"],
+            }
+        )
+        # Create 2D results with different ordering on Dim1
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        ip_2d = pl.DataFrame(
+            {
+                "legislator_slug": ["s1", "s2", "s3", "s4"],
+                "xi_dim1_mean": [1.0, 3.0, -2.0, -1.0],  # s1 and s2 swap, s3 and s4 swap
+            }
+        )
+        ip_2d.write_parquet(data_dir / "ideal_points_2d_senate.parquet")
+
+        result = cross_reference_2d(ideal_points_1d, tmp_path, "Senate")
+        assert result is not None
+        assert result["n_matched"] == 4
+        assert isinstance(result["correlation"], float)
+        # s1 was rank 1 in 1D, rank 2 in 2D → shift of 1. No big shifts here.
+        assert result["n_flagged"] == 0  # shifts are small (1 position)
+
+    def test_flags_large_rank_shifts(self, tmp_path) -> None:
+        """Should flag legislators with rank shifts > PROMOTE_2D_RANK_SHIFT."""
+        n = 20
+        slugs = [f"s{i}" for i in range(n)]
+        # 1D ordering: s0 is most conservative
+        xi_1d = list(np.linspace(3.0, -3.0, n))
+        # 2D: s0 drops from rank 1 to rank 15 (shift=14)
+        xi_2d = list(np.linspace(3.0, -3.0, n))
+        xi_2d[0] = -2.0  # s0 drops to near the bottom
+
+        ideal_1d = pl.DataFrame(
+            {
+                "legislator_slug": slugs,
+                "xi_mean": xi_1d,
+                "full_name": [f"Leg {i}" for i in range(n)],
+                "party": ["Republican"] * (n // 2) + ["Democrat"] * (n // 2),
+            }
+        )
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        ip_2d = pl.DataFrame(
+            {
+                "legislator_slug": slugs,
+                "xi_dim1_mean": xi_2d,
+            }
+        )
+        ip_2d.write_parquet(data_dir / "ideal_points_2d_senate.parquet")
+
+        result = cross_reference_2d(ideal_1d, tmp_path, "Senate")
+        assert result is not None
+        assert result["n_flagged"] >= 1  # s0 should be flagged

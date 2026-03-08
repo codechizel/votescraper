@@ -53,6 +53,8 @@ def build_irt_report(
     n_samples: int,
     n_tune: int,
     n_chains: int,
+    robustness_flags: list | None = None,
+    robustness_results: dict[str, dict] | None = None,
 ) -> None:
     """Build the full IRT HTML report by adding sections to the ReportBuilder."""
     # Key findings
@@ -60,13 +62,28 @@ def build_irt_report(
     if findings:
         report.add(KeyFindingsSection(findings=findings))
 
-    # Model config + convergence
+    # Model config + convergence + identification
     for chamber, result in results.items():
         if chamber == "Joint":
             continue
         _add_model_summary(report, result, chamber, n_samples, n_tune, n_chains)
+        _add_identification_summary(report, result, chamber)
         _add_convergence_table(report, result, chamber)
     _add_convergence_interpretation(report)
+
+    # Robustness flags status (always shown)
+    if robustness_flags is not None:
+        _add_robustness_flags_table(report, robustness_flags)
+
+    # Robustness analysis sections (shown when flags are ON)
+    if robustness_results:
+        for chamber, rob_data in robustness_results.items():
+            if "horseshoe" in rob_data:
+                _add_horseshoe_diagnostic(report, rob_data["horseshoe"], chamber)
+            if "contested_only" in rob_data:
+                _add_contested_refit(report, rob_data["contested_only"], chamber)
+            if "promote_2d" in rob_data:
+                _add_promote_2d(report, rob_data["promote_2d"], chamber)
 
     # Ideal points
     for chamber, result in results.items():
@@ -1295,6 +1312,327 @@ def _add_joint_comparison_table(
             html=html,
         )
     )
+
+
+def _add_identification_summary(
+    report: ReportBuilder,
+    result: dict,
+    chamber: str,
+) -> None:
+    """Table: Identification strategy, anchor method, and anchor legislators."""
+    strategy = result.get("strategy", "anchor-pca")
+    strategy_info = result.get("strategy_results", {})
+    anchor_method = result.get("anchor_method", "N/A")
+    cons_slug = result.get("cons_slug", "N/A")
+    lib_slug = result.get("lib_slug", "N/A")
+    sign_flipped = result.get("sign_flipped", False)
+
+    try:
+        from analysis.irt import IdentificationStrategy
+    except ModuleNotFoundError:
+        from irt import IdentificationStrategy  # type: ignore[no-redef]
+
+    IS = IdentificationStrategy
+
+    rows = [
+        {"Property": "Identification Strategy", "Value": IS.DESCRIPTIONS.get(strategy, strategy)},
+        {"Property": "Literature Reference", "Value": IS.REFERENCES.get(strategy, "N/A")},
+        {"Property": "Anchor Selection Method", "Value": anchor_method},
+        {"Property": "Conservative Anchor (xi = +1)", "Value": cons_slug},
+        {"Property": "Liberal Anchor (xi = -1)", "Value": lib_slug},
+        {
+            "Property": "Post-hoc Sign Flip",
+            "Value": "YES — posteriors negated" if sign_flipped else "No",
+        },
+    ]
+
+    # Add auto-detection rationale if available
+    rationale = strategy_info.get("rationale", {})
+    if rationale:
+        selected = strategy_info.get("selected", strategy)
+        rows.append(
+            {
+                "Property": "Auto-Detection Rationale",
+                "Value": rationale.get(selected, "N/A").replace("SELECTED (auto). ", ""),
+            }
+        )
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title=f"{chamber} — Identification & Anchors",
+        source_note=(
+            "Anchors are legislators whose ideal points are fixed at ±1 to identify "
+            "the scale's direction and magnitude. The identification strategy determines "
+            "how these anchors are selected. See ADR-0103."
+        ),
+    )
+    report.add(
+        TableSection(
+            id=f"identification-{chamber.lower()}",
+            title=f"{chamber} Identification & Anchors",
+            html=html,
+        )
+    )
+
+
+def _add_robustness_flags_table(
+    report: ReportBuilder,
+    flags: list,
+) -> None:
+    """Table: Status of all robustness flags (always shown regardless of state)."""
+    rows = []
+    for flag in flags:
+        rows.append(
+            {
+                "Flag": flag.label,
+                "Status": "ON" if flag.enabled else "OFF",
+                "Description": flag.description,
+            }
+        )
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title="Robustness Flags",
+        subtitle="Optional analysis enhancements (ADR-0104)",
+        source_note=(
+            "Enable via CLI flags: --contested-only, --horseshoe-diagnostic, --promote-2d. "
+            "These are tuning features for investigating supermajority horseshoe effects."
+        ),
+    )
+    report.add(
+        TableSection(
+            id="robustness-flags",
+            title="Robustness Flags",
+            html=html,
+        )
+    )
+
+
+def _add_horseshoe_diagnostic(
+    report: ReportBuilder,
+    diagnostic: dict,
+    chamber: str,
+) -> None:
+    """Table + text: Quantitative horseshoe detection results."""
+    detected = diagnostic["detected"]
+    verdict_style = (
+        "color: red; font-weight: bold" if detected else "color: green; font-weight: bold"
+    )
+    verdict_text = "DETECTED" if detected else "Not Detected"
+
+    rows = [
+        {
+            "Metric": "Democrat Wrong-Side Fraction",
+            "Value": f"{diagnostic['dem_wrong_side_frac']:.1%}",
+            "Threshold": "> 20%",
+            "Status": "WARNING" if diagnostic["dem_wrong_side_frac"] > 0.20 else "OK",
+        },
+        {
+            "Metric": "Party Overlap Fraction",
+            "Value": f"{diagnostic['overlap_frac']:.1%}",
+            "Threshold": "> 30%",
+            "Status": "WARNING" if diagnostic["overlap_frac"] > 0.30 else "OK",
+        },
+        {
+            "Metric": "PCA Eigenvalue Ratio (PC1/PC2)",
+            "Value": f"{diagnostic['eigenvalue_ratio']:.2f}",
+            "Threshold": "Informational",
+            "Status": "INFO",
+        },
+        {
+            "Metric": "R Mean Ideal Point",
+            "Value": f"{diagnostic['r_mean']:+.3f}",
+            "Threshold": "Should be positive",
+            "Status": "OK" if diagnostic["r_mean"] > 0 else "WARNING",
+        },
+        {
+            "Metric": "D Mean Ideal Point",
+            "Value": f"{diagnostic['d_mean']:+.3f}",
+            "Threshold": "Should be negative",
+            "Status": "OK" if diagnostic["d_mean"] < 0 else "WARNING",
+        },
+        {
+            "Metric": "Republican More Liberal Than D Mean",
+            "Value": (
+                f"YES — {diagnostic['most_neg_r_name']} (xi={diagnostic['most_neg_r_xi']:+.3f})"
+                if diagnostic["r_more_liberal_than_d_mean"]
+                else "No"
+            ),
+            "Threshold": "Should be No",
+            "Status": "WARNING" if diagnostic["r_more_liberal_than_d_mean"] else "OK",
+        },
+    ]
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title=f"{chamber} — Horseshoe Diagnostic",
+        subtitle=f'Verdict: <span style="{verdict_style}">{verdict_text}</span>',
+        source_note=(
+            "The horseshoe effect occurs in supermajority chambers when ultra-conservative "
+            "rebels and Democrats both vote Nay on establishment bills, causing the 1D model "
+            "to place them on the same end of the spectrum."
+        ),
+    )
+    report.add(
+        TableSection(
+            id=f"horseshoe-diagnostic-{chamber.lower()}",
+            title=f"{chamber} Horseshoe Diagnostic",
+            html=html,
+        )
+    )
+
+
+def _add_contested_refit(
+    report: ReportBuilder,
+    contested: dict,
+    chamber: str,
+) -> None:
+    """Table: Contested-only IRT refit results."""
+    if contested.get("skipped"):
+        report.add(
+            TextSection(
+                id=f"contested-refit-{chamber.lower()}",
+                title=f"{chamber} Contested-Only Refit (Skipped)",
+                html=(
+                    f"<p>Contested-only refit was <strong>skipped</strong> for {chamber}: "
+                    f"only {contested['n_contested']} contested votes available "
+                    f"(minimum 50 required).</p>"
+                ),
+            )
+        )
+        return
+
+    n_contested = contested["n_contested"]
+    n_total = contested["n_total"]
+    pearson_r = contested.get("pearson_r", float("nan"))
+    top_movers = contested.get("top_movers", [])
+
+    import math
+
+    r_display = f"{pearson_r:.4f}" if not math.isnan(pearson_r) else "N/A"
+
+    rows = [
+        {
+            "Property": "Contested Votes",
+            "Value": f"{n_contested} of {n_total} ({100 * n_contested / n_total:.0f}%)",
+        },
+        {"Property": "Primary vs Contested-Only Correlation", "Value": r_display},
+        {"Property": "Sampling Time", "Value": f"{contested.get('sampling_time', 0):.1f}s"},
+    ]
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title=f"{chamber} — Contested-Only IRT Refit",
+        source_note=(
+            "Contested votes are roll calls where both parties split (≥10% on each side). "
+            "The contested-only model strips intra-party votes that can cause the horseshoe. "
+            "High correlation (r > 0.95) with the primary model means the horseshoe has "
+            "minimal impact. Low correlation suggests the primary model's dimension is "
+            "distorted by intra-party dynamics."
+        ),
+    )
+    report.add(
+        TableSection(
+            id=f"contested-refit-{chamber.lower()}",
+            title=f"{chamber} Contested-Only Refit",
+            html=html,
+        )
+    )
+
+    # Top movers table
+    if top_movers:
+        mover_rows = []
+        for m in top_movers[:10]:
+            mover_rows.append(
+                {
+                    "Legislator": m.get("legislator_slug", ""),
+                    "Primary Rank": int(m.get("rank_pri", 0)),
+                    "Contested Rank": int(m.get("rank_con", 0)),
+                    "Rank Shift": int(m.get("rank_shift", 0)),
+                }
+            )
+        mdf = pl.DataFrame(mover_rows)
+        mhtml = make_gt(
+            mdf,
+            title=f"{chamber} — Top Rank Movers (Primary vs Contested-Only)",
+            source_note="Legislators whose rank changed most between full and contested-only fits.",
+        )
+        report.add(
+            TableSection(
+                id=f"contested-movers-{chamber.lower()}",
+                title=f"{chamber} Contested-Only Top Movers",
+                html=mhtml,
+            )
+        )
+
+
+def _add_promote_2d(
+    report: ReportBuilder,
+    xref: dict,
+    chamber: str,
+) -> None:
+    """Table: 2D IRT cross-reference results."""
+    rows = [
+        {"Property": "Matched Legislators", "Value": str(xref["n_matched"])},
+        {"Property": "1D vs 2D Dim1 Correlation", "Value": f"{xref['correlation']:.4f}"},
+        {"Property": "Flagged (Rank Shift > 10)", "Value": str(xref["n_flagged"])},
+    ]
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title=f"{chamber} — 2D IRT Cross-Reference",
+        source_note=(
+            "Compares 1D IRT ideal point rankings with 2D IRT Dimension 1 rankings. "
+            "Large rank shifts indicate legislators whose position is distorted by the "
+            "1D model's inability to separate ideology from contrarianism."
+        ),
+    )
+    report.add(
+        TableSection(
+            id=f"promote-2d-{chamber.lower()}",
+            title=f"{chamber} 2D Cross-Reference",
+            html=html,
+        )
+    )
+
+    # Flagged legislators table
+    flagged = xref.get("flagged_legislators", [])
+    if flagged:
+        flag_rows = []
+        for leg in flagged[:15]:
+            flag_rows.append(
+                {
+                    "Legislator": leg.get("full_name", leg.get("legislator_slug", "")),
+                    "Party": leg.get("party", ""),
+                    "1D Rank": int(leg.get("rank_1d", 0)),
+                    "2D Dim1 Rank": int(leg.get("rank_2d", 0)),
+                    "Rank Shift": int(leg.get("rank_shift", 0)),
+                    "1D xi": f"{leg.get('xi_1d', 0):+.3f}",
+                    "2D Dim1 xi": f"{leg.get('xi_2d_dim1', 0):+.3f}",
+                }
+            )
+        fdf = pl.DataFrame(flag_rows)
+        fhtml = make_gt(
+            fdf,
+            title=f"{chamber} — Flagged Legislators (1D vs 2D Rank Shift)",
+            source_note=(
+                "These legislators have significantly different positions in the 1D vs 2D models. "
+                "The 2D model separates ideology (Dim 1) from contrarianism (Dim 2), "
+                "so differences may indicate the 1D model conflates these two patterns."
+            ),
+        )
+        report.add(
+            TableSection(
+                id=f"promote-2d-flagged-{chamber.lower()}",
+                title=f"{chamber} 2D Flagged Legislators",
+                html=fhtml,
+            )
+        )
 
 
 def _generate_irt_key_findings(

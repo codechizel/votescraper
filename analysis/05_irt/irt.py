@@ -21,6 +21,7 @@ import argparse
 import json
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib
@@ -209,7 +210,77 @@ MIN_CONTESTED_FOR_AGREEMENT = 10  # Need ≥10 contested votes for agreement-bas
 MIN_CONTESTED_VOTES_PER_LEG = 5  # Legislator needs ≥5 contested votes for valid agreement
 SUPERMAJORITY_THRESHOLD = 0.70  # One party holds ≥70% of seats → supermajority
 
+# Robustness flag thresholds
+MIN_CONTESTED_FOR_REFIT = 50  # Need ≥50 contested votes for meaningful contested-only refit
+HORSESHOE_DEM_WRONG_SIDE_FRAC = 0.20  # >20% of Democrats on conservative side → horseshoe
+PROMOTE_2D_RANK_SHIFT = 10  # Flag legislators whose rank shifts >10 between 1D and 2D
+
 PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
+
+
+# ── Robustness Flags ─────────────────────────────────────────────────────────
+# Toggleable analysis enhancements for investigating supermajority horseshoe
+# effects. All default to OFF. See ADR-0104.
+
+
+@dataclass(frozen=True)
+class RobustnessFlag:
+    """A toggleable robustness enhancement for IRT analysis."""
+
+    name: str
+    label: str
+    description: str
+    enabled: bool
+
+
+class RobustnessFlags:
+    """Registry of available robustness flags."""
+
+    CONTESTED_ONLY = "contested-only"
+    HORSESHOE_DIAGNOSTIC = "horseshoe-diagnostic"
+    PROMOTE_2D = "promote-2d"
+
+    ALL_FLAGS = [CONTESTED_ONLY, HORSESHOE_DIAGNOSTIC, PROMOTE_2D]
+
+    LABELS: dict[str, str] = {
+        CONTESTED_ONLY: "Contested Votes Only",
+        HORSESHOE_DIAGNOSTIC: "Horseshoe Diagnostic",
+        PROMOTE_2D: "2D Cross-Reference",
+    }
+
+    DESCRIPTIONS: dict[str, str] = {
+        CONTESTED_ONLY: (
+            "Refit IRT using only cross-party contested votes, stripping "
+            "intra-party establishment-vs-rebel votes that cause the horseshoe effect"
+        ),
+        HORSESHOE_DIAGNOSTIC: (
+            "Run quantitative horseshoe detection (Democrat placement, "
+            "party overlap, eigenvalue ratio) and add diagnostic section"
+        ),
+        PROMOTE_2D: (
+            "Cross-reference 2D IRT results (Phase 06) and flag legislators "
+            "whose rank shifts significantly between 1D and 2D models"
+        ),
+    }
+
+    @classmethod
+    def build_flags(cls, args: argparse.Namespace) -> list[RobustnessFlag]:
+        """Build the list of robustness flags from CLI args."""
+        flag_map = {
+            cls.CONTESTED_ONLY: getattr(args, "contested_only", False),
+            cls.HORSESHOE_DIAGNOSTIC: getattr(args, "horseshoe_diagnostic", False),
+            cls.PROMOTE_2D: getattr(args, "promote_2d", False),
+        }
+        return [
+            RobustnessFlag(
+                name=name,
+                label=cls.LABELS[name],
+                description=cls.DESCRIPTIONS[name],
+                enabled=flag_map.get(name, False),
+            )
+            for name in cls.ALL_FLAGS
+        ]
+
 
 # ── Identification Strategies ────────────────────────────────────────────────
 # Canonical term from the IRT literature (Clinton-Jackman-Rivers 2004, Morucci
@@ -313,6 +384,7 @@ class IdentificationStrategy:
         EXTERNAL_PRIOR: "Shor & McCarty (2011); Bonica & Woodruff (2015)",
     }
 
+
 # Joint model defaults
 JOINT_TARGET_ACCEPT = 0.95
 JOINT_N_CHAINS = 4
@@ -387,6 +459,34 @@ def parse_args() -> argparse.Namespace:
         ],
         help="Identification strategy (default: auto-detect from chamber composition)",
     )
+
+    # Robustness flags (ADR-0104)
+    robustness = parser.add_argument_group(
+        "robustness flags",
+        "Optional analysis enhancements for investigating supermajority horseshoe effects. "
+        "All default to OFF. All flags appear in the HTML report with their ON/OFF status.",
+    )
+    robustness.add_argument(
+        "--contested-only",
+        action="store_true",
+        help="Refit IRT using only cross-party contested votes",
+    )
+    robustness.add_argument(
+        "--horseshoe-diagnostic",
+        action="store_true",
+        help="Run quantitative horseshoe detection diagnostics",
+    )
+    robustness.add_argument(
+        "--promote-2d",
+        action="store_true",
+        help="Cross-reference 2D IRT (Phase 06) for misplaced legislators",
+    )
+    robustness.add_argument(
+        "--irt-2d-dir",
+        default=None,
+        help="Override 2D IRT results directory (for --promote-2d)",
+    )
+
     return parser.parse_args()
 
 
@@ -1042,22 +1142,28 @@ def select_identification_strategy(
     rationale: dict[str, str] = {}
 
     # Evaluate each strategy's suitability
-    rationale[IS.ANCHOR_PCA] = (
-        "Standard method. "
-        + ("Risk: supermajority horseshoe effect may distort PCA extremes."
-           if is_super else "Suitable for this balanced chamber.")
+    rationale[IS.ANCHOR_PCA] = "Standard method. " + (
+        "Risk: supermajority horseshoe effect may distort PCA extremes."
+        if is_super
+        else "Suitable for this balanced chamber."
     )
 
     rationale[IS.ANCHOR_AGREEMENT] = (
         f"{n_contested} contested votes, {len(agree_rates)} legislators with agreement data. "
-        + ("Sufficient for agreement-based anchors." if agreement_feasible
-           else "Insufficient contested votes — not feasible.")
+        + (
+            "Sufficient for agreement-based anchors."
+            if agreement_feasible
+            else "Insufficient contested votes — not feasible."
+        )
     )
 
     rationale[IS.SORT_CONSTRAINT] = (
         "No individual anchors — all legislators are free parameters. "
-        + ("Both parties present." if both_parties
-           else "Requires both parties — not feasible for single-party chamber.")
+        + (
+            "Both parties present."
+            if both_parties
+            else "Requires both parties — not feasible for single-party chamber."
+        )
     )
 
     rationale[IS.POSITIVE_BETA] = (
@@ -1065,10 +1171,8 @@ def select_identification_strategy(
         "(~12.5% of roll calls in typical Kansas sessions). ADR-0047."
     )
 
-    rationale[IS.HIERARCHICAL_PRIOR] = (
-        "Soft identification via party-informed priors. "
-        + ("Both parties present." if both_parties
-           else "Requires both parties — not feasible.")
+    rationale[IS.HIERARCHICAL_PRIOR] = "Soft identification via party-informed priors. " + (
+        "Both parties present." if both_parties else "Requires both parties — not feasible."
     )
 
     rationale[IS.UNCONSTRAINED] = (
@@ -1076,10 +1180,10 @@ def select_identification_strategy(
         "Risk: poor chain mixing in multimodal posterior."
     )
 
-    rationale[IS.EXTERNAL_PRIOR] = (
-        "Shor-McCarty scores as informative priors. "
-        + ("Scores available for this biennium." if external_scores_available
-           else "No external scores available — not feasible.")
+    rationale[IS.EXTERNAL_PRIOR] = "Shor-McCarty scores as informative priors. " + (
+        "Scores available for this biennium."
+        if external_scores_available
+        else "No external scores available — not feasible."
     )
 
     # If not auto, return the requested strategy
@@ -1275,24 +1379,34 @@ def select_anchors(
                 cons_name = name_map.get(cons_slug, cons_slug)
                 lib_name = name_map.get(lib_slug, lib_slug)
 
-                print(f"  Anchor method: cross-party contested vote agreement")
-                print(f"    {n_contested} contested votes, "
-                      f"{len(r_candidates)} R / {len(d_candidates)} D candidates")
-                print(f"  Conservative anchor: {cons_name} ({cons_slug}), "
-                      f"D-agreement={cons_agree:.1%}")
-                print(f"  Liberal anchor:      {lib_name} ({lib_slug}), "
-                      f"R-agreement={lib_agree:.1%}")
+                print("  Anchor method: cross-party contested vote agreement")
+                print(
+                    f"    {n_contested} contested votes, "
+                    f"{len(r_candidates)} R / {len(d_candidates)} D candidates"
+                )
+                print(
+                    f"  Conservative anchor: {cons_name} ({cons_slug}), "
+                    f"D-agreement={cons_agree:.1%}"
+                )
+                print(
+                    f"  Liberal anchor:      {lib_name} ({lib_slug}), R-agreement={lib_agree:.1%}"
+                )
 
                 return cons_idx, cons_slug, lib_idx, lib_slug, agreement_rates
 
-            print("  Agreement-based anchors: insufficient candidates per party, "
-                  "falling back to PCA")
+            print(
+                "  Agreement-based anchors: insufficient candidates per party, falling back to PCA"
+            )
         elif n_contested < MIN_CONTESTED_FOR_AGREEMENT:
-            print(f"  Agreement-based anchors: only {n_contested} contested votes "
-                  f"(need {MIN_CONTESTED_FOR_AGREEMENT}), falling back to PCA")
+            print(
+                f"  Agreement-based anchors: only {n_contested} contested votes "
+                f"(need {MIN_CONTESTED_FOR_AGREEMENT}), falling back to PCA"
+            )
         else:
-            print(f"  Agreement-based anchors: only {len(agreement_rates)} legislators "
-                  f"with data (need 6), falling back to PCA")
+            print(
+                f"  Agreement-based anchors: only {len(agreement_rates)} legislators "
+                f"with data (need 6), falling back to PCA"
+            )
 
     # Fallback: party-aware PCA PC1 extremes
     eligible = (
@@ -1327,7 +1441,7 @@ def select_anchors(
     cons_idx = slugs.index(cons_slug)
     lib_idx = slugs.index(lib_slug)
 
-    print(f"  Anchor method: PCA PC1 extremes (party-aware)")
+    print("  Anchor method: PCA PC1 extremes (party-aware)")
     print(f"  Conservative anchor: {cons_name} ({cons_slug}), PC1={cons_pc1:+.3f}")
     print(f"  Liberal anchor:      {lib_name} ({lib_slug}), PC1={lib_pc1:+.3f}")
 
@@ -1361,12 +1475,12 @@ def validate_sign(
     slugs = data["leg_slugs"]
 
     agreement_rates, n_contested = compute_cross_party_agreement(matrix, legislators)
-    print(f"  Sign validation: {n_contested} contested votes "
-          f"(of {len(matrix.columns) - 1})")
+    print(f"  Sign validation: {n_contested} contested votes (of {len(matrix.columns) - 1})")
 
     if n_contested < MIN_CONTESTED_FOR_AGREEMENT:
-        print(f"  Sign validation: skipped (fewer than {MIN_CONTESTED_FOR_AGREEMENT} "
-              f"contested votes)")
+        print(
+            f"  Sign validation: skipped (fewer than {MIN_CONTESTED_FOR_AGREEMENT} contested votes)"
+        )
         return idata, False
 
     if len(agreement_rates) < 10:
@@ -1415,6 +1529,218 @@ def validate_sign(
 
     print("  Sign validation: sign is correct (no flip needed)")
     return idata, False
+
+
+# ── Robustness Flag Functions ────────────────────────────────────────────────
+
+
+def filter_contested_votes(
+    matrix: pl.DataFrame,
+    legislators: pl.DataFrame,
+) -> tuple[pl.DataFrame, int, int]:
+    """Filter vote matrix to keep only cross-party contested vote columns.
+
+    A contested vote is one where both parties have between CONTESTED_VOTE_THRESHOLD
+    and 1-CONTESTED_VOTE_THRESHOLD of their members voting Yea.
+
+    Returns (filtered_matrix, n_contested, n_total).
+    """
+    slug_col = "legislator_slug"
+    vote_cols = [c for c in matrix.columns if c != slug_col]
+    n_total = len(vote_cols)
+    slugs = matrix[slug_col].to_list()
+
+    party_map = dict(
+        zip(
+            legislators["legislator_slug"].to_list(),
+            legislators["party"].to_list(),
+        )
+    )
+
+    slug_parties = [party_map.get(s, "Unknown") for s in slugs]
+    r_indices = np.array([i for i, p in enumerate(slug_parties) if p == "Republican"])
+    d_indices = np.array([i for i, p in enumerate(slug_parties) if p == "Democrat"])
+
+    if len(r_indices) < 3 or len(d_indices) < 3:
+        return matrix, 0, n_total
+
+    vote_array = np.full((len(slugs), len(vote_cols)), np.nan)
+    for i, row in enumerate(matrix.iter_rows(named=True)):
+        for j, vc in enumerate(vote_cols):
+            if row[vc] is not None:
+                vote_array[i, j] = float(row[vc])
+
+    contested_cols: list[str] = []
+    threshold = CONTESTED_VOTE_THRESHOLD
+    for j in range(len(vote_cols)):
+        r_votes = vote_array[r_indices, j]
+        d_votes = vote_array[d_indices, j]
+        r_valid = r_votes[~np.isnan(r_votes)]
+        d_valid = d_votes[~np.isnan(d_votes)]
+        if len(r_valid) < 3 or len(d_valid) < 3:
+            continue
+        r_yea_frac = r_valid.mean()
+        d_yea_frac = d_valid.mean()
+        if threshold <= r_yea_frac <= (1 - threshold) and threshold <= d_yea_frac <= (
+            1 - threshold
+        ):
+            contested_cols.append(vote_cols[j])
+
+    if not contested_cols:
+        return matrix.select([slug_col]), 0, n_total
+
+    filtered = matrix.select([slug_col, *contested_cols])
+    return filtered, len(contested_cols), n_total
+
+
+def detect_horseshoe(
+    ideal_points: pl.DataFrame,
+    pca_scores: pl.DataFrame,
+    chamber: str,
+) -> dict:
+    """Quantitative horseshoe detection for a chamber.
+
+    Checks:
+    1. Democrat wrong-side fraction: how many Democrats have xi > 0?
+    2. Party overlap: do R and D ideal point distributions overlap?
+    3. PCA eigenvalue ratio: is PC1 dominant or near-equal to PC2?
+    4. Most extreme R check: is any Republican more "liberal" than D mean?
+
+    Returns a dict with detection results.
+    """
+    ip = ideal_points
+    r_ip = ip.filter(pl.col("party") == "Republican")
+    d_ip = ip.filter(pl.col("party") == "Democrat")
+
+    # 1. Democrat wrong-side fraction
+    if d_ip.height > 0:
+        d_wrong_side = float((d_ip["xi_mean"] > 0).mean())
+    else:
+        d_wrong_side = 0.0
+
+    # 2. Party overlap: fraction of Republicans below D mean or Ds above R mean
+    if r_ip.height > 0 and d_ip.height > 0:
+        r_mean = float(r_ip["xi_mean"].mean())
+        d_mean = float(d_ip["xi_mean"].mean())
+        r_below_d_mean = float((r_ip["xi_mean"] < d_mean).mean())
+        d_above_r_mean = float((d_ip["xi_mean"] > r_mean).mean())
+        overlap_frac = (r_below_d_mean + d_above_r_mean) / 2
+    else:
+        r_mean = d_mean = overlap_frac = 0.0
+
+    # 3. PCA eigenvalue ratio (approximate from score variance)
+    pca_chamber = pca_scores
+    if "PC1" in pca_chamber.columns and "PC2" in pca_chamber.columns:
+        pc1_var = float(pca_chamber["PC1"].var())
+        pc2_var = float(pca_chamber["PC2"].var())
+        eigenvalue_ratio = pc1_var / pc2_var if pc2_var > 0 else float("inf")
+    else:
+        eigenvalue_ratio = float("inf")
+
+    # 4. Most extreme R: any R more "liberal" than D mean?
+    if r_ip.height > 0 and d_ip.height > 0:
+        most_neg_r = float(r_ip["xi_mean"].min())
+        r_more_liberal_than_d_mean = most_neg_r < d_mean
+        most_neg_r_name = r_ip.filter(pl.col("xi_mean") == r_ip["xi_mean"].min())["full_name"][0]
+    else:
+        r_more_liberal_than_d_mean = False
+        most_neg_r_name = "N/A"
+        most_neg_r = 0.0
+
+    # Detection verdict
+    horseshoe_detected = (
+        d_wrong_side > HORSESHOE_DEM_WRONG_SIDE_FRAC
+        or r_more_liberal_than_d_mean
+        or overlap_frac > 0.30
+    )
+
+    return {
+        "detected": horseshoe_detected,
+        "dem_wrong_side_frac": d_wrong_side,
+        "overlap_frac": overlap_frac,
+        "eigenvalue_ratio": eigenvalue_ratio,
+        "r_mean": r_mean,
+        "d_mean": d_mean,
+        "r_more_liberal_than_d_mean": r_more_liberal_than_d_mean,
+        "most_neg_r_name": most_neg_r_name,
+        "most_neg_r_xi": most_neg_r,
+        "n_republicans": r_ip.height,
+        "n_democrats": d_ip.height,
+    }
+
+
+def cross_reference_2d(
+    ideal_points_1d: pl.DataFrame,
+    irt_2d_dir: Path,
+    chamber: str,
+) -> dict | None:
+    """Cross-reference 1D ideal points with 2D IRT results.
+
+    Returns None if 2D results not available.
+    Returns dict with flagged legislators and rank comparisons.
+    """
+    fname = f"ideal_points_2d_{chamber.lower()}.parquet"
+    path_2d = irt_2d_dir / "data" / fname
+    if not path_2d.exists():
+        print(f"  2D cross-reference: {fname} not found in {irt_2d_dir / 'data'}")
+        return None
+
+    ip_2d = pl.read_parquet(path_2d)
+
+    # Check that the 2D data has the expected columns
+    dim1_col = None
+    for candidate in ["xi_dim1_mean", "dim1_mean", "xi_mean_dim1"]:
+        if candidate in ip_2d.columns:
+            dim1_col = candidate
+            break
+
+    if dim1_col is None:
+        print("  2D cross-reference: no dimension-1 column found in 2D results")
+        return None
+
+    # Merge 1D and 2D on slug
+    ip_1d = ideal_points_1d.select(
+        "legislator_slug",
+        "full_name",
+        "party",
+        pl.col("xi_mean").alias("xi_1d"),
+    )
+
+    ip_2d_slim = ip_2d.select(
+        "legislator_slug",
+        pl.col(dim1_col).alias("xi_2d_dim1"),
+    )
+
+    merged = ip_1d.join(ip_2d_slim, on="legislator_slug", how="inner")
+    if merged.height == 0:
+        print("  2D cross-reference: no matching legislators between 1D and 2D")
+        return None
+
+    # Compute ranks (descending — most conservative = rank 1)
+    merged = (
+        merged.with_columns(
+            pl.col("xi_1d").rank(descending=True).alias("rank_1d"),
+            pl.col("xi_2d_dim1").rank(descending=True).alias("rank_2d"),
+        )
+        .with_columns(
+            (pl.col("rank_1d") - pl.col("rank_2d")).abs().alias("rank_shift"),
+        )
+        .sort("rank_shift", descending=True)
+    )
+
+    # Flag legislators with large rank shifts
+    flagged = merged.filter(pl.col("rank_shift") > PROMOTE_2D_RANK_SHIFT)
+
+    # Correlation between 1D and 2D Dim1
+    corr_1d_2d = float(merged.select(pl.corr("xi_1d", "xi_2d_dim1")).item())
+
+    return {
+        "n_matched": merged.height,
+        "n_flagged": flagged.height,
+        "correlation": corr_1d_2d,
+        "flagged_legislators": flagged.to_dicts(),
+        "all_comparisons": merged.to_dicts(),
+    }
 
 
 # ── Phase 3: Build and Sample IRT Model ──────────────────────────────────────
@@ -1488,18 +1814,14 @@ def build_irt_graph(
                     prior_mu[idx] = 0.5
                 for idx in party_indices.get("Democrat", []):
                     prior_mu[idx] = -0.5
-            xi_free = pm.Normal(
-                "xi_free", mu=prior_mu, sigma=1, shape=n_leg
-            )
+            xi_free = pm.Normal("xi_free", mu=prior_mu, sigma=1, shape=n_leg)
             xi = pm.Deterministic("xi", xi_free, dims="legislator")
 
         elif strategy == IS.EXTERNAL_PRIOR:
             # Informative prior from external scores (e.g., Shor-McCarty)
             if external_priors is None:
                 external_priors = np.zeros(n_leg)
-            xi_free = pm.Normal(
-                "xi_free", mu=external_priors, sigma=0.5, shape=n_leg
-            )
+            xi_free = pm.Normal("xi_free", mu=external_priors, sigma=0.5, shape=n_leg)
             xi = pm.Deterministic("xi", xi_free, dims="legislator")
 
         else:
@@ -1580,7 +1902,8 @@ def build_and_sample(
         )
 
     model = build_irt_graph(
-        data, anchors,
+        data,
+        anchors,
         strategy=strategy,
         party_indices=party_indices,
         external_priors=external_priors,
@@ -3399,6 +3722,32 @@ def main() -> None:
         pca_scores_dict = {"House": pca_house, "Senate": pca_senate}
         strategy_results: dict[str, dict] = {}
 
+        # Build robustness flags (ADR-0104)
+        robustness_flags = RobustnessFlags.build_flags(args)
+        robustness_results: dict[str, dict] = {}  # per-chamber robustness results
+        active_flags = [f for f in robustness_flags if f.enabled]
+        if active_flags:
+            print(f"\n  Robustness flags: {', '.join(f.label for f in active_flags)}")
+        else:
+            print("\n  Robustness flags: none enabled")
+
+        # Resolve 2D IRT directory if --promote-2d is enabled
+        irt_2d_dir: Path | None = None
+        if args.promote_2d:
+            if args.irt_2d_dir:
+                irt_2d_dir = Path(args.irt_2d_dir)
+            else:
+                try:
+                    irt_2d_dir = resolve_upstream_dir(
+                        "06_irt_2d",
+                        results_root,
+                        args.run_id,
+                        None,
+                    )
+                except FileNotFoundError:
+                    print("  WARNING: --promote-2d enabled but Phase 06 results not found")
+                    irt_2d_dir = None
+
         IS = IdentificationStrategy
 
         for chamber, matrix, pca_scores in chamber_configs:
@@ -3450,6 +3799,9 @@ def main() -> None:
             # ── Select anchors (for anchor-based strategies) ──
             chamber_anchors: list[tuple[int, float]] = []
             agree_rates: dict[str, float] | None = None
+            cons_slug = "N/A"
+            lib_slug = "N/A"
+            anchor_method = "none"
 
             if strategy in (IS.ANCHOR_PCA, IS.ANCHOR_AGREEMENT):
                 print("  Selecting anchors:")
@@ -3460,6 +3812,11 @@ def main() -> None:
                     legislators=legislators if strategy == IS.ANCHOR_AGREEMENT else None,
                 )
                 chamber_anchors = [(cons_idx, 1.0), (lib_idx, -1.0)]
+                anchor_method = (
+                    "cross-party contested vote agreement"
+                    if agree_rates is not None
+                    else "PCA PC1 extremes (party-aware)"
+                )
 
             # ── Phase 3: Build and sample ──
             print_header(f"PHASE 3: MCMC SAMPLING — {chamber}")
@@ -3468,7 +3825,6 @@ def main() -> None:
             xi_init = None
             if not args.no_pca_init:
                 anchor_set = {idx for idx, _ in chamber_anchors}
-                n_free = data["n_legislators"] - len(chamber_anchors)
                 free_pos = [i for i in range(data["n_legislators"]) if i not in anchor_set]
 
                 if strategy == IS.ANCHOR_AGREEMENT and agree_rates is not None:
@@ -3491,8 +3847,12 @@ def main() -> None:
                         f"range [{xi_init.min():.2f}, {xi_init.max():.2f}]"
                     )
 
-                elif strategy in (IS.HIERARCHICAL_PRIOR, IS.SORT_CONSTRAINT,
-                                  IS.POSITIVE_BETA, IS.UNCONSTRAINED):
+                elif strategy in (
+                    IS.HIERARCHICAL_PRIOR,
+                    IS.SORT_CONSTRAINT,
+                    IS.POSITIVE_BETA,
+                    IS.UNCONSTRAINED,
+                ):
                     # Party-based init for non-anchor strategies
                     init_vals = np.zeros(data["n_legislators"])
                     for i, slug in enumerate(data["leg_slugs"]):
@@ -3514,9 +3874,7 @@ def main() -> None:
                     # PCA-informed init (standard for anchor-pca)
                     slug_order = {s: i for i, s in enumerate(data["leg_slugs"])}
                     pc1_vals = (
-                        pca_scores.filter(
-                            pl.col("legislator_slug").is_in(data["leg_slugs"])
-                        )
+                        pca_scores.filter(pl.col("legislator_slug").is_in(data["leg_slugs"]))
                         .sort(pl.col("legislator_slug").replace_strict(slug_order))["PC1"]
                         .to_numpy()
                     )
@@ -3548,8 +3906,10 @@ def main() -> None:
                 r_xi = [xi_mean[i] for i in party_indices.get("Republican", [])]
                 d_xi = [xi_mean[i] for i in party_indices.get("Democrat", [])]
                 if r_xi and d_xi and np.mean(r_xi) < np.mean(d_xi):
-                    print(f"\n  Party-mean sign correction: R mean ({np.mean(r_xi):+.3f}) < "
-                          f"D mean ({np.mean(d_xi):+.3f}) — flipping")
+                    print(
+                        f"\n  Party-mean sign correction: R mean ({np.mean(r_xi):+.3f}) < "
+                        f"D mean ({np.mean(d_xi):+.3f}) — flipping"
+                    )
                     idata.posterior["xi"] = -idata.posterior["xi"]
                     idata.posterior["xi_free"] = -idata.posterior["xi_free"]
                     if strategy != IS.POSITIVE_BETA:
@@ -3677,6 +4037,161 @@ def main() -> None:
             holdout = run_holdout_validation(idata, data, chamber)
             validation_results[chamber] = holdout
 
+            # ── Robustness analyses ──
+            chamber_robustness: dict = {}
+
+            if args.horseshoe_diagnostic:
+                print_header(f"ROBUSTNESS: HORSESHOE DIAGNOSTIC — {chamber}")
+                horseshoe = detect_horseshoe(ideal_points, pca_scores, chamber)
+                chamber_robustness["horseshoe"] = horseshoe
+                verdict = "DETECTED" if horseshoe["detected"] else "not detected"
+                print(f"  Horseshoe: {verdict}")
+                print(f"    Democrat wrong-side fraction: {horseshoe['dem_wrong_side_frac']:.1%}")
+                print(f"    Party overlap fraction: {horseshoe['overlap_frac']:.1%}")
+                print(f"    PCA eigenvalue ratio (PC1/PC2): {horseshoe['eigenvalue_ratio']:.2f}")
+                if horseshoe["r_more_liberal_than_d_mean"]:
+                    print(
+                        f"    Most negative R: {horseshoe['most_neg_r_name']} "
+                        f"(xi={horseshoe['most_neg_r_xi']:+.3f}) < D mean "
+                        f"({horseshoe['d_mean']:+.3f})"
+                    )
+
+            if args.contested_only:
+                print_header(f"ROBUSTNESS: CONTESTED-ONLY REFIT — {chamber}")
+                contested_matrix, n_contested, n_total = filter_contested_votes(
+                    matrix,
+                    legislators,
+                )
+                print(
+                    f"  Contested votes: {n_contested} of {n_total} "
+                    f"({100 * n_contested / n_total:.0f}%)"
+                )
+                if n_contested >= MIN_CONTESTED_FOR_REFIT:
+                    # Prepare and sample on contested-only matrix
+                    contested_data = prepare_irt_data(contested_matrix, chamber)
+                    # Use same anchors/strategy if possible
+                    contested_anchors: list[tuple[int, float]] = []
+                    contested_slugs = contested_data["leg_slugs"]
+                    if cons_slug in contested_slugs and lib_slug in contested_slugs:
+                        ci = contested_slugs.index(cons_slug)
+                        li = contested_slugs.index(lib_slug)
+                        contested_anchors = [(ci, 1.0), (li, -1.0)]
+                    # Build init
+                    c_init = None
+                    if not args.no_pca_init and contested_anchors:
+                        c_anchor_set = {idx for idx, _ in contested_anchors}
+                        c_free = [
+                            i
+                            for i in range(contested_data["n_legislators"])
+                            if i not in c_anchor_set
+                        ]
+                        c_slug_order = {s: i for i, s in enumerate(contested_data["leg_slugs"])}
+                        c_pc1 = (
+                            pca_scores.filter(
+                                pl.col("legislator_slug").is_in(contested_data["leg_slugs"])
+                            )
+                            .sort(pl.col("legislator_slug").replace_strict(c_slug_order))["PC1"]
+                            .to_numpy()
+                        )
+                        c_pc1_std = (c_pc1 - c_pc1.mean()) / (c_pc1.std() + 1e-8)
+                        c_init = c_pc1_std[c_free].astype(np.float64)
+
+                    print(
+                        f"  Fitting contested-only model: "
+                        f"{contested_data['n_legislators']} legislators x "
+                        f"{contested_data['n_votes']} votes"
+                    )
+                    c_idata, c_time = build_and_sample(
+                        contested_data,
+                        contested_anchors,
+                        args.n_samples,
+                        args.n_tune,
+                        args.n_chains,
+                        xi_initvals=c_init,
+                        strategy=strategy,
+                        party_indices=party_indices,
+                    )
+                    print(f"  Contested-only sampling complete in {c_time:.1f}s")
+
+                    # Extract and compare
+                    c_ideal = extract_ideal_points(c_idata, contested_data, legislators)
+                    # Correlate with primary
+                    merged = ideal_points.select(
+                        "legislator_slug",
+                        pl.col("xi_mean").alias("xi_primary"),
+                    ).join(
+                        c_ideal.select(
+                            "legislator_slug",
+                            pl.col("xi_mean").alias("xi_contested"),
+                        ),
+                        on="legislator_slug",
+                        how="inner",
+                    )
+                    if merged.height >= 3:
+                        pearson_r = float(
+                            merged.select(pl.corr("xi_primary", "xi_contested")).item()
+                        )
+                        # Handle sign flip: use absolute correlation
+                        if pearson_r < -0.5:
+                            pearson_r = -pearson_r
+                            print("    Sign convention flipped — using |r|")
+                        print(f"  Primary vs contested-only: Pearson r = {pearson_r:.4f}")
+                        # Top movers
+                        movers = (
+                            merged.with_columns(
+                                (pl.col("xi_primary").rank(descending=True)).alias("rank_pri"),
+                                (pl.col("xi_contested").rank(descending=True)).alias("rank_con"),
+                            )
+                            .with_columns(
+                                (pl.col("rank_pri") - pl.col("rank_con")).abs().alias("rank_shift"),
+                            )
+                            .sort("rank_shift", descending=True)
+                            .head(10)
+                        )
+                    else:
+                        pearson_r = float("nan")
+                        movers = pl.DataFrame()
+                    chamber_robustness["contested_only"] = {
+                        "n_contested": n_contested,
+                        "n_total": n_total,
+                        "contested_ideal_points": c_ideal,
+                        "pearson_r": pearson_r,
+                        "top_movers": movers.to_dicts() if not movers.is_empty() else [],
+                        "sampling_time": c_time,
+                    }
+                else:
+                    print(
+                        f"  Skipping: only {n_contested} contested votes "
+                        f"(need {MIN_CONTESTED_FOR_REFIT})"
+                    )
+                    chamber_robustness["contested_only"] = {
+                        "n_contested": n_contested,
+                        "n_total": n_total,
+                        "skipped": True,
+                    }
+
+            if args.promote_2d and irt_2d_dir is not None:
+                print_header(f"ROBUSTNESS: 2D CROSS-REFERENCE — {chamber}")
+                xref = cross_reference_2d(ideal_points, irt_2d_dir, chamber)
+                if xref is not None:
+                    chamber_robustness["promote_2d"] = xref
+                    print(
+                        f"  Matched: {xref['n_matched']} legislators, "
+                        f"correlation: {xref['correlation']:.4f}"
+                    )
+                    if xref["n_flagged"] > 0:
+                        print(f"  Flagged (rank shift > {PROMOTE_2D_RANK_SHIFT}):")
+                        for leg in xref["flagged_legislators"][:5]:
+                            print(
+                                f"    {leg['full_name']}: "
+                                f"1D rank {int(leg['rank_1d'])} → "
+                                f"2D rank {int(leg['rank_2d'])} "
+                                f"(shift {int(leg['rank_shift'])})"
+                            )
+
+            if chamber_robustness:
+                robustness_results[chamber] = chamber_robustness
+
             # Store results for sensitivity comparison
             results[chamber] = {
                 "ideal_points": ideal_points,
@@ -3687,6 +4202,10 @@ def main() -> None:
                 "sampling_time": sampling_time,
                 "cons_slug": cons_slug,
                 "lib_slug": lib_slug,
+                "anchor_method": anchor_method,
+                "strategy": strategy,
+                "strategy_results": strategy_results.get(chamber, {}),
+                "sign_flipped": diagnostics.get("sign_flipped", False),
                 "paradox": paradox,
                 "cutting_points": cutting_pts_result,
                 "swing_votes": swing_result,
@@ -3809,9 +4328,12 @@ def main() -> None:
             manifest[f"{ch}_n_votes"] = result["data"]["n_votes"]
             manifest[f"{ch}_n_obs"] = result["data"]["n_obs"]
             manifest[f"{ch}_sampling_time_s"] = result["sampling_time"]
-            manifest[f"{ch}_anchors"] = {
-                "conservative": result["cons_slug"],
-                "liberal": result["lib_slug"],
+            manifest[f"{ch}_identification"] = {
+                "strategy": result.get("strategy", "anchor-pca"),
+                "anchor_method": result.get("anchor_method", "N/A"),
+                "conservative_anchor": result["cons_slug"],
+                "liberal_anchor": result["lib_slug"],
+                "sign_flipped": result.get("sign_flipped", False),
             }
             manifest[f"{ch}_diagnostics"] = result["diagnostics"]
 
@@ -3844,6 +4366,11 @@ def main() -> None:
                 "correlations": joint_r.get("joint_correlations", {}),
             }
 
+        # Add robustness flags to manifest
+        manifest["robustness_flags"] = {
+            f.name: {"enabled": f.enabled, "label": f.label} for f in robustness_flags
+        }
+
         save_filtering_manifest(manifest, ctx.run_dir)
 
         # ── HTML report ──
@@ -3859,6 +4386,8 @@ def main() -> None:
             n_samples=args.n_samples,
             n_tune=args.n_tune,
             n_chains=args.n_chains,
+            robustness_flags=robustness_flags,
+            robustness_results=robustness_results,
         )
 
         print_header("DONE")

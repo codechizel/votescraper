@@ -80,7 +80,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_eda.py` — vote matrix, filtering, agreement, Rice, party-line, integrity, new diagnostics (~28 tests)
 - `tests/test_report.py` — section rendering, format parsing, ReportBuilder, make_gt, elapsed (~38 tests)
 - `tests/test_report_sections.py` — DownloadSection, ScrollyStep, ScrollySection rendering, ReportBuilder scrolly integration, CSS styles (~18 tests)
-- `tests/test_irt.py` — IRT data prep, anchor selection, sign validation, sensitivity, forest, paradox detection, convergence diagnostics, posterior extraction, equating, identification strategies (~120 tests)
+- `tests/test_irt.py` — IRT data prep, anchor selection, sign validation, sensitivity, forest, paradox detection, convergence diagnostics, posterior extraction, equating, identification strategies, robustness flags (~133 tests)
 - `tests/test_umap_viz.py` — imputation, orientation, embedding, Procrustes, validation, trustworthiness, sensitivity sweep, stability, three-party (~40 tests)
 - `tests/test_nlp_features.py` — TF-IDF + NMF fitting, edge cases, display names (~16 tests)
 - `tests/test_pca.py` — imputation, PC1 orientation, extreme PC2 detection (~16 tests)
