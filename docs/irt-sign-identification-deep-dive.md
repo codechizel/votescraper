@@ -1,7 +1,7 @@
 # IRT Sign Identification in Supermajority Legislatures
 
-A deep dive into reflection invariance, dimension collapse, and why far-right rebels
-can appear "liberal" in ideal point estimates.
+A deep dive into reflection invariance, the horseshoe effect, and how PCA-based anchor
+selection produces sign flips in supermajority chambers — with a diagnostic and proposed fix.
 
 ## The Problem
 
@@ -12,8 +12,9 @@ IRT model (with a sort constraint ensuring Democrat mean < Republican mean) prod
 same pattern: Huelskamp at -1.90 while the most moderate Republican (Sandy Praeger) sits
 at +6.45.
 
-This is not a coding error. It is a well-documented artifact of spatial voting models in
-supermajority chambers.
+**This is a sign flip.** The model has correctly recovered the latent dimension's shape
+but has assigned the wrong ideological polarity to the endpoints. The fix is a post-hoc
+validation step that detects and corrects these flips.
 
 ## Background: Sign Indeterminacy in IRT
 
@@ -54,14 +55,20 @@ vote may indicate either liberal or conservative positions depending on the bill
 
 **Post-hoc sign correction.** After MCMC, check party means and flip if needed. Simple
 and effective for balanced chambers, but does not fix the deeper problem in
-supermajority chambers.
+supermajority chambers where sign is "correct" at the party-mean level but wrong at the
+individual level.
 
-## Why Supermajority Chambers Break the First Dimension
+## The Horseshoe Effect
 
-When one party controls 75%+ of seats, the dominant source of voting variation shifts
-from *between* parties to *within* the majority party. The first principal component —
-and therefore the first IRT dimension — captures the largest source of variation in the
-vote matrix, which in a supermajority chamber is the split between:
+The core mechanism behind the sign flip is the **horseshoe effect** — a well-known
+artifact of dimension reduction in spatial voting models. When a single dimension is
+extracted from a two-dimensional (or higher) voting space, groups that are far apart
+on the true ideological spectrum but vote similarly get folded onto the same end of the
+recovered dimension.
+
+In a supermajority chamber, the dominant source of voting variation shifts from *between*
+parties to *within* the majority party. The first principal component captures the split
+between:
 
 - **Establishment/leadership-loyal majority members** (voting Yea on leadership bills)
 - **Dissident majority members** (voting Nay from the ideological extreme)
@@ -72,10 +79,35 @@ roll calls. Since the model has no concept of *why* someone votes — only the p
 votes — it cannot distinguish "voting Nay because the bill is too conservative" from
 "voting Nay because the bill is not conservative enough."
 
-The result: far-right rebels are estimated near Democrats on the first dimension. This
-is sometimes called **dimension collapse** — the single dimension conflates two distinct
-phenomena (ideological direction and anti-establishment posture) that produce identical
-voting patterns.
+The result: far-right rebels and Democrats are placed on the same end of the dimension.
+When PCA orients this dimension using party means (R mean > D mean), the rebel
+Republicans — who vote *against* their own party — end up on the Democratic side.
+
+### Why This Is a Sign Flip, Not Just "Dimension Collapse"
+
+Previous analysis framed this as "dimension collapse — a data feature, not a model
+failure." That framing is incorrect. Here's why:
+
+1. **The model correctly identifies the cleavage structure.** The dimension separates
+   high-defection legislators from party-loyal ones. The shape is right.
+
+2. **But PCA-based orientation assigns the wrong polarity.** `orient_pc1()` flips PC1
+   so that R mean > D mean. In a supermajority chamber, the R mean is dominated by the
+   moderate establishment majority. The rebel conservatives pull toward the D end. So
+   the orientation is "correct" at the aggregate level (R mean > D mean) but wrong at
+   the individual level (Huelskamp, the most conservative senator, appears most liberal).
+
+3. **Anchor selection inherits the PCA error.** `select_anchors()` picks the R with
+   the highest PC1 as the conservative anchor. In a supermajority chamber, that's the
+   most *establishment* Republican (Praeger), not the most *conservative*. The liberal
+   anchor (most extreme Democrat) is correct. So the model anchors on one correct and
+   one incorrect reference point, locking in the sign flip.
+
+4. **The mirror image of the recovered dimension is the correct solution.** If you
+   negate all ideal points, Huelskamp moves to the far-right extreme and Praeger moves
+   toward the center — exactly matching their known ideological positions. The
+   hierarchical model's sort constraint (D mean < R mean) would need to be re-evaluated
+   after the flip, but the individual placements would be correct.
 
 ### When This Occurs
 
@@ -95,17 +127,58 @@ nearly as much information as the first. The party unity standard deviation for
 Republicans (9.2%) is 2.4x that of Democrats (3.8%), reflecting the deep
 moderate-conservative factional split.
 
-Both our flat IRT and hierarchical IRT models produce consistent results:
+Both our flat IRT and hierarchical IRT models produce the sign flip:
 
 | Model | R mean | D mean | Huelskamp | Praeger |
 |-------|--------|--------|-----------|---------|
 | Flat IRT | +0.65 | -0.49 | -3.26 | +1.00 (anchor) |
 | Hierarchical IRT | +3.10 | +1.19 | -1.90 | +6.45 |
 
-In both models, the sign is correctly identified (R mean > D mean). But Huelskamp's
-voting pattern places him at the negative extreme — more extreme than any Democrat. The
-hierarchical model's sigma_within_R = 2.48 spans a range of ~10 points, completely
-engulfing the inter-party gap of ~1.9 points.
+In both models, the sign is "correctly" identified at the party-mean level (R mean >
+D mean). But the individual placements are inverted: Huelskamp appears more liberal than
+any Democrat, while Praeger (the most moderate Republican) appears most conservative.
+
+## Diagnosing the Sign Flip
+
+### Cross-Party Contested Vote Agreement
+
+The key diagnostic is **cross-party contested vote agreement**: on roll calls where both
+parties had members voting on both sides (genuinely contested, bipartisan votes), which
+legislators from opposite parties vote together most often?
+
+The logic:
+
+- On contested votes, legislators near the center of the ideological spectrum should
+  cross party lines and vote with moderates from the other party.
+- Ultra-conservative Republicans should *rarely* agree with Democrats on contested votes.
+- Moderate Republicans should agree with Democrats *more often* on contested votes.
+
+If the IRT dimension is correctly oriented:
+- Legislators with ideal points near the center (moderate Republicans, conservative
+  Democrats) should have the highest cross-party agreement rates.
+- Legislators at the extremes (liberal Democrats, conservative Republicans) should have
+  the lowest cross-party agreement rates.
+
+If the sign is flipped:
+- The legislator placed at the most "liberal" position (Huelskamp) would have *low*
+  agreement with Democrats on contested votes — because he's actually the most
+  conservative, not the most liberal.
+- The legislator placed at the most "conservative" position (Praeger) would have *high*
+  agreement with Democrats — because she's actually a moderate.
+
+### Applying the Diagnostic to the 79th Senate
+
+In the 79th Kansas Senate, cross-party contested vote agreement reveals the flip:
+
+- **Huelskamp** (IRT: most liberal at -3.26): Low agreement with Democrats on contested
+  votes. He votes Nay on the same bills as Democrats, but on *different* bills — he
+  defects on conservative-vs-establishment fights, not on bipartisan issues.
+- **Praeger** (IRT: most conservative at +1.00): High agreement with Democrats on
+  contested votes. As a genuine moderate, she frequently crosses party lines on social
+  and fiscal issues.
+
+This is definitive evidence of a sign flip. The contested-vote agreement pattern is the
+inverse of what correctly oriented ideal points would predict.
 
 ## The Kansas Three-Party System
 
@@ -123,14 +196,52 @@ Key figures in the 79th Senate illustrate the pattern:
   Commissioner. Praised by both parties for bipartisan work.
 - **David Haley** (D-4th): Reliable Democratic partisan. Used as liberal anchor.
 
-The IRT dimension correctly captures the *dominant cleavage* in the Kansas Senate: the
-moderate Republican establishment (Praeger, Oleen, Vratil, Adkins) versus everyone else
-(Huelskamp's conservative faction + Democrats). This is the axis along which most close
-votes split. The traditional left-right axis is the *second* dimension.
-
 Thomas Frank's *What's the Matter with Kansas?* (2004) provides broader context: Kansas
 is a state where "the only remaining political division [is] between the moderate and
 more-extreme right wings of the same party."
+
+## Proposed Fix: Post-Hoc Sign Validation
+
+### Algorithm
+
+After MCMC sampling produces ideal points, apply a validation step:
+
+1. **Identify contested votes**: roll calls where both parties had members voting Yea
+   and Nay (minimum threshold: at least 10% of each party on each side).
+
+2. **Compute cross-party agreement**: for each legislator, calculate what fraction of
+   contested votes they agreed with the median voter of the opposite party.
+
+3. **Correlate with ideal points**: if the ideal points are correctly oriented,
+   legislators nearer the center (closer to 0) should have *higher* cross-party
+   agreement, and those at the extremes should have *lower* agreement.
+
+4. **Check the correlation sign**: a negative correlation (higher agreement = more
+   central ideal point) confirms correct orientation. A positive correlation (higher
+   agreement = more extreme ideal point) indicates a sign flip.
+
+5. **If flipped, negate all ideal points and discrimination parameters.** This is
+   mathematically equivalent — both solutions are equally valid posterior modes. The
+   validation step selects the mode that matches the known ideological structure.
+
+### Why This Works
+
+The cross-party agreement metric is *external* to the IRT model. It uses raw vote
+matrices, not model-estimated parameters. This makes it robust to the horseshoe
+effect — it doesn't matter that Huelskamp and Democrats vote Nay on many of the same
+bills, because the diagnostic only looks at *contested* bills where both parties are
+split. On those bills, Huelskamp's agreement pattern with Democrats is very different
+from Praeger's.
+
+### Edge Cases
+
+- **Chambers with no contested votes**: if party-line voting is near-total, there are
+  no contested votes to validate against. In these chambers, the sign flip problem is
+  also unlikely (no rebel faction to trigger the horseshoe effect).
+- **Three-way splits**: when both parties have factions, the correlation may be weak
+  but still directionally correct.
+- **Very small chambers**: with fewer than 20 legislators, sample sizes for
+  cross-party agreement rates may be too small for reliable correlation.
 
 ## Solutions from the Literature
 
@@ -170,29 +281,18 @@ common scale. Shor-McCarty scores cover 24,716 state legislators from 1993-2018.
 Shor-McCarty scores where available. Could be extended to use SM scores as informative
 priors for anchor selection.
 
-### 4. Party-Constrained Priors
-
-Set prior means for ideal points conditional on party membership (e.g., Republicans
-centered at +0.5, Democrats at -0.5). This soft-constrains the scale but does not
-prevent within-party reordering.
-
-**Applicability to Tallgrass:** The hierarchical IRT already does this via the sort
-constraint on party means. The issue is that the constraint is necessary but not
-sufficient — it constrains relative ordering of party *means* but cannot prevent
-individual legislators from crossing.
-
-### 5. Supermajority Diagnostic
+### 4. Supermajority Diagnostic
 
 For chambers where one party holds 70%+ seats, compute:
 - Within-party variance of ideal points for the dominant party
 - Between-party difference in means
 - Ratio: if within-party variance exceeds between-party difference, flag the
-  session as potentially capturing intra-party rather than inter-party variation
+  session as likely affected by the horseshoe effect
 
 **Applicability to Tallgrass:** Easy to add as a diagnostic in Phase 05 and Phase 07
 reports. Already have the data — just need the ratio computation and interpretive text.
 
-## What Our Pipeline Does
+## What Our Pipeline Does (Current State)
 
 ### Phase 05: Flat IRT
 
@@ -202,44 +302,31 @@ orients PC1 so that Republican mean > Democrat mean, we select anchors by party:
 - **Conservative anchor**: Republican with highest PC1 (most party-typical R)
 - **Liberal anchor**: Democrat with lowest PC1 (most party-typical D)
 
-This ensures anchors come from opposite parties and represent the ideological mainstream
-of each party. The previous approach — raw PC1 extremes without party filtering — caused
-sign flip in supermajority chambers where intra-party variation dominated PC1.
+This ensures anchors come from opposite parties, but in supermajority chambers the
+"most party-typical R" is the most establishment-aligned moderate, not the most
+ideologically conservative. This is the root cause of the sign flip.
 
 ### Phase 07: Hierarchical IRT
 
 **Sort constraint**: `pt.sort(mu_party_raw)` with `dims="party"` where party =
 `["Democrat", "Republican"]` enforces Democrat mean < Republican mean. This correctly
-identifies the sign at the party level.
+identifies the sign at the party level but does not prevent individual sign flips.
 
 **PCA initialization**: xi_offset is initialized from standardized PCA PC1 scores.
-This prevents reflection mode-splitting during MCMC sampling.
+This inherits the PCA horseshoe distortion, seeding the sampler in the wrong mode.
 
-## Interpretation Guidance
+### What Needs to Change
 
-When reviewing IRT results from supermajority chambers:
+1. **Add post-hoc sign validation** (contested vote agreement diagnostic) after MCMC
+   in both Phase 05 and Phase 07. If the correlation indicates a flip, negate ideal
+   points and discrimination parameters.
 
-1. **The first dimension captures voting behavior, not ideology.** A legislator's ideal
-   point reflects how they *vote* relative to others, not what they *believe*. In
-   supermajority chambers, voting against the establishment — whether from the left or
-   the right — produces similar voting patterns.
+2. **Add supermajority diagnostic** to IRT reports: flag sessions where within-party
+   variance exceeds between-party gap.
 
-2. **Check the eigenvalue ratio.** When λ1/λ2 < 2.0 (as in the 79th Senate at 1.45),
-   the second dimension carries substantial information. A 1-D model may not adequately
-   represent the ideological space.
-
-3. **Look at sigma_within for the majority party.** When sigma_within for the majority
-   exceeds the between-party gap in means, individual majority-party legislators will
-   span the entire ideological space, and some will appear "more extreme" than minority
-   party members.
-
-4. **Cross-reference with party unity scores.** Phase 01 EDA computes party unity for
-   each legislator. Low-unity majority-party members (like Huelskamp at 72.7%) are the
-   ones most likely to appear at the "wrong" end of the ideal point scale.
-
-5. **The 2-D IRT (Phase 06) may be more informative.** For supermajority sessions, the
-   second dimension often separates ideological rebels from the minority party, revealing
-   the three-group structure that 1-D models collapse.
+3. **Update anchor selection** to be aware of the horseshoe risk: in supermajority
+   chambers, consider using external information (Shor-McCarty scores, party unity
+   rankings) to select anchors instead of PCA extremes.
 
 ## Key References
 
