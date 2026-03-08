@@ -245,7 +245,7 @@ Our PyMC-based IRT implementation for Kansas legislative analysis makes the foll
 
 | Decision | Our Choice | Standard Practice | Justification |
 |----------|-----------|-------------------|---------------|
-| Identification | Hard anchors (PCA extremes) | Hard anchors or soft priors | Automated; avoids manual selection |
+| Identification | 7 strategies, auto-selected (anchor-pca, anchor-agreement, sort-constraint, etc.; ADR-0103) | Hard anchors or soft priors | Fully automated; adapts to chamber composition |
 | β prior | Normal(0, 1) unconstrained | LogNormal (most) or Normal (some) | Anchors provide sign ID; unconstrained uses all data |
 | Initialization | PCA PC1 scores | Eigendecomposition (pscl) or random | Standard; prevents 31% failure rate |
 | Missing data | Excluded from likelihood (MAR) | Same (universal) | Only alternative is informative missingness (not needed) |

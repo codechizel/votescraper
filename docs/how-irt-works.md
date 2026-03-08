@@ -68,6 +68,14 @@ That's it. No manual input, no political judgment calls, no hardcoded names. The
 
 Once anchored, the remaining ~128 legislators (for a typical House) are free to land anywhere on the spectrum. Their positions are entirely determined by their voting records. The anchors simply provide the coordinate system.
 
+### Other identification strategies
+
+The PCA-based anchor approach described above (`anchor-pca`) is the default for balanced chambers where both parties hold roughly equal seats. But Kansas has a Republican supermajority (~72%), and in supermajority chambers, PCA's first component can be distorted by a **horseshoe effect** — it captures establishment-vs-rebel variation within the majority party rather than the left-right axis.
+
+For these chambers, Tallgrass auto-selects a different strategy: `anchor-agreement`. Instead of PCA scores, it measures how often each legislator agrees with the opposing party on contested votes. The most partisan Republican (lowest agreement with Democrats) and the most partisan Democrat (lowest agreement with Republicans) become anchors. This selects genuine ideological extremes rather than PCA artifacts.
+
+Tallgrass implements seven identification strategies in total, including constraint-based approaches that avoid anchoring on any individual legislator. The `--identification` CLI flag overrides auto-detection. See `docs/irt-identification-strategies.md` for the complete catalog with literature references and auto-detection logic.
+
 ### Why not just use party labels?
 
 A reasonable question: if we already know who is a Democrat and who is a Republican, why not just label the scale using party? Because the model's power comes from measuring *within-party* variation. In the Kansas House, where Republicans hold a supermajority (~72% of seats), the interesting question isn't "are Democrats more liberal than Republicans?" (of course they are). It's "which Republicans vote more like moderates?" and "how much ideological variation exists within the majority?" Anchoring to two extreme legislators, rather than to parties, preserves this granularity.

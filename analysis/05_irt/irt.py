@@ -86,9 +86,13 @@ alpha_j ~ Normal(0, 5)          -- bill difficulty (diffuse)
 beta_j  ~ Normal(0, 1)           -- discrimination (unconstrained; anchors identify sign)
 ```
 
-**Identification** via anchor method:
-- Conservative anchor (xi = +1): highest PCA PC1 score with >= 50% participation
-- Liberal anchor (xi = -1): lowest PCA PC1 score with >= 50% participation
+**Identification** via seven-strategy system (ADR-0103):
+Tallgrass implements seven identification strategies and auto-selects the best
+one for each chamber's composition. See `docs/irt-identification-strategies.md`.
+- Balanced chambers → anchor-pca (PCA PC1 party extremes, hard anchors at ±1)
+- Supermajority (≥70%) → anchor-agreement (cross-party contested vote agreement)
+- External scores available → external-prior (Shor-McCarty informative prior)
+CLI override: `--identification {auto,anchor-pca,anchor-agreement,...}`
 
 **Missing data:** Absences are handled natively — they are simply absent from
 the likelihood. No imputation needed (unlike PCA).
@@ -97,15 +101,17 @@ the likelihood. No imputation needed (unlike PCA).
 
 1. Load filtered vote matrices from EDA, PCA scores for anchor selection
 2. Convert to long format, drop nulls (absences)
-3. Build 2PL PyMC model with anchor constraints
-4. Sample with NUTS (2000 draws, 1000 tune, 2 chains)
-5. Convergence diagnostics (R-hat, ESS, divergences, E-BFMI)
-6. Extract posterior summaries (ideal points, bill parameters)
-7. Generate plots (forest, discrimination, traces, PPC)
-8. Compare with PCA PC1 scores
-9. Posterior predictive checks
-10. Holdout validation (in-sample prediction)
-11. Sensitivity analysis (10% minority threshold re-run)
+3. Select identification strategy (auto-detect or CLI override)
+4. Build 2PL PyMC model with strategy-specific constraints
+5. Sample with NUTS (2000 draws, 1000 tune, 2 chains)
+6. Post-hoc sign validation (validate_sign)
+7. Convergence diagnostics (R-hat, ESS, divergences, E-BFMI)
+8. Extract posterior summaries (ideal points, bill parameters)
+9. Generate plots (forest, discrimination, traces, PPC)
+10. Compare with PCA PC1 scores
+11. Posterior predictive checks
+12. Holdout validation (in-sample prediction)
+13. Sensitivity analysis (10% minority threshold re-run)
 
 ## Inputs
 
