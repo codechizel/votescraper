@@ -777,7 +777,7 @@ class TestDataLoading:
             w.writerow(["Right to Work", "Labor", "Model Policy",
                         "", "TF 2", "https://alec.org/2", long_text_2])
 
-        texts, ids, meta = load_alec_corpus(tmp_path)
+        texts, ids, meta = load_alec_corpus(tmp_path, use_csv=True)
         assert len(texts) == 2
         assert len(ids) == 2
         assert "alec.org/1" in ids[0] or "alec.org/2" in ids[0]
@@ -787,7 +787,7 @@ class TestDataLoading:
         from analysis.model_legislation_data import load_alec_corpus
 
         with pytest.raises(FileNotFoundError, match="ALEC corpus not found"):
-            load_alec_corpus(tmp_path)
+            load_alec_corpus(tmp_path, use_csv=True)
 
     def test_load_alec_corpus_filters_empty(self, tmp_path: Path):
         from analysis.model_legislation_data import load_alec_corpus
@@ -810,7 +810,7 @@ class TestDataLoading:
                 ["Empty Bill", "Cat", "Type", "", "TF", "https://alec.org/2", "short"]
             )
 
-        texts, ids, meta = load_alec_corpus(tmp_path)
+        texts, ids, meta = load_alec_corpus(tmp_path, use_csv=True)
         assert len(texts) == 1  # "short" is < MIN_TEXT_LENGTH
 
 

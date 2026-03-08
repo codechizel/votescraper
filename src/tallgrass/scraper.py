@@ -55,6 +55,17 @@ def _normalize_bill_code(text: str) -> str:
     return re.sub(r"\s+", "", text).lower()
 
 
+def _normalize_slug(slug: str) -> str:
+    """Normalize a legislator slug extracted from an HTML href.
+
+    kslegislature.gov sometimes uses hyphens in URL paths for hyphenated names
+    (e.g. ``sen_faust-goudeau_oletha_1``), but vote pages consistently use
+    underscores (``sen_faust_goudeau_oletha_1``).  Normalize to underscores
+    so the same legislator doesn't appear twice with different slug formats.
+    """
+    return slug.replace("-", "_")
+
+
 def _clean_text(element: BeautifulSoup) -> str:
     """Extract text from a BeautifulSoup element, preserving spaces around inline tags.
 
@@ -607,7 +618,7 @@ class KSVoteScraper:
                     # Extract slug: last non-empty path segment
                     parts = [p for p in href.split("/") if p]
                     if parts:
-                        slugs.append(parts[-1])
+                        slugs.append(_normalize_slug(parts[-1]))
 
         return "; ".join(sponsors), "; ".join(slugs)
 
@@ -703,7 +714,7 @@ class KSVoteScraper:
                 if "/members/" in href:
                     name = element.get_text(strip=True).rstrip(",").strip()
                     slug_match = re.search(r"/members/([^/]+)/", href)
-                    slug = slug_match.group(1) if slug_match else ""
+                    slug = _normalize_slug(slug_match.group(1)) if slug_match else ""
 
                     if name:
                         vote_categories[current_category].append({"name": name, "slug": slug})
@@ -804,7 +815,7 @@ class KSVoteScraper:
             slug_match = re.search(r"/members/([^/]+)/", href)
             if not slug_match:
                 continue
-            slug = slug_match.group(1)
+            slug = _normalize_slug(slug_match.group(1))
             name = link.get_text(strip=True).rstrip(",").strip()
             if not name:
                 continue

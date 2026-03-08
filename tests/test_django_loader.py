@@ -58,7 +58,7 @@ _RC_HDR = (
     "not_voting_count,total_votes,passed"
 )
 
-_LEG_HDR = "name,full_name,slug,chamber,party,district,member_url,ocd_id"
+_LEG_HDR = "name,full_name,legislator_slug,chamber,party,district,member_url,ocd_id"
 
 _BA_HDR = (
     "session,bill_number,action_code,chamber,"
@@ -515,7 +515,7 @@ class TestLoadSession:
 
     def test_legislator_fields(self, synthetic_session, tmp_path):
         _load("91st_2025-2026", tmp_path)
-        leg = Legislator.objects.get(slug="sen_smith_john_1")
+        leg = Legislator.objects.get(legislator_slug="sen_smith_john_1")
         assert leg.name == "Smith"
         assert leg.full_name == "John Smith"
         assert leg.chamber == "Senate"

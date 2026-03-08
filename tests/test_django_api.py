@@ -75,7 +75,7 @@ def legislator(session):
         session=session,
         name="Masterson",
         full_name="Ty Masterson",
-        slug="sen_masterson_ty_1",
+        legislator_slug="sen_masterson_ty_1",
         chamber="Senate",
         party="Republican",
         district="16",
@@ -90,7 +90,7 @@ def legislator_d(session):
         session=session,
         name="Haley",
         full_name="Tom Haley",
-        slug="rep_haley_tom_1",
+        legislator_slug="rep_haley_tom_1",
         chamber="House",
         party="Democrat",
         district="42",
@@ -243,7 +243,7 @@ class TestLegislators:
         response = client.get("/legislators/")
         items = response.json()["items"]
         assert len(items) == 1
-        assert items[0]["slug"] == "sen_masterson_ty_1"
+        assert items[0]["legislator_slug"] == "sen_masterson_ty_1"
         assert items[0]["ocd_id"] == "ocd-person/abc123"
 
     def test_detail(self, legislator):
@@ -277,7 +277,7 @@ class TestLegislators:
         response = client.get("/legislators/?search=masterson")
         items = response.json()["items"]
         assert len(items) == 1
-        assert items[0]["slug"] == "sen_masterson_ty_1"
+        assert items[0]["legislator_slug"] == "sen_masterson_ty_1"
 
     def test_filter_by_session_name(self, legislator):
         response = client.get("/legislators/?session_name=91st")

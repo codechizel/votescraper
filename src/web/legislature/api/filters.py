@@ -20,7 +20,9 @@ class LegislatorFilter(FilterSchema):
     session_name: Annotated[str | None, FilterLookup(q="session__name__icontains")] = None
     chamber: str | None = None
     party: str | None = None
-    search: Annotated[str | None, FilterLookup(q=["name__icontains", "slug__icontains"])] = None
+    search: Annotated[
+        str | None, FilterLookup(q=["name__icontains", "legislator_slug__icontains"])
+    ] = None
 
 
 class RollCallFilter(FilterSchema):

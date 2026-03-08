@@ -70,7 +70,7 @@ class TestCsvFallback:
         data_dir.mkdir()
         csv = data_dir / "91st_2025-2026_legislators.csv"
         csv.write_text(
-            "session,name,full_name,slug,chamber,party,district,member_url,ocd_id\n"
+            "session,name,full_name,legislator_slug,chamber,party,district,member_url,ocd_id\n"
             "91st (2025-2026),Smith,Smith,rep_smith,House,,1,http://example.com,\n"
         )
 
@@ -141,7 +141,7 @@ class TestDbFallbackToCSV:
         data_dir.mkdir()
         csv = data_dir / "91st_2025-2026_legislators.csv"
         csv.write_text(
-            "session,name,full_name,slug,chamber,party,district,member_url,ocd_id\n"
+            "session,name,full_name,legislator_slug,chamber,party,district,member_url,ocd_id\n"
             "91st (2025-2026),Smith,Smith,rep_smith,House,Republican,1,http://example.com,\n"
         )
 
@@ -229,7 +229,7 @@ class TestDbLoadingIntegration:
 
         df = load_legislators_db("91st_2025-2026")
         assert df.height > 0
-        assert "slug" in df.columns
+        assert "legislator_slug" in df.columns
         assert "party" in df.columns
 
     def test_load_bill_texts_db(self):

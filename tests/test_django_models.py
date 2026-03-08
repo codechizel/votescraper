@@ -56,7 +56,7 @@ def legislator(session):
         session=session,
         name="Masterson",
         full_name="Ty Masterson",
-        slug="sen_masterson_ty_1",
+        legislator_slug="sen_masterson_ty_1",
         chamber="Senate",
         party="Republican",
         district="16",
@@ -167,7 +167,7 @@ class TestLegislator:
     """Legislator model tests."""
 
     def test_create(self, legislator):
-        assert legislator.slug == "sen_masterson_ty_1"
+        assert legislator.legislator_slug == "sen_masterson_ty_1"
         assert legislator.chamber == "Senate"
         assert legislator.party == "Republican"
 
@@ -179,7 +179,7 @@ class TestLegislator:
         leg = Legislator.objects.create(
             session=session,
             name="Pyle",
-            slug="sen_pyle_dennis_1",
+            legislator_slug="sen_pyle_dennis_1",
             chamber="Senate",
         )
         assert leg.party == ""
@@ -192,7 +192,7 @@ class TestLegislator:
             Legislator.objects.create(
                 session=session,
                 name="Masterson Copy",
-                slug="sen_masterson_ty_1",
+                legislator_slug="sen_masterson_ty_1",
                 chamber="Senate",
             )
 
@@ -209,7 +209,7 @@ class TestLegislator:
         leg2 = Legislator.objects.create(
             session=other,
             name="Masterson",
-            slug="sen_masterson_ty_1",
+            legislator_slug="sen_masterson_ty_1",
             chamber="Senate",
         )
         assert leg2.pk != legislator.pk
@@ -329,7 +329,7 @@ class TestVote:
             leg = Legislator.objects.create(
                 session=session,
                 name=f"Leg{i}",
-                slug=f"rep_test_{i}",
+                legislator_slug=f"rep_test_{i}",
                 chamber="House",
             )
             Vote.objects.create(rollcall=rollcall, legislator=leg, vote=cat)

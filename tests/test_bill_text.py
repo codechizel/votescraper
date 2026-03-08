@@ -79,27 +79,27 @@ def sample_bill_texts_csv(tmp_path: Path) -> Path:
 
 class TestLoadBillTexts:
     def test_loads_csv(self, sample_bill_texts_csv: Path) -> None:
-        df = load_bill_texts(sample_bill_texts_csv)
+        df = load_bill_texts(sample_bill_texts_csv, use_csv=True)
         assert len(df) > 0
         assert "bill_number" in df.columns
         assert "text" in df.columns
         assert "text_source" in df.columns
 
     def test_prefers_supp_note(self, sample_bill_texts_csv: Path) -> None:
-        df = load_bill_texts(sample_bill_texts_csv)
+        df = load_bill_texts(sample_bill_texts_csv, use_csv=True)
         hb2001 = df.filter(pl.col("bill_number") == "HB 2001")
         assert len(hb2001) == 1
         assert hb2001["text_source"][0] == "supp_note"
 
     def test_deduplicates_per_bill(self, sample_bill_texts_csv: Path) -> None:
-        df = load_bill_texts(sample_bill_texts_csv)
+        df = load_bill_texts(sample_bill_texts_csv, use_csv=True)
         assert df["bill_number"].n_unique() == len(df)
 
     def test_raises_on_missing_csv(self, tmp_path: Path) -> None:
         data_dir = tmp_path / "missing_dir"
         data_dir.mkdir()
         with pytest.raises(FileNotFoundError, match="bill_texts"):
-            load_bill_texts(data_dir)
+            load_bill_texts(data_dir, use_csv=True)
 
 
 class TestPreprocessForEmbedding:

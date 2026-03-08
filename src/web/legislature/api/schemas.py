@@ -50,7 +50,7 @@ class LegislatorOut(Schema):
     session_id: int
     name: str
     full_name: str
-    slug: str
+    legislator_slug: str
     chamber: str
     party: str
     district: str
