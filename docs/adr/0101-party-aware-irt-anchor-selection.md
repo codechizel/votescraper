@@ -34,9 +34,27 @@ This ensures anchors come from opposite parties and represent the ideological ma
 
 **Trade-offs:**
 - Requires the `party` column in PCA scores DataFrame (already present via `build_scores_df()`)
-- In supermajority chambers, the first IRT dimension may still capture establishment-vs-rebel rather than left-vs-right even with correct anchors — this is dimension collapse (a data feature, not a model failure). Huelskamp still appears at xi=-3.26 in the 79th Senate because his voting pattern genuinely places him there. See `docs/irt-sign-identification-deep-dive.md` for a detailed analysis.
+- In supermajority chambers, the "most party-typical R" selected by PCA is actually the most establishment-aligned moderate, not the most ideologically conservative. This produces a sign flip where the dimension's shape is correct but its polarity is inverted (e.g., Huelskamp at xi=-3.26). A post-hoc `validate_sign()` step detects and corrects this. See below.
 
 **Validation:**
 - 79th pipeline re-run: all convergence checks pass, PCA-IRT correlation r=0.94 (Senate), r=0.97 (House)
 - Sensitivity analysis robust (r > 0.99 for both chambers)
 - Hierarchical IRT (Phase 07) independently confirms the same pattern (flat-hierarchical r=0.978)
+
+## Post-Hoc Sign Validation (2026-03-07 addendum)
+
+**Problem:** Party-aware anchor selection prevents selecting a rebel as anchor, but in supermajority chambers the PCA horseshoe effect still causes the "most party-typical" Republican to be the most moderate/establishment-aligned, not the most conservative. The resulting anchor locks in a sign flip where the dimension's shape is correct but its polarity is wrong.
+
+**Solution:** `validate_sign()` runs after MCMC sampling and checks whether the recovered ideal points have the correct polarity:
+
+1. Identify contested votes (both parties split, ≥10% on each side per party)
+2. For each Republican, compute agreement rate with the Democrat majority on contested votes
+3. Spearman-correlate R agreement with R ideal points
+4. Correct sign → negative correlation (moderates agree more with opposite party)
+5. Flipped sign → positive correlation (extremes agree more) → negate xi, xi_free, beta
+
+**Guard rails:** Skips with <3 legislators per party, <10 contested votes, <5 Rs with valid data, or when p ≥ 0.10.
+
+**Impact:** Fixes the 79th Senate Huelskamp placement (xi=-3.26 → +3.26). Does not fire on correctly-signed sessions. 6 new tests. See `docs/irt-sign-identification-deep-dive.md`.
+
+**Note:** This fix applies only to Phase 05 flat IRT. The hierarchical model (Phase 07) uses a sort constraint (D mean < R mean) that correctly identifies global sign but cannot prevent individual-level horseshoe placement — that is a dimension collapse issue that negation cannot fix.

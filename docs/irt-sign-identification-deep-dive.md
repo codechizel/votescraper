@@ -200,11 +200,13 @@ Thomas Frank's *What's the Matter with Kansas?* (2004) provides broader context:
 is a state where "the only remaining political division [is] between the moderate and
 more-extreme right wings of the same party."
 
-## Proposed Fix: Post-Hoc Sign Validation
+## Post-Hoc Sign Validation (Implemented)
+
+**Status:** Implemented in `analysis/05_irt/irt.py` as `validate_sign()` (2026-03-07). 6 tests in `tests/test_irt.py`. ADR-0101 addendum.
 
 ### Algorithm
 
-After MCMC sampling produces ideal points, apply a validation step:
+After MCMC sampling produces ideal points, `validate_sign()` applies:
 
 1. **Identify contested votes**: roll calls where both parties had members voting Yea
    and Nay (minimum threshold: at least 10% of each party on each side).
@@ -304,29 +306,32 @@ orients PC1 so that Republican mean > Democrat mean, we select anchors by party:
 
 This ensures anchors come from opposite parties, but in supermajority chambers the
 "most party-typical R" is the most establishment-aligned moderate, not the most
-ideologically conservative. This is the root cause of the sign flip.
+ideologically conservative.
+
+**Post-hoc sign validation** (`validate_sign()`, implemented 2026-03-07): After MCMC,
+correlates cross-party contested vote agreement with Republican ideal points. If the
+Spearman correlation is positive (p < 0.10), negates xi, xi_free, and beta posteriors.
+This catches the sign flip that party-aware anchor selection alone cannot prevent.
 
 ### Phase 07: Hierarchical IRT
 
 **Sort constraint**: `pt.sort(mu_party_raw)` with `dims="party"` where party =
 `["Democrat", "Republican"]` enforces Democrat mean < Republican mean. This correctly
-identifies the sign at the party level but does not prevent individual sign flips.
+identifies the sign at the party level but does not prevent individual-level horseshoe
+placement. Negation cannot fix the hierarchical model because it would violate the
+sort constraint — the individual-level issue is genuine dimension collapse, not a
+sign flip.
 
 **PCA initialization**: xi_offset is initialized from standardized PCA PC1 scores.
-This inherits the PCA horseshoe distortion, seeding the sampler in the wrong mode.
 
-### What Needs to Change
+### Remaining Opportunities
 
-1. **Add post-hoc sign validation** (contested vote agreement diagnostic) after MCMC
-   in both Phase 05 and Phase 07. If the correlation indicates a flip, negate ideal
-   points and discrimination parameters.
+1. **Supermajority diagnostic** in IRT reports: flag sessions where within-party
+   variance exceeds between-party gap. (Not yet implemented.)
 
-2. **Add supermajority diagnostic** to IRT reports: flag sessions where within-party
-   variance exceeds between-party gap.
-
-3. **Update anchor selection** to be aware of the horseshoe risk: in supermajority
-   chambers, consider using external information (Shor-McCarty scores, party unity
-   rankings) to select anchors instead of PCA extremes.
+2. **External anchor validation**: in supermajority chambers, consider using
+   Shor-McCarty scores or party unity rankings to validate anchor selection.
+   (Phase 17 already correlates with SM scores where available.)
 
 ## Key References
 

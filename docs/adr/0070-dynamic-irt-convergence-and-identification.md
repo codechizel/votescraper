@@ -34,7 +34,7 @@ Load Phase 04 ideal points for each biennium, map to global roster via `normaliz
 
 ### Post-hoc sign correction retained
 
-The post-hoc sign correction (ADR-0068) is retained as a diagnostic safety net. With the informative prior, it should be a no-op. If it fires, that indicates the informative prior failed — a useful diagnostic signal.
+The post-hoc sign correction (ADR-0068) is retained as a diagnostic safety net. With the informative prior, it should be a no-op. If it fires, that indicates the informative prior failed — a useful diagnostic signal. A similar post-hoc validation pattern (`validate_sign()`) was added to flat IRT (ADR-0101 addendum) to detect horseshoe-effect sign flips in supermajority chambers.
 
 ## Consequences
 

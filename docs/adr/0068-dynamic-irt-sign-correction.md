@@ -22,7 +22,7 @@ Add a post-hoc per-period sign correction step between sampling and post-process
 3. Compute Pearson r
 4. If r < 0, negate `xi_post[:, :, t, :]` for that period
 
-Pattern follows `fix_joint_sign_convention()` in hierarchical IRT (ADR-0042).
+Pattern follows `fix_joint_sign_convention()` in hierarchical IRT (ADR-0042). A similar pattern was later applied to flat IRT as `validate_sign()` (ADR-0101 addendum, 2026-03-07), using cross-party contested vote agreement instead of static IRT correlation.
 
 **Transparency:** Every correction is documented in the HTML report:
 - Table of corrected periods with r before/after and number of matched legislators
