@@ -8,7 +8,7 @@ paths:
 ## Commands
 
 ```bash
-just test                    # run all tests (~2765)
+just test                    # run all tests (~2821)
 just test-scraper            # scraper tests only (-m scraper, ~643)
 just test-fast               # skip slow tests (-m "not slow")
 just test-web                # Django/database tests only (-m web, requires PostgreSQL)

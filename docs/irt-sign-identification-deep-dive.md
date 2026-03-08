@@ -360,3 +360,10 @@ sign flip.
 - ADR-0053: nutpie flat + joint IRT
 - ADR-0074: Stocking-Lord linking for cross-chamber alignment
 - ADR-0101: Party-aware IRT anchor selection (this article's companion ADR)
+- ADR-0103: IRT identification strategy system (7 strategies, auto-detection)
+- ADR-0104: IRT robustness flags (horseshoe diagnostic, contested-only refit, 2D cross-reference)
+
+## Related Documentation
+
+- `docs/irt-identification-strategies.md` — All 7 identification strategies and auto-detection logic
+- `docs/79th-horseshoe-robustness-analysis.md` — Empirical robustness analysis of the 79th using all three diagnostic flags

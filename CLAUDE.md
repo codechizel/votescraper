@@ -24,7 +24,7 @@ just lint                                    # → ruff check --fix + ruff forma
 just lint-check                              # → ruff check + ruff format --check
 just typecheck                               # → ty check src/ + ty check analysis/
 just check                                   # → lint-check + typecheck + test (quality gate)
-just test                                    # → uv run pytest tests/ -v (~2808 tests)
+just test                                    # → uv run pytest tests/ -v (~2821 tests)
 just test-scraper                            # → pytest -m scraper (~643 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just test-web                                # → Django tests only (-m web, requires PostgreSQL)

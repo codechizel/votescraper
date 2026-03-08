@@ -670,7 +670,10 @@ PCA-based anchor selection produces sign flips in supermajority chambers where a
 
 **Documentation:**
 - Deep dive: [`docs/irt-sign-identification-deep-dive.md`](irt-sign-identification-deep-dive.md)
-- ADR-0101: Party-aware IRT anchor selection (needs update to reflect sign flip finding)
+- ADR-0101: Party-aware IRT anchor selection
+- ADR-0103: IRT identification strategy system (7 strategies, auto-detection)
+- ADR-0104: IRT robustness flags (`--horseshoe-diagnostic`, `--contested-only`, `--promote-2d`)
+- Empirical analysis: [`docs/79th-horseshoe-robustness-analysis.md`](79th-horseshoe-robustness-analysis.md) — 79th horseshoe confirmed (Senate: 30% Dems wrong side, 88% overlap; House r=0.41 contested-only)
 
 ---
 

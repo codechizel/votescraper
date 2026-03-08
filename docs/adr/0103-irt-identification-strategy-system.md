@@ -77,4 +77,4 @@ just irt --identification sort-constraint  # manual override
 - `analysis/experimental/irt_beta_experiment.py` — Updated `select_anchors` unpacking
 - `docs/irt-identification-strategies.md` — Comprehensive article covering all strategies, literature, and CLI usage
 
-**Related ADRs:** ADR-0006 (IRT implementation, Decision 2 expanded), ADR-0101 (party-aware anchors, now one of seven strategies), ADR-0047 (positive-beta trade-off, now a named strategy).
+**Related ADRs:** ADR-0006 (IRT implementation, Decision 2 expanded), ADR-0101 (party-aware anchors, now one of seven strategies), ADR-0047 (positive-beta trade-off, now a named strategy), ADR-0104 (robustness flags — runtime diagnostics for horseshoe detection, contested-only refit, 2D cross-reference).
