@@ -367,6 +367,8 @@ Results in `results/experimental_lab/2026-02-26_irt-2d/`:
 - `plots/dim1_vs_pc1.png` — Correlation scatter (r = 0.9802)
 - `plots/dim2_vs_pc2.png` — Correlation scatter (r = 0.8119)
 
+The pipeline phase (`analysis/06_irt_2d/`) also produces interactive Plotly versions of all three plots (`*_interactive_*.html`) with hover-to-identify: legislator name, party, coordinates, and HDIs. These are embedded in the HTML report via `InteractiveSection` (ADR-0069) and are particularly valuable for horseshoe diagnostics — hovering over Dim 1 vs PC1 reveals which legislators PCA misplaces due to dimension confounding (see `docs/horseshoe-effect-and-solutions.md`).
+
 ---
 
 ## 10. References
@@ -382,3 +384,14 @@ Results in `results/experimental_lab/2026-02-26_irt-2d/`:
 - Poole, K. T., & Rosenthal, H. (1997). *Congress: A Political-Economic History of Roll Call Voting*. Oxford University Press.
 - Rivers, D. (2003). Identification of multidimensional spatial voting models. Typescript, Stanford University.
 - Shin, M. (2024). Measuring multidimensional ideology. Working paper.
+- Shin, S., Lim, J., & Park, J. H. (2025). L1-based Bayesian ideal point model for multidimensional politics. *JASA*, 120(550), 631–644.
+
+---
+
+## Related
+
+- `docs/horseshoe-effect-and-solutions.md` — General-audience explanation of the horseshoe effect and experimental results
+- `analysis/design/irt_2d.md` — Design document (PLT identification, interactive plots, horseshoe diagnostic value)
+- `docs/adr/0046-2d-irt-experimental.md` — Original 2D IRT ADR
+- `docs/adr/0054-2d-irt-pipeline-integration.md` — Pipeline integration ADR
+- `docs/adr/0104-irt-robustness-flags.md` — Robustness flags including `--promote-2d`

@@ -32,3 +32,5 @@ Integrate the 2D IRT model as pipeline phase `06_irt_2d` with these design choic
 - Researchers get reproducible 2D ideal points in the standard results structure.
 - The experimental status is self-documenting — the report cannot be mistaken for production-grade analysis.
 - Future work: nutpie migration (after `pt.set_subtensor` testing), synthesis integration (after convergence improvements), and cross-session 2D comparison.
+- Interactive Plotly plots (2D scatter, Dim 1 vs PC1, Dim 2 vs PC2) embedded in HTML report via `InteractiveSection` (ADR-0069). Hover shows legislator name, party, coordinates, and HDIs.
+- The 2D results serve as a horseshoe diagnostic: the `--promote-2d` robustness flag (ADR-0104) cross-references 1D rankings with 2D Dim 1 rankings. See `docs/horseshoe-effect-and-solutions.md`.

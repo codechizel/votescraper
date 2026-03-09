@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-07 (IRT sign flip fix roadmapped; 3 pipeline bug fixes; LOO-CV + sign flip docs)
+**Last updated:** 2026-03-09 (2D IRT interactive Plotly plots; horseshoe effect experiments; doc cross-references)
 
 ---
 
@@ -47,7 +47,7 @@ What's been done, what's next, and what's on the horizon for the Tallgrass analy
 | 9 | Cross-Session Validation (90th vs 91st) | 2026-02-26 | First post-fix run: ideology r=0.940 (House), 0.975 (Senate). Cross-session prediction AUC 0.967-0.976 (nearly matches within-session 0.975-0.984). 94 tests. IRT ideal points confirmed as stable traits; network centrality metrics confirmed session-specific. Tyson flagged as paradox in both bienniums. |
 | — | PCA-Informed Init for Hierarchical IRT | 2026-02-26 | Experiment proved PCA init fixes House R-hat (1.0102→1.0026) with r=0.999996 agreement. Implemented as default in `build_per_chamber_model()`. Per-chain ESS reporting added. ADR-0044. Article: `docs/hierarchical-pca-init-experiment.md`. |
 | — | 4-Chain Hierarchical IRT Experiment | 2026-02-26 | 4 chains resolve both ESS warnings (xi: 397→564, mu_party: 356→512) at +4% wall time. Discovered jitter mode-splitting: `jitter+adapt_diag` causes R-hat ~1.53 with 4 chains; fix is `adapt_diag` with PCA init. Run 3 unnecessary. Article: `docs/hierarchical-4-chain-experiment.md`. |
-| 4b | 2D Bayesian IRT (Pipeline, Experimental) | 2026-02-26 (experiment), 2026-02-28 (pipeline) | M2PL model with PLT identification to resolve Tyson paradox. Pipeline phase 04b: both chambers, nutpie sampling, RunContext/HTML report, relaxed convergence thresholds. Deep dive: `docs/2d-irt-deep-dive.md`, design: `analysis/design/irt_2d.md`, ADR-0046, ADR-0054. |
+| 4b | 2D Bayesian IRT (Pipeline, Experimental) | 2026-02-26 (experiment), 2026-02-28 (pipeline) | M2PL model with PLT identification to resolve Tyson paradox. Pipeline phase 04b: both chambers, nutpie sampling, RunContext/HTML report, relaxed convergence thresholds. Interactive Plotly plots (hover-to-identify) for horseshoe diagnostics. Deep dive: `docs/2d-irt-deep-dive.md`, horseshoe: `docs/horseshoe-effect-and-solutions.md`, design: `analysis/design/irt_2d.md`, ADR-0046, ADR-0054. |
 | 15 | Time Series Analysis | 2026-02-28 | Rolling-window PCA ideological drift + PELT changepoint detection on weekly Rice. Per-chamber analysis, penalty sensitivity, veto override cross-reference. Uses `ruptures` library. Deep dive: `docs/tsa-deep-dive.md`, design: `analysis/design/tsa.md`, ADR-0057. |
 | 16 | Dynamic Ideal Points (Martin-Quinn) | 2026-02-28 | State-space IRT across 8 bienniums (84th-91st). Non-centered random walk with per-party evolution SD. PyMC + nutpie. Conversion vs. replacement polarization decomposition. Bridge coverage analysis. Post-hoc sign correction via static IRT correlation (ADR-0068). 63 tests. Deep dive: `docs/dynamic-ideal-points-deep-dive.md`, design: `analysis/design/dynamic_irt.md`, ADR-0058. |
 | 17 | W-NOMINATE + OC Validation | 2026-02-28 | Field-standard legislative scaling comparison. W-NOMINATE (Poole & Rosenthal) + Optimal Classification (Poole 2000) via R subprocess. 3×3 correlation matrix (IRT/WNOM/OC), per-chamber scatter plots, 2D W-NOMINATE space, eigenvalue scree, fit statistics. Validation-only (does not feed downstream). **All 8 bienniums validated** (2026-03-02, 6 R compatibility bugs fixed — ADR-0073). Deep dive: `docs/w-nominate-deep-dive.md`, design: `analysis/design/wnominate.md`, ADR-0059. |

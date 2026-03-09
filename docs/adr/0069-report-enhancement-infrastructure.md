@@ -51,7 +51,7 @@ Three new frozen dataclass section types added to `analysis/report.py`:
 
 - **ITables Conversion (R2)** — 10+ large tables converted from `make_gt()`/`TableSection` to `make_interactive_table()`/`InteractiveTableSection`. Includes: IRT ideal points, top discriminating votes, unity/maverick full tables, hierarchical shrinkage, clustering loyalty, network centrality, synthesis scorecard.
 
-- **Plotly Interactive Scatters (R9)** — IRT ideal point scatter, IRT vs PCA comparison, unity vs IRT cross-reference. Hover shows legislator name, party, district, metric values.
+- **Plotly Interactive Scatters (R9)** — IRT ideal point scatter, IRT vs PCA comparison, unity vs IRT cross-reference. 2D IRT scatter (Dim 1 vs Dim 2), Dim 1 vs PC1, Dim 2 vs PC2 with hover showing name, party, coordinates, and HDIs — also serve as horseshoe diagnostics (`docs/horseshoe-effect-and-solutions.md`). Hover shows legislator name, party, district, metric values.
 
 - **PyVis Network Graphs (R10)** — Phase 06 Network: interactive force-directed graph with party-colored nodes, drag/zoom/hover.
 

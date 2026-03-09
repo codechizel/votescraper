@@ -633,6 +633,184 @@ def plot_dim2_vs_pc2(
     save_fig(fig, output_dir / f"dim2_vs_pc2_{chamber.lower()}.png")
 
 
+# ── Interactive Plotly Plots ─────────────────────────────────────────────────
+
+
+def plot_2d_scatter_interactive(ideal_2d: pl.DataFrame, chamber: str, output_dir: Path) -> None:
+    """Plotly interactive 2D scatter: Dim 1 vs Dim 2 with hover details."""
+    import plotly.graph_objects as go
+
+    fig = go.Figure()
+    for party, color in PARTY_COLORS.items():
+        subset = ideal_2d.filter(pl.col("party") == party)
+        if subset.is_empty():
+            continue
+
+        hover_text = [
+            f"<b>{row['full_name']}</b><br>"
+            f"Party: {row['party']}<br>"
+            f"Dim 1: {row['xi_dim1_mean']:+.3f} "
+            f"[{row['xi_dim1_hdi_3%']:+.3f}, {row['xi_dim1_hdi_97%']:+.3f}]<br>"
+            f"Dim 2: {row['xi_dim2_mean']:+.3f} "
+            f"[{row['xi_dim2_hdi_3%']:+.3f}, {row['xi_dim2_hdi_97%']:+.3f}]"
+            for row in subset.iter_rows(named=True)
+        ]
+
+        fig.add_trace(
+            go.Scatter(
+                x=subset["xi_dim1_mean"].to_list(),
+                y=subset["xi_dim2_mean"].to_list(),
+                mode="markers",
+                name=party,
+                marker={
+                    "color": color,
+                    "size": 9,
+                    "opacity": 0.7,
+                    "line": {"width": 0.5, "color": "white"},
+                },
+                text=hover_text,
+                hoverinfo="text",
+            )
+        )
+
+    fig.update_layout(
+        title=f"2D Bayesian IRT Ideal Points — Kansas {chamber} (EXPERIMENTAL)",
+        xaxis_title="Dimension 1 (Ideology: Liberal ← → Conservative)",
+        yaxis_title="Dimension 2 (Contrarianism)",
+        hovermode="closest",
+        template="plotly_white",
+        width=800,
+        height=640,
+        shapes=[
+            {
+                "type": "line",
+                "x0": 0,
+                "x1": 0,
+                "y0": 0,
+                "y1": 1,
+                "yref": "paper",
+                "line": {"color": "gray", "width": 0.5, "dash": "dash"},
+            },
+            {
+                "type": "line",
+                "y0": 0,
+                "y1": 0,
+                "x0": 0,
+                "x1": 1,
+                "xref": "paper",
+                "line": {"color": "gray", "width": 0.5, "dash": "dash"},
+            },
+        ],
+    )
+    html = fig.to_html(full_html=False, include_plotlyjs="cdn")
+    (output_dir / f"2d_scatter_interactive_{chamber.lower()}.html").write_text(html)
+    print(f"  Saved: 2d_scatter_interactive_{chamber.lower()}.html")
+
+
+def plot_dim1_vs_pc1_interactive(
+    ideal_2d: pl.DataFrame, pca_scores: pl.DataFrame, chamber: str, output_dir: Path
+) -> None:
+    """Plotly interactive Dim 1 vs PCA PC1 with hover details."""
+    import plotly.graph_objects as go
+
+    pca_map = {row["legislator_slug"]: row["PC1"] for row in pca_scores.iter_rows(named=True)}
+    shared = ideal_2d.filter(pl.col("legislator_slug").is_in(list(pca_map.keys())))
+
+    dim1 = shared["xi_dim1_mean"].to_list()
+    pc1 = [pca_map[s] for s in shared["legislator_slug"].to_list()]
+    r = float(np.corrcoef(dim1, pc1)[0, 1])
+
+    fig = go.Figure()
+    for party, color in PARTY_COLORS.items():
+        subset = shared.filter(pl.col("party") == party)
+        if subset.is_empty():
+            continue
+        s_pc1 = [pca_map[s] for s in subset["legislator_slug"].to_list()]
+        hover_text = [
+            f"<b>{row['full_name']}</b><br>"
+            f"Party: {row['party']}<br>"
+            f"Dim 1: {row['xi_dim1_mean']:+.3f}<br>"
+            f"PCA PC1: {pca_map[row['legislator_slug']]:.3f}"
+            for row in subset.iter_rows(named=True)
+        ]
+        fig.add_trace(
+            go.Scatter(
+                x=s_pc1,
+                y=subset["xi_dim1_mean"].to_list(),
+                mode="markers",
+                name=party,
+                marker={"color": color, "size": 8, "opacity": 0.7},
+                text=hover_text,
+                hoverinfo="text",
+            )
+        )
+
+    fig.update_layout(
+        title=f"2D IRT Dim 1 vs PCA PC1 — {chamber} (r = {r:.4f})",
+        xaxis_title="PCA PC1",
+        yaxis_title="2D IRT Dimension 1",
+        hovermode="closest",
+        template="plotly_white",
+        width=640,
+        height=640,
+    )
+    html = fig.to_html(full_html=False, include_plotlyjs="cdn")
+    (output_dir / f"dim1_vs_pc1_interactive_{chamber.lower()}.html").write_text(html)
+    print(f"  Saved: dim1_vs_pc1_interactive_{chamber.lower()}.html")
+
+
+def plot_dim2_vs_pc2_interactive(
+    ideal_2d: pl.DataFrame, pca_scores: pl.DataFrame, chamber: str, output_dir: Path
+) -> None:
+    """Plotly interactive Dim 2 vs PCA PC2 with hover details."""
+    import plotly.graph_objects as go
+
+    pca_map = {row["legislator_slug"]: row["PC2"] for row in pca_scores.iter_rows(named=True)}
+    shared = ideal_2d.filter(pl.col("legislator_slug").is_in(list(pca_map.keys())))
+
+    dim2 = shared["xi_dim2_mean"].to_list()
+    pc2 = [pca_map[s] for s in shared["legislator_slug"].to_list()]
+    r = float(np.corrcoef(dim2, pc2)[0, 1])
+
+    fig = go.Figure()
+    for party, color in PARTY_COLORS.items():
+        subset = shared.filter(pl.col("party") == party)
+        if subset.is_empty():
+            continue
+        s_pc2 = [pca_map[s] for s in subset["legislator_slug"].to_list()]
+        hover_text = [
+            f"<b>{row['full_name']}</b><br>"
+            f"Party: {row['party']}<br>"
+            f"Dim 2: {row['xi_dim2_mean']:+.3f}<br>"
+            f"PCA PC2: {pca_map[row['legislator_slug']]:.3f}"
+            for row in subset.iter_rows(named=True)
+        ]
+        fig.add_trace(
+            go.Scatter(
+                x=s_pc2,
+                y=subset["xi_dim2_mean"].to_list(),
+                mode="markers",
+                name=party,
+                marker={"color": color, "size": 8, "opacity": 0.7},
+                text=hover_text,
+                hoverinfo="text",
+            )
+        )
+
+    fig.update_layout(
+        title=f"2D IRT Dim 2 vs PCA PC2 — {chamber} (r = {r:.4f})",
+        xaxis_title="PCA PC2",
+        yaxis_title="2D IRT Dimension 2",
+        hovermode="closest",
+        template="plotly_white",
+        width=640,
+        height=640,
+    )
+    html = fig.to_html(full_html=False, include_plotlyjs="cdn")
+    (output_dir / f"dim2_vs_pc2_interactive_{chamber.lower()}.html").write_text(html)
+    print(f"  Saved: dim2_vs_pc2_interactive_{chamber.lower()}.html")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
@@ -783,6 +961,11 @@ def main() -> None:
             plot_2d_scatter(ideal_2d, chamber, ctx.plots_dir)
             plot_dim1_vs_pc1(ideal_2d, pca_scores, chamber, ctx.plots_dir)
             plot_dim2_vs_pc2(ideal_2d, pca_scores, chamber, ctx.plots_dir)
+
+            # ── Generate interactive plots ──
+            plot_2d_scatter_interactive(ideal_2d, chamber, ctx.plots_dir)
+            plot_dim1_vs_pc1_interactive(ideal_2d, pca_scores, chamber, ctx.plots_dir)
+            plot_dim2_vs_pc2_interactive(ideal_2d, pca_scores, chamber, ctx.plots_dir)
 
             # ── Print full ideal points table ──
             print_header(f"2D IDEAL POINTS — {chamber}")

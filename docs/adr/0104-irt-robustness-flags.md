@@ -73,8 +73,8 @@ just irt --promote-2d --irt-2d-dir /path/to/2d     # explicit 2D results path
 - 2D cross-reference requires Phase 04b to have been run previously
 
 **Not addressed:**
-- Automatic horseshoe correction (e.g., auto-switching to 2D when horseshoe is detected) — intentionally left manual. The user should review diagnostics and decide whether to re-run with different settings.
-- Multi-dimensional IRT as a production replacement for 1D — remains experimental (Phase 04b)
+- Automatic horseshoe correction (e.g., auto-switching to 2D when horseshoe is detected) — intentionally left manual. The user should review diagnostics and decide whether to re-run with different settings. A supermajority audit (78th–91st) found only 3/28 chambers trigger horseshoe detection, but 5 sessions show problematic 1D-2D disagreement.
+- Multi-dimensional IRT as a production replacement for 1D — remains experimental (Phase 04b). Interactive Plotly plots in Phase 04b now serve as visual horseshoe diagnostics (hover over Dim 1 vs PC1 to identify misplaced legislators).
 
 **Related documentation:**
 - `docs/horseshoe-effect-and-solutions.md` — General-audience explanation of the horseshoe effect and six approaches to addressing it

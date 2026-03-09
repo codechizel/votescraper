@@ -46,6 +46,56 @@ We built three diagnostic tests that together confirm the distortion:
    2D models don't just disagree about magnitudes — they disagree about which
    direction is "conservative."
 
+### Seeing the Horseshoe: What the 2D Axes Mean
+
+The 2D IRT model produces interactive scatter plots where you can hover over any
+dot to identify the legislator. These plots make the horseshoe directly visible —
+but only if you understand what each axis is actually measuring.
+
+**PCA PC1 (x-axis on the Dim 1 vs PC1 plot)** is supposed to represent ideology,
+but in supermajority chambers it is ideology *confounded with contrarianism*. PCA
+is a linear method — it projects onto the direction of maximum variance. When a
+legislator like Huelskamp votes Nay on bills that nearly all Republicans support,
+PCA cannot distinguish "Nay because liberal" from "Nay because contrarian." The
+Nay votes look identical in the binary matrix. So PCA folds the horseshoe flat
+and puts far-right contrarians next to far-left Democrats. In the 79th Senate,
+Huelskamp lands at PC1 = −31 — past every Democrat.
+
+**IRT Dim 1 (y-axis on the Dim 1 vs PC1 plot)** is closer to pure ideology. The
+2D model has a second dimension to absorb the contrarianism variance, so Dim 1
+does not have to carry that burden. Huelskamp goes from PC1 = −31 (most liberal!)
+to Dim 1 = +1.4 (most conservative). The model correctly infers that his Nay
+votes are not coming from the same place as Democrat Nay votes — they are on
+different bills, with different discrimination parameters.
+
+**PCA PC2 (x-axis on the Dim 2 vs PC2 plot)** captures the horseshoe arch
+itself. It is the residual pattern after PC1 extracts its confounded signal.
+Huelskamp at PC2 = +10 is an extreme outlier because the arch is most
+pronounced at the endpoints. In the Dim 2 vs PC2 scatter, you can literally see
+the horseshoe curve — the Democrat cluster in the bottom-left sweeps up through
+moderate Republicans and curves back down to Huelskamp in the bottom-right.
+
+**IRT Dim 2 (y-axis on the Dim 2 vs PC2 plot)** measures orthogonal
+contrarianism: how much a legislator deviates from the expected voting pattern
+given their ideological position. Huelskamp is extreme on Dim 2 (−2.8) because
+he genuinely is a contrarian — but now that is measured on a separate axis from
+his ideology, not confounded with it.
+
+The key diagnostic insight: **when Dim 1 and PC1 disagree about a legislator,
+that is the horseshoe at work.** The comparison plots are horseshoe detectors.
+In the 91st Senate (2025–2026), Caryn Tyson shows a milder version of the same
+pattern. In the 79th Senate (2001–2002), Huelskamp is the extreme case where
+the horseshoe completely dominates PC1, driving the Dim 1 vs PC1 correlation to
+r = −0.19. The two methods do not just disagree about magnitudes — they disagree
+about which direction is "conservative."
+
+Even though the 2D model's convergence is poor for the 79th (R-hat up to 1.96,
+ESS as low as 5), it is directionally correct as a diagnostic tool. The poor
+convergence actually makes sense: the model is trying to separate two dimensions
+from data where PCA conflates them, and with only 40 senators that is a hard
+estimation problem. The interactive plots let you verify the correction
+legislator by legislator.
+
 ## Why This Matters
 
 If you're a researcher, journalist, or citizen using ideal-point scores to
@@ -248,23 +298,73 @@ across sessions, which may not hold during realignment periods.
 
 **Effort:** High. New model architecture.
 
+## Experimental Results (2026-03-08)
+
+We tested three of the six approaches. Results changed our understanding of
+which paths are viable.
+
+### Supermajority Audit
+
+We ran horseshoe diagnostics across all 28 chamber-sessions (78th–91st):
+
+- **3 horseshoe detections:** 79th Senate (severe), 80th Senate (moderate),
+  82nd Senate (mild). All in the Kansas Senate, all in the early 2000s.
+- **14 borderline cases:** Every Senate from 81st–91st has a supermajority
+  but passes horseshoe detection. The identification strategy system
+  (anchor-agreement) appears effective for these sessions.
+- **5 sessions with 1D-2D disagreement:** The 79th, 80th, 81st, 83rd, and
+  88th Senates show concerning discrepancies between 1D rankings and 2D
+  Dimension 1 (|r| < 0.70 or negative). This is broader than horseshoe
+  detection alone suggests.
+
+### Regularized Horseshoe Prior: RULED OUT
+
+The regularized horseshoe (Piironen & Vehtari 2017) on discrimination
+parameters made things **dramatically worse**:
+
+- **House:** Perfectly inverted all ideal points (r = -0.9999 vs baseline).
+  97.9% of Democrats on the wrong side. The over-shrinkage of discrimination
+  collapsed the ideological signal entirely.
+- **Senate:** Failed to converge (R-hat 1.83, ESS 3). The auxiliary variable
+  structure created funnel geometry the sampler could not navigate.
+- **9x slower** in the House due to ~1,870 additional parameters.
+
+This confirms that the horseshoe effect is a geometric problem, not a
+vote-weighting problem. Shrinkage priors on discrimination do not help.
+
+### L1-Based Model (Smooth Approximation): PROMISING BUT IMPRACTICAL
+
+The smooth L1 approximation (√(x² + ε)) with nutpie NUTS sampling showed
+directional promise but is not viable in its current form:
+
+- **House:** Perfect party separation (0% Democrats on wrong side) and good
+  correlation with standard IRT (r = 0.812). But catastrophic convergence
+  failure (2,000 divergences, R-hat 2.26, ESS 3).
+- **Senate:** Inverted relative to 1D IRT (r = -0.954), 20% wrong side,
+  convergence failure (80 divergences, R-hat 1.87).
+- **3.3 hours** for the House alone (vs ~2.5 minutes for standard IRT).
+
+The smooth approximation creates difficult curvature near zero that NUTS
+cannot navigate. The original paper uses gradient-free slice sampling for
+good reason. **Next step: call the authors' R package via subprocess**
+(following the W-NOMINATE pattern), which uses the correct sampler.
+
 ## Summary
 
-| Approach | Effort | Fixes Horseshoe? | Generalizes? |
-|----------|--------|-------------------|-------------|
-| Auto-promote 2D | Low | Yes (sidesteps it) | Yes |
-| Contested-only default | Low | Partially | Yes |
-| L1-based model (Shin 2025) | High | Yes (fundamentally) | Yes |
-| External anchoring | Medium | Yes (when data exist) | Partially |
-| Regularized horseshoe prior | Medium | No (addresses symptoms) | Yes |
-| Cross-session borrowing | High | Yes | Yes |
+| Approach | Effort | Fixes Horseshoe? | Status |
+|----------|--------|-------------------|--------|
+| Auto-promote 2D | Low | Yes (sidesteps it) | **Recommended** |
+| Contested-only default | Low | Partially | Viable |
+| L1-based model (Shin 2025) | High | Yes (fundamentally) | R package path viable |
+| External anchoring | Medium | Yes (when data exist) | Untested |
+| Regularized horseshoe prior | Medium | No | **Ruled out** |
+| Cross-session borrowing | High | Yes | Untested |
 
 The horseshoe effect is not a bug in our code. It is a fundamental limitation
 of compressing a multidimensional political reality onto a single number line.
-The solutions range from accepting that limitation gracefully (promote 2D) to
-replacing the mathematical foundations of the model (L1 distance). The
-experiments described below will help us determine which approaches deliver
-the best results for the Kansas Legislature data.
+The most practical near-term solution is auto-promoting 2D results when
+horseshoe diagnostics trigger. The L1 model remains theoretically attractive
+but requires the authors' R implementation rather than a PyMC approximation.
 
 ## Experiments
 
@@ -302,3 +402,4 @@ Three experiments are planned to evaluate the most promising approaches:
 - `docs/how-irt-works.md` — IRT methodology overview
 - `docs/irt-identification-strategies.md` — Detailed strategy documentation
 - `analysis/design/irt.md` — IRT design document
+- `analysis/design/irt_2d.md` — 2D IRT design document (PLT identification, experimental status)

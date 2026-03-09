@@ -47,3 +47,4 @@ Six research agents investigated the Python ecosystem, identification strategies
 - Most legislators (95%+) will have Dim 2 near zero with wide HDIs — the dimension is only informative for ~3-5 extreme legislators
 - ~~Not a pipeline phase: no HTML report, no RunContext integration, no automatic downstream consumption~~ **Superseded by ADR-0054:** now integrated as pipeline phase 04b with RunContext, HTML report, both chambers, and nutpie sampling
 - Convergence thresholds are relaxed; results should be treated as exploratory, not definitive
+- Interactive Plotly plots (hover-to-identify) added for all three scatter plots. These serve as horseshoe diagnostics — the Dim 1 vs PC1 plot reveals PCA dimension confounding in supermajority chambers. See `docs/horseshoe-effect-and-solutions.md` for the full horseshoe effect analysis and experimental results.

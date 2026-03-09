@@ -135,6 +135,11 @@ The 1D IRT mode-splitting investigation (ADR-0023) showed that random initializa
 | `2d_scatter_{chamber}.png` | Dim 1 vs Dim 2, party-colored, Tyson/Thompson annotated |
 | `dim1_vs_pc1_{chamber}.png` | 2D Dim 1 vs PCA PC1, with Pearson r |
 | `dim2_vs_pc2_{chamber}.png` | 2D Dim 2 vs PCA PC2, with Pearson r |
+| `2d_scatter_interactive_{chamber}.html` | Plotly interactive Dim 1 vs Dim 2 with hover details |
+| `dim1_vs_pc1_interactive_{chamber}.html` | Plotly interactive Dim 1 vs PC1 with hover details |
+| `dim2_vs_pc2_interactive_{chamber}.html` | Plotly interactive Dim 2 vs PC2 with hover details |
+
+Interactive plots use Plotly (`fig.to_html(full_html=False, include_plotlyjs="cdn")`) and are embedded in the HTML report via `InteractiveSection`. Hover shows legislator name, party, coordinates, and HDIs. These are particularly useful for horseshoe diagnostics — hovering over the Dim 1 vs PC1 plot reveals which legislators are misplaced by PCA's dimension confounding (see `docs/horseshoe-effect-and-solutions.md`).
 
 ### Success Criteria
 
@@ -157,3 +162,9 @@ The 2D model does NOT replace the 1D model because:
 5. **Identification is fragile.** PLT constraints work but add complexity. The 1D model's anchor identification is simpler and better-validated.
 
 The 2D model is valuable as a **diagnostic tool**: it confirms that the Tyson paradox is a real multidimensional pattern (not a model artifact), estimates uncertainty on the second dimension, and identifies which bills drive the contrarianism pattern.
+
+## Horseshoe Diagnostic Value
+
+The 2D model also serves as the primary diagnostic for the horseshoe effect in supermajority chambers. When the 1D model conflates establishment-loyalty with ideology, the 2D Dim 1 vs PCA PC1 interactive plot makes the distortion directly visible — legislators whose PCA placement disagrees with their IRT placement are horseshoe victims. See `docs/horseshoe-effect-and-solutions.md` for the full explanation and experimental results.
+
+The `--promote-2d` robustness flag (ADR-0104) cross-references 1D rankings with 2D Dim 1 rankings. A supermajority audit across 28 chamber-sessions (78th–91st) found 5 sessions with problematic 1D-2D disagreement, all in the Kansas Senate (79th, 80th, 81st, 83rd, 88th).

@@ -16,6 +16,7 @@ import polars as pl
 try:
     from analysis.report import (
         FigureSection,
+        InteractiveSection,
         InteractiveTableSection,
         KeyFindingsSection,
         ReportBuilder,
@@ -27,6 +28,7 @@ try:
 except ModuleNotFoundError:
     from report import (  # type: ignore[no-redef]
         FigureSection,
+        InteractiveSection,
         InteractiveTableSection,
         KeyFindingsSection,
         ReportBuilder,
@@ -58,8 +60,11 @@ def build_irt_2d_report(
         _add_convergence_table(report, result, chamber)
         _add_ideal_point_table(report, result, chamber)
         _add_scatter_figure(report, plots_dir, chamber)
+        _add_scatter_interactive(report, plots_dir, chamber)
         _add_dim1_vs_pc1_figure(report, plots_dir, chamber)
+        _add_dim1_vs_pc1_interactive(report, plots_dir, chamber)
         _add_dim2_vs_pc2_figure(report, plots_dir, chamber)
+        _add_dim2_vs_pc2_interactive(report, plots_dir, chamber)
         _add_correlation_table(report, result, chamber)
 
     _add_interpretation_guide(report)
@@ -327,6 +332,63 @@ def _add_dim2_vs_pc2_figure(report: ReportBuilder, plots_dir: Path, chamber: str
                 ),
             )
         )
+
+
+def _add_scatter_interactive(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:
+    """Embed Plotly interactive 2D scatter with hover tooltips."""
+    path = plots_dir / f"2d_scatter_interactive_{chamber.lower()}.html"
+    if not path.exists():
+        return
+    report.add(
+        InteractiveSection(
+            id=f"interactive-2d-scatter-{chamber.lower()}",
+            title=f"{chamber} 2D Ideal Points (Interactive)",
+            html=path.read_text(),
+            caption=(
+                f"Interactive version of the 2D scatter ({chamber}). "
+                "Hover over any dot to see legislator name, party, and coordinates."
+            ),
+            aria_label=f"Interactive 2D ideal point scatter plot for {chamber}",
+        )
+    )
+
+
+def _add_dim1_vs_pc1_interactive(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:
+    """Embed Plotly interactive Dim 1 vs PCA PC1 with hover tooltips."""
+    path = plots_dir / f"dim1_vs_pc1_interactive_{chamber.lower()}.html"
+    if not path.exists():
+        return
+    report.add(
+        InteractiveSection(
+            id=f"interactive-dim1-pc1-{chamber.lower()}",
+            title=f"{chamber} Dim 1 vs PCA PC1 (Interactive)",
+            html=path.read_text(),
+            caption=(
+                f"Interactive Dim 1 vs PCA PC1 ({chamber}). "
+                "Hover to see legislator name, Dim 1 value, and PCA PC1 score."
+            ),
+            aria_label=f"Interactive Dim 1 vs PCA PC1 scatter plot for {chamber}",
+        )
+    )
+
+
+def _add_dim2_vs_pc2_interactive(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:
+    """Embed Plotly interactive Dim 2 vs PCA PC2 with hover tooltips."""
+    path = plots_dir / f"dim2_vs_pc2_interactive_{chamber.lower()}.html"
+    if not path.exists():
+        return
+    report.add(
+        InteractiveSection(
+            id=f"interactive-dim2-pc2-{chamber.lower()}",
+            title=f"{chamber} Dim 2 vs PCA PC2 (Interactive)",
+            html=path.read_text(),
+            caption=(
+                f"Interactive Dim 2 vs PCA PC2 ({chamber}). "
+                "Hover to see legislator name, Dim 2 value, and PCA PC2 score."
+            ),
+            aria_label=f"Interactive Dim 2 vs PCA PC2 scatter plot for {chamber}",
+        )
+    )
 
 
 def _add_correlation_table(
