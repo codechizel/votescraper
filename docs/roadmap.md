@@ -688,6 +688,24 @@ Three experiments (2026-03-08) established what works and what doesn't:
 
 Full analysis: `docs/horseshoe-effect-and-solutions.md`. Experiment logs: `results/experimental_lab/2026-03-08_*/experiment.md`.
 
+### H0. PC2-Targeted 1D IRT (Dimension Nudging)
+
+**Effort:** Low. **Impact:** High — recovers the correct ideology dimension while staying in the 1D framework.
+
+The 79th Senate's PCA reveals the dimensions are in the wrong order: PC1 (19.6% variance) is establishment-loyalty, PC2 (13.6%) is true left-right ideology. PC2 has perfect party separation (gap = 16.7 units) while PC1 has 9 Republicans on the Democrat side. The 1D IRT model initializes from PC1 and locks onto the wrong axis — its correlation with PC2 (ideology) is r = -0.068.
+
+**What to build:** Three complementary mechanisms to point the 1D model at PC2:
+
+1. **Informative prior from PC2:** Use the `external-prior` strategy (already exists in ADR-0103) with standardized PC2 scores as `mu`. `xi ~ Normal(pc2_score, sigma)` where sigma ∈ {0.5, 1.0, 2.0} tested empirically. No new model code — just a new data path to the existing strategy.
+2. **PC2 initialization:** Change the PCA init line from `["PC1"]` to `["PC2"]` in the main loop. One-line edit.
+3. **PC2-filtered votes:** Keep only bills where `|PC2 loading| > |PC1 loading|` — votes that discriminate on ideology rather than establishment-loyalty. New filter function following `filter_contested_votes()` pattern.
+
+**Experiment plan:** 7-variant comparison (baseline, PC2 init only, PC2 prior at sigma=0.5/1.0, PC2-filtered, combined, 2D Dim 1 ground truth). Success: high correlation with PC2, 0% Democrat wrong-side, agreement with 2D Dim 1.
+
+**Open question:** Does the informative prior from PC2 dominate the data in small chambers (N=40)? Diagnostic: if posterior correlates >0.99 with the prior input, the data isn't adding anything. Also: does this approach generalize to the other 4 problematic sessions (80th, 81st, 83rd, 88th)?
+
+**Documentation:** `docs/horseshoe-effect-and-solutions.md` ("The Swapped Dimensions" section), experiment: `results/experimental_lab/2026-03-09_pc2-targeted-irt/`.
+
 ### H1. Auto-Promote 2D When Horseshoe Detected
 
 **Effort:** Low. **Impact:** High — the single most practical improvement for affected sessions.
@@ -761,16 +779,16 @@ Legislators who serve across multiple bienniums provide natural bridges between 
 ### Implementation Order
 
 ```
-H1 (auto-promote 2D) ──→ H2 (contested-only default)
-                                    │
-H3 (L1 via R package) ─────────────┤
-                                    │
-H4 (DIME anchoring) ───────────────┤
-                                    │
-H5 (cross-session) ────────────────┘
+H0 (PC2-targeted 1D) ──→ H1 (auto-promote 2D) ──→ H2 (contested-only default)
+                                                              │
+                          H3 (L1 via R package) ──────────────┤
+                                                              │
+                          H4 (DIME anchoring) ────────────────┤
+                                                              │
+                          H5 (cross-session) ─────────────────┘
 ```
 
-H1 and H2 are independent, low-effort, and address the immediate user experience. H3 provides the theoretically cleanest fix for sessions where even 2D convergence is poor. H4 and H5 are independent paths that can be pursued as needed. All five items inform each other — results from H1/H2 will clarify whether H3-H5 are necessary.
+H0 is the first experiment — if PC2-targeted 1D IRT recovers the correct dimension with clean convergence, it may be the simplest production fix (no 2D model needed). H1 and H2 are the fallback if H0 doesn't generalize. H3-H5 are independent paths for sessions where even the targeted 1D model struggles.
 
 ---
 

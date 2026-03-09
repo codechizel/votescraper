@@ -349,12 +349,152 @@ cannot navigate. The original paper uses gradient-free slice sampling for
 good reason. **Next step: call the authors' R package via subprocess**
 (following the W-NOMINATE pattern), which uses the correct sampler.
 
+## The Swapped Dimensions: PCA Gets It Backward
+
+A closer look at the 79th Senate PCA reveals something striking: **the dimensions
+are in the wrong order.** PCA extracts components by explained variance, largest
+first. But in the 79th Senate, the largest source of variance is not ideology —
+it's establishment loyalty.
+
+| Dimension | Variance | Party Separation (R mean vs D mean) | What It Measures |
+|-----------|----------|--------------------------------------|------------------|
+| PC1 | 19.6% | R = +0.6, D = −1.7 (gap: 2.3) | Establishment vs. rebel |
+| PC2 | 13.6% | R = +4.2, D = −12.5 (gap: 16.7) | **Left–right ideology** |
+
+PC2 has **perfect party separation**: zero Democrats on the Republican side, zero
+Republicans on the Democrat side. PC1 has 9 Republicans on the Democrat side and
+2 Democrats on the Republican side. PC2 is the clean ideology axis. But because
+PC1 explains slightly more variance (ratio 1.45:1), PCA puts it first.
+
+The 1D IRT model follows PCA's lead. It initializes from PC1 scores, which point
+it toward the establishment-loyalty axis. It then locks in: the correlation
+between 1D IRT and PC1 is r = −0.964, while 1D IRT vs PC2 is r = −0.068 — the
+model has **zero correlation** with the actual ideology dimension.
+
+Meanwhile, the 2D IRT model correctly untangles the two. Its correlations with
+PCA confirm the swap:
+
+| | PC1 (establishment) | PC2 (ideology) |
+|---|---|---|
+| **IRT Dim 1** (ideology) | r = −0.27 | **r = 0.95** |
+| **IRT Dim 2** (contrarianism) | **r = 0.99** | r = −0.10 |
+
+IRT Dim 1 aligns with PC2 (ideology). IRT Dim 2 aligns with PC1
+(establishment). The 2D model figured out which dimension is which — PCA couldn't.
+
+### Can We Nudge the 1D Model to the Right Dimension?
+
+Since the 1D model locks onto PC1 (the wrong dimension), a natural question: can
+we point it at PC2 instead? There are four viable mechanisms, and they can be
+combined.
+
+#### Approach A: Informative Prior from PC2 Scores
+
+The most principled approach. Instead of the default `xi ~ Normal(0, 1)` prior on
+ideal points, use PC2 scores as the prior mean: `xi ~ Normal(PC2_score, sigma)`.
+This creates genuine posterior mass favoring the ideology direction. The model
+starts believing the PC2 ordering is correct, and the data has to actively
+contradict that belief to move a legislator.
+
+The key design parameter is **sigma** (the prior width):
+- **sigma = 0.5**: Strong pull. Risk: prior dominates the data in a chamber with
+  only 40 senators. Diagnostic: if posterior xi correlates >0.99 with the PC2
+  input, the data isn't adding anything and the prior is too tight.
+- **sigma = 1.0**: Moderate pull. The data can move legislators away from PC2
+  positions, but the PC2 direction is favored over PC1.
+- **sigma = 2.0**: Weak pull. May not be enough to prevent drift back to PC1
+  during MCMC tuning.
+
+This approach has precedent: Clinton, Jackman & Rivers (2004) use informative
+"spike" priors on anchor legislators to fix the dimension. Our
+`external-prior` identification strategy (ADR-0103) already implements the
+infrastructure — it accepts an array of prior means and sets
+`xi ~ Normal(external_priors, 0.5)`. Currently wired for Shor-McCarty scores
+but unused. Passing PC2 scores requires no new model code, just a new data path.
+
+#### Approach B: PC2-Informed Initialization
+
+A lighter touch: start the MCMC chains at PC2 scores instead of PC1 scores.
+Currently, the IRT model initializes `xi_free` from PC1 via `initial_points`:
+
+```python
+pc1_vals = pca_scores["PC1"].to_numpy()
+pc1_std = (pc1_vals - pc1_vals.mean()) / (pc1_vals.std() + 1e-8)
+xi_init = pc1_std[free_pos]
+```
+
+Changing `["PC1"]` to `["PC2"]` is a one-line edit. But initialization alone is a
+weak signal — NUTS explores aggressively during tuning and can drift away from the
+PC2 basin toward the higher-variance PC1 direction. Initialization matters most
+when the posterior is genuinely multimodal (separate basins), not just a ridge.
+
+**Best used in combination with Approach A.** The informative prior holds the model
+on the PC2 axis; the initialization ensures chains start there.
+
+#### Approach C: PC2-Filtered Vote Selection
+
+Instead of modifying the model, pre-filter the vote matrix. PCA produces per-bill
+loadings on each component. Keep only bills where `|PC2 loading| > |PC1 loading|`
+— votes that discriminate more on ideology than on establishment-loyalty.
+
+This follows the same pattern as our existing `--contested-only` flag, which
+filters to cross-party contested votes. The difference: contested-only selects
+votes by party-split patterns, while PC2 filtering selects votes by which
+dimension they measure. The two are complementary — a bill can be contested
+(parties split) *and* load primarily on PC1 (establishment-loyalty).
+
+Caughey & Schickler (2016) advocate using specific subsets of votes according to
+historical context. The risk is reduced sample size: if filtering removes too many
+votes, the model loses statistical power. With only ~40 senators, every vote
+matters.
+
+#### Approach D: Projective IRT (2D → 1D)
+
+Already available. Fit the 2D IRT model, then extract Dimension 1 as the
+canonical ideology score. This is what the `--promote-2d` flag does. The 2D model
+correctly identifies which dimension is ideology (Dim 1 correlates at r = 0.95
+with PC2). Extracting Dim 1 gives a 1D score that's grounded in the right axis.
+
+This isn't technically "nudging the 1D model" — it's abandoning the 1D model and
+using a 2D model with a 1D projection. But the result is the same: a single
+ideology score per legislator that correctly separates Democrats from
+conservative rebels.
+
+The drawback: the 2D model has convergence issues for the 79th (R-hat up to 1.96,
+ESS as low as 5). The projected Dim 1 scores are directionally correct but have
+wide uncertainty. Approaches A–C attempt to get the 1D model — which converges
+cleanly — to recover the right dimension directly.
+
+#### Which Combination Works Best?
+
+This is an empirical question. The recommended experiment:
+
+1. **Baseline:** Standard 1D IRT (current production — locks onto PC1)
+2. **PC2 init only:** Change initialization to PC2, keep Normal(0,1) prior
+3. **PC2 prior (sigma=1.0):** Informative prior from PC2, PC2 initialization
+4. **PC2 prior (sigma=0.5):** Tighter informative prior
+5. **PC2-filtered votes:** Keep only PC2-dominant bills, standard prior
+6. **Combined:** PC2 prior + PC2-filtered votes
+7. **Ground truth:** 2D IRT Dim 1 (despite convergence issues, this is the reference)
+
+Success metric: correlation with PC2 (should be high), correlation with PC1
+(should be low), Democrat wrong-side fraction (should be 0%), and correlation
+with the 2D Dim 1 scores. If the prior-nudged 1D model agrees with the 2D
+model's ideology dimension but converges cleanly (R-hat < 1.01, ESS > 400),
+it's the practical winner.
+
+The implementation is low-effort: Approaches A and B require changes to the
+identification strategy selection, not the model itself. Approach C requires a
+new vote filter function following the `filter_contested_votes()` pattern.
+The infrastructure for all three already exists in the codebase.
+
 ## Summary
 
 | Approach | Effort | Fixes Horseshoe? | Status |
 |----------|--------|-------------------|--------|
 | Auto-promote 2D | Low | Yes (sidesteps it) | **Recommended** |
 | Contested-only default | Low | Partially | Viable |
+| **PC2-targeted 1D IRT** | **Low** | **Yes (stays 1D)** | **New — experiment planned** |
 | L1-based model (Shin 2025) | High | Yes (fundamentally) | R package path viable |
 | External anchoring | Medium | Yes (when data exist) | Untested |
 | Regularized horseshoe prior | Medium | No | **Ruled out** |
@@ -373,6 +513,7 @@ Three experiments are planned to evaluate the most promising approaches:
 - `results/experimental_lab/2026-03-08_regularized-horseshoe/` — Approach 5: adaptive shrinkage prior on discrimination parameters
 - `results/experimental_lab/2026-03-08_l1-ideal-point/` — Approach 3: L1-based ideal point model (Shin et al. 2025)
 - `results/experimental_lab/2026-03-08_supermajority-auto-promote/` — Approaches 1 & 2: audit all sessions for horseshoe risk, test 2D promotion and contested-only defaults
+- `results/experimental_lab/2026-03-09_pc2-targeted-irt/` — PC2-targeted 1D IRT: informative prior, initialization, and vote filtering to recover the ideology dimension directly
 
 ## References
 
@@ -393,6 +534,14 @@ Three experiments are planned to evaluate the most promising approaches:
 - Zhang, Y. D., Naughton, B. P., Bondell, H. D., & Reich, B. J. (2022).
   Bayesian regression using a prior on the model fit: The R2-D2 shrinkage
   prior. *Journal of the American Statistical Association*, 117(538), 862–874.
+- Caughey, D. & Schickler, E. (2016). Substance and change in congressional
+  ideology: NOMINATE and its alternatives. *Studies in American Political
+  Development*, 30(2), 128–146.
+- Morucci, M., Foster, M., Webster, S., Lee, D. & Siegel, A. (2024). IRT-M:
+  Inductive discovery of multi-dimensional ideology. *American Political
+  Science Review*. [arxiv:2111.11979](https://arxiv.org/abs/2111.11979)
+- Strachan, D. P., et al. (2024). Projective IRT for multidimensional
+  assessment. *Multivariate Behavioral Research*.
 
 ## Related
 
