@@ -24,7 +24,7 @@ just lint                                    # → ruff check --fix + ruff forma
 just lint-check                              # → ruff check + ruff format --check
 just typecheck                               # → ty check src/ + ty check analysis/
 just check                                   # → lint-check + typecheck + test (quality gate)
-just test                                    # → uv run pytest tests/ -v (~2821 tests)
+just test                                    # → uv run pytest tests/ -v (~2824 tests)
 just test-scraper                            # → pytest -m scraper (~643 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just test-web                                # → Django tests only (-m web, requires PostgreSQL)
@@ -89,7 +89,7 @@ Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `
 ## Key Conventions
 
 - Scraper: concurrent fetch (ThreadPoolExecutor), sequential parse. Never mutate shared state during fetch.
-- MCMC: nutpie Rust NUTS sampler for all models (ADR-0051, ADR-0053). PCA-informed init. IRT identification: `--identification {auto,anchor-pca,anchor-agreement,...}` (ADR-0103). Robustness flags: `--horseshoe-diagnostic`, `--contested-only`, `--promote-2d` (ADR-0104).
+- MCMC: nutpie Rust NUTS sampler for all models (ADR-0051, ADR-0053). PCA-informed init. IRT identification: `--identification {auto,anchor-pca,anchor-agreement,...}` (ADR-0103). Robustness flags: `--horseshoe-diagnostic`, `--horseshoe-remediate`, `--contested-only`, `--promote-2d` (ADR-0104).
 - Apple Silicon (M3 Pro): run bienniums sequentially; cap thread pools (`OMP_NUM_THREADS=6`).
 - PyTensor C compiler: requires `clang++`. Xcode updates can break it silently (~18x slower fallback).
 

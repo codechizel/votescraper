@@ -23,12 +23,13 @@ A `RobustnessFlag` frozen dataclass holds `(name, enabled, label, description)`.
 
 Adding a new flag requires: (1) add name to `ALL_FLAGS`, (2) add label/description, (3) add CLI arg, (4) add logic block in `main()`.
 
-### Four initial flags
+### Five flags
 
 | Flag | CLI arg | Default | What it does |
 |------|---------|---------|--------------|
 | `contested_only` | `--contested-only` | off | Re-fits IRT using only cross-party contested votes (both parties must split ≥10% per side). Strips intra-party rebel dynamics. Requires ≥ `MIN_CONTESTED_FOR_REFIT` (50) contested votes. |
 | `horseshoe_diagnostic` | `--horseshoe-diagnostic` | off | Computes 6 quantitative horseshoe metrics: Democrat wrong-side fraction, party overlap, eigenvalue ratio, R/D ideal point means, and whether any R is more liberal than the D mean. |
+| `horseshoe_remediate` | `--horseshoe-remediate` | off | When horseshoe is detected, auto-refits using PC2-filtered votes (only bills where \|PC2 loading\| > \|PC1 loading\|) with a PC2 informative prior (`xi ~ Normal(PC2, 1.0)`). Implies `--horseshoe-diagnostic`. Requires PCA loadings from Phase 02. |
 | `promote_2d` | `--promote-2d` | off | Cross-references 1D rankings with 2D IRT Dimension 1 rankings (from Phase 04b). Flags legislators whose rank shifts by ≥ `PROMOTE_2D_RANK_SHIFT` (10) positions. |
 | `irt_2d_dir` | `--irt-2d-dir` | auto | Directory containing 2D IRT results. Auto-resolved from `results_dir/../04b_irt_2d` when `--promote-2d` is active. |
 
@@ -39,6 +40,8 @@ Adding a new flag requires: (1) add name to `ALL_FLAGS`, (2) add label/descripti
 | `MIN_CONTESTED_FOR_REFIT` | 50 | Minimum contested votes to attempt contested-only refit |
 | `HORSESHOE_DEM_WRONG_SIDE_FRAC` | 0.20 | Threshold: if >20% of Democrats are on the wrong side, flag horseshoe |
 | `PROMOTE_2D_RANK_SHIFT` | 10 | Minimum rank-position shift between 1D and 2D to flag a legislator |
+| `MIN_PC2_VOTES_FOR_REFIT` | 50 | Minimum PC2-dominant votes to attempt horseshoe remediation |
+| `PC2_PRIOR_SIGMA` | 1.0 | Width of the PC2 informative prior for horseshoe remediation |
 
 ### Always-visible report sections
 
@@ -55,6 +58,7 @@ Adding a new flag requires: (1) add name to `ALL_FLAGS`, (2) add label/descripti
 
 ```bash
 just irt --horseshoe-diagnostic                    # enable horseshoe metrics
+just irt --horseshoe-remediate                     # detect + auto-fix horseshoe
 just irt --contested-only --horseshoe-diagnostic   # both flags
 just irt --promote-2d                              # cross-reference 2D results
 just irt --promote-2d --irt-2d-dir /path/to/2d     # explicit 2D results path
@@ -73,8 +77,10 @@ just irt --promote-2d --irt-2d-dir /path/to/2d     # explicit 2D results path
 - 2D cross-reference requires Phase 04b to have been run previously
 
 **Not addressed:**
-- Automatic horseshoe correction (e.g., auto-switching to 2D when horseshoe is detected) — intentionally left manual. The user should review diagnostics and decide whether to re-run with different settings. A supermajority audit (78th–91st) found only 3/28 chambers trigger horseshoe detection, but 5 sessions show problematic 1D-2D disagreement.
 - Multi-dimensional IRT as a production replacement for 1D — remains experimental (Phase 04b). Interactive Plotly plots in Phase 04b now serve as visual horseshoe diagnostics (hover over Dim 1 vs PC1 to identify misplaced legislators).
+
+**Previously not addressed, now implemented:**
+- Automatic horseshoe correction via `--horseshoe-remediate`. When horseshoe is detected, the flag auto-refits using PC2-filtered votes + PC2 informative prior. Experimentally validated on the 79th biennium: resolves the horseshoe in the Senate (r(PC2) = 0.842, 0% D wrong side, R-hat 1.004, ESS 704) while correctly skipping the House (which has no swapped dimensions). See `results/experimental_lab/2026-03-09_pc2-targeted-irt/`.
 
 **Related documentation:**
 - `docs/horseshoe-effect-and-solutions.md` — General-audience explanation of the horseshoe effect and six approaches to addressing it

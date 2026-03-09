@@ -30,7 +30,9 @@ from analysis.irt import (
     MIN_CONTESTED_FOR_AGREEMENT,
     MIN_CONTESTED_FOR_REFIT,
     MIN_CONTESTED_VOTES_PER_LEG,
+    MIN_PC2_VOTES_FOR_REFIT,
     PARADOX_YEA_GAP,
+    PC2_PRIOR_SIGMA,
     PROMOTE_2D_RANK_SHIFT,
     RHAT_THRESHOLD,
     SUPERMAJORITY_THRESHOLD,
@@ -49,6 +51,7 @@ from analysis.irt import (
     extract_bill_parameters,
     extract_ideal_points,
     filter_contested_votes,
+    filter_pc2_dominant_votes,
     filter_vote_matrix_for_sensitivity,
     find_paradox_legislator,
     prepare_irt_data,
@@ -2547,10 +2550,11 @@ class TestRobustnessFlag:
         args = argparse.Namespace(
             contested_only=False,
             horseshoe_diagnostic=False,
+            horseshoe_remediate=False,
             promote_2d=False,
         )
         flags = RobustnessFlags.build_flags(args)
-        assert len(flags) == 3
+        assert len(flags) == 4
         assert all(not f.enabled for f in flags)
 
     def test_build_flags_selective(self) -> None:
@@ -2560,12 +2564,14 @@ class TestRobustnessFlag:
         args = argparse.Namespace(
             contested_only=True,
             horseshoe_diagnostic=False,
+            horseshoe_remediate=False,
             promote_2d=False,
         )
         flags = RobustnessFlags.build_flags(args)
         by_name = {f.name: f for f in flags}
         assert by_name["contested-only"].enabled is True
         assert by_name["horseshoe-diagnostic"].enabled is False
+        assert by_name["horseshoe-remediate"].enabled is False
         assert by_name["promote-2d"].enabled is False
 
     def test_all_flags_have_labels_and_descriptions(self) -> None:
@@ -2581,6 +2587,8 @@ class TestRobustnessFlag:
         assert MIN_CONTESTED_FOR_REFIT == 50
         assert HORSESHOE_DEM_WRONG_SIDE_FRAC == 0.20
         assert PROMOTE_2D_RANK_SHIFT == 10
+        assert MIN_PC2_VOTES_FOR_REFIT == 50
+        assert PC2_PRIOR_SIGMA == 1.0
 
 
 class TestFilterContestedVotes:
@@ -2663,6 +2671,74 @@ class TestFilterContestedVotes:
         filtered, n_contested, n_total = filter_contested_votes(matrix, legislators)
         assert n_contested == 0
         assert n_total == 1
+
+
+class TestFilterPC2DominantVotes:
+    """Test filter_pc2_dominant_votes() function.
+
+    Run: uv run pytest tests/test_irt.py::TestFilterPC2DominantVotes -v
+    """
+
+    def test_keeps_pc2_dominant_votes(self) -> None:
+        """Should keep votes where |PC2| > |PC1| and drop others."""
+        matrix = pl.DataFrame(
+            {
+                "legislator_slug": ["r1", "r2", "d1"],
+                "v1": [1, 1, 0],
+                "v2": [1, 0, 1],
+                "v3": [0, 1, 0],
+            }
+        )
+        loadings = pl.DataFrame(
+            {
+                "vote_id": ["v1", "v2", "v3"],
+                "PC1": [0.8, 0.2, 0.5],  # v1 PC1-dominant, v2 PC2-dominant, v3 tie
+                "PC2": [0.3, 0.9, 0.5],
+            }
+        )
+        filtered, n_kept, n_total = filter_pc2_dominant_votes(matrix, loadings)
+        assert n_total == 3
+        assert n_kept == 1
+        assert "v2" in filtered.columns
+        assert "v1" not in filtered.columns
+
+    def test_returns_all_when_no_pc2_dominant(self) -> None:
+        """Should return all votes if no votes are PC2-dominant."""
+        matrix = pl.DataFrame(
+            {
+                "legislator_slug": ["r1", "d1"],
+                "v1": [1, 0],
+            }
+        )
+        loadings = pl.DataFrame(
+            {
+                "vote_id": ["v1"],
+                "PC1": [0.9],
+                "PC2": [0.1],
+            }
+        )
+        filtered, n_kept, n_total = filter_pc2_dominant_votes(matrix, loadings)
+        assert n_kept == n_total == 1
+
+    def test_uses_absolute_values(self) -> None:
+        """Negative loadings should be compared by absolute value."""
+        matrix = pl.DataFrame(
+            {
+                "legislator_slug": ["r1"],
+                "v1": [1],
+                "v2": [0],
+            }
+        )
+        loadings = pl.DataFrame(
+            {
+                "vote_id": ["v1", "v2"],
+                "PC1": [0.3, -0.8],
+                "PC2": [-0.7, 0.2],
+            }
+        )
+        filtered, n_kept, n_total = filter_pc2_dominant_votes(matrix, loadings)
+        assert n_kept == 1
+        assert "v1" in filtered.columns  # |PC2|=0.7 > |PC1|=0.3
 
 
 class TestDetectHorseshoe:

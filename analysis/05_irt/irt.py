@@ -214,6 +214,8 @@ SUPERMAJORITY_THRESHOLD = 0.70  # One party holds ≥70% of seats → supermajor
 MIN_CONTESTED_FOR_REFIT = 50  # Need ≥50 contested votes for meaningful contested-only refit
 HORSESHOE_DEM_WRONG_SIDE_FRAC = 0.20  # >20% of Democrats on conservative side → horseshoe
 PROMOTE_2D_RANK_SHIFT = 10  # Flag legislators whose rank shifts >10 between 1D and 2D
+MIN_PC2_VOTES_FOR_REFIT = 50  # Need ≥50 PC2-dominant votes for meaningful remediation
+PC2_PRIOR_SIGMA = 1.0  # Width of the PC2 informative prior (experiment: sigma=1.0 best)
 
 PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 
@@ -238,13 +240,15 @@ class RobustnessFlags:
 
     CONTESTED_ONLY = "contested-only"
     HORSESHOE_DIAGNOSTIC = "horseshoe-diagnostic"
+    HORSESHOE_REMEDIATE = "horseshoe-remediate"
     PROMOTE_2D = "promote-2d"
 
-    ALL_FLAGS = [CONTESTED_ONLY, HORSESHOE_DIAGNOSTIC, PROMOTE_2D]
+    ALL_FLAGS = [CONTESTED_ONLY, HORSESHOE_DIAGNOSTIC, HORSESHOE_REMEDIATE, PROMOTE_2D]
 
     LABELS: dict[str, str] = {
         CONTESTED_ONLY: "Contested Votes Only",
         HORSESHOE_DIAGNOSTIC: "Horseshoe Diagnostic",
+        HORSESHOE_REMEDIATE: "Horseshoe Remediation",
         PROMOTE_2D: "2D Cross-Reference",
     }
 
@@ -256,6 +260,10 @@ class RobustnessFlags:
         HORSESHOE_DIAGNOSTIC: (
             "Run quantitative horseshoe detection (Democrat placement, "
             "party overlap, eigenvalue ratio) and add diagnostic section"
+        ),
+        HORSESHOE_REMEDIATE: (
+            "When horseshoe detected, auto-refit using PC2-filtered votes and "
+            "PC2 informative prior to recover the ideology dimension"
         ),
         PROMOTE_2D: (
             "Cross-reference 2D IRT results (Phase 06) and flag legislators "
@@ -269,6 +277,7 @@ class RobustnessFlags:
         flag_map = {
             cls.CONTESTED_ONLY: getattr(args, "contested_only", False),
             cls.HORSESHOE_DIAGNOSTIC: getattr(args, "horseshoe_diagnostic", False),
+            cls.HORSESHOE_REMEDIATE: getattr(args, "horseshoe_remediate", False),
             cls.PROMOTE_2D: getattr(args, "promote_2d", False),
         }
         return [
@@ -477,6 +486,12 @@ def parse_args() -> argparse.Namespace:
         help="Run quantitative horseshoe detection diagnostics",
     )
     robustness.add_argument(
+        "--horseshoe-remediate",
+        action="store_true",
+        help="Auto-refit with PC2-filtered votes when horseshoe detected "
+        "(implies --horseshoe-diagnostic)",
+    )
+    robustness.add_argument(
         "--promote-2d",
         action="store_true",
         help="Cross-reference 2D IRT (Phase 06) for misplaced legislators",
@@ -487,7 +502,11 @@ def parse_args() -> argparse.Namespace:
         help="Override 2D IRT results directory (for --promote-2d)",
     )
 
-    return parser.parse_args()
+    parsed = parser.parse_args()
+    # --horseshoe-remediate implies --horseshoe-diagnostic
+    if parsed.horseshoe_remediate:
+        parsed.horseshoe_diagnostic = True
+    return parsed
 
 
 # ── Phase 1: Load Data ──────────────────────────────────────────────────────
@@ -507,6 +526,19 @@ def load_pca_scores(pca_dir: Path) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Load PCA scores for anchor selection and comparison."""
     house = pl.read_parquet(pca_dir / "data" / "pc_scores_house.parquet")
     senate = pl.read_parquet(pca_dir / "data" / "pc_scores_senate.parquet")
+    return house, senate
+
+
+def load_pca_loadings(pca_dir: Path) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+    """Load PCA per-bill loadings for PC2-filtered vote selection.
+
+    Returns (house_loadings, senate_loadings). Either may be None if the
+    loadings parquet doesn't exist (older PCA runs).
+    """
+    house_path = pca_dir / "data" / "pc_loadings_house.parquet"
+    senate_path = pca_dir / "data" / "pc_loadings_senate.parquet"
+    house = pl.read_parquet(house_path) if house_path.exists() else None
+    senate = pl.read_parquet(senate_path) if senate_path.exists() else None
     return house, senate
 
 
@@ -1593,6 +1625,35 @@ def filter_contested_votes(
     return filtered, len(contested_cols), n_total
 
 
+def filter_pc2_dominant_votes(
+    matrix: pl.DataFrame,
+    pca_loadings: pl.DataFrame,
+) -> tuple[pl.DataFrame, int, int]:
+    """Filter vote matrix to keep only votes where |PC2 loading| > |PC1 loading|.
+
+    These are votes that discriminate more on ideology than establishment-loyalty.
+    Used for horseshoe remediation: removing establishment-axis votes lets the
+    1D IRT model recover the ideology dimension.
+
+    Returns (filtered_matrix, n_kept, n_total).
+    """
+    slug_col = "legislator_slug"
+    vote_ids = [c for c in matrix.columns if c != slug_col]
+    n_total = len(vote_ids)
+
+    loadings = pca_loadings.filter(pl.col("vote_id").is_in(vote_ids))
+    pc2_dominant = set(
+        loadings.filter(pl.col("PC2").abs() > pl.col("PC1").abs())["vote_id"].to_list()
+    )
+
+    if not pc2_dominant:
+        return matrix, n_total, n_total
+
+    keep_cols = [slug_col] + [v for v in vote_ids if v in pc2_dominant]
+    filtered = matrix.select(keep_cols)
+    return filtered, len(keep_cols) - 1, n_total
+
+
 def detect_horseshoe(
     ideal_points: pl.DataFrame,
     pca_scores: pl.DataFrame,
@@ -1752,6 +1813,7 @@ def build_irt_graph(
     strategy: str = IdentificationStrategy.ANCHOR_PCA,
     party_indices: dict[str, list[int]] | None = None,
     external_priors: np.ndarray | None = None,
+    external_prior_sigma: float = 0.5,
 ) -> pm.Model:
     """Build 2PL IRT model graph with configurable identification strategy.
 
@@ -1772,7 +1834,9 @@ def build_irt_graph(
         party_indices: {"Republican": [idx, ...], "Democrat": [idx, ...]} for
             sort-constraint and hierarchical-prior strategies.
         external_priors: Per-legislator prior means (shape n_leg) for
-            external-prior strategy. Typically from Shor-McCarty scores.
+            external-prior strategy. Typically from Shor-McCarty or PC2 scores.
+        external_prior_sigma: Width of the external prior (default 0.5 for
+            Shor-McCarty; use 1.0 for PC2 horseshoe remediation).
 
     Returns the PyMC model for use with nutpie or pm.sample().
     """
@@ -1818,10 +1882,12 @@ def build_irt_graph(
             xi = pm.Deterministic("xi", xi_free, dims="legislator")
 
         elif strategy == IS.EXTERNAL_PRIOR:
-            # Informative prior from external scores (e.g., Shor-McCarty)
+            # Informative prior from external scores (e.g., Shor-McCarty, PC2)
             if external_priors is None:
                 external_priors = np.zeros(n_leg)
-            xi_free = pm.Normal("xi_free", mu=external_priors, sigma=0.5, shape=n_leg)
+            xi_free = pm.Normal(
+                "xi_free", mu=external_priors, sigma=external_prior_sigma, shape=n_leg
+            )
             xi = pm.Deterministic("xi", xi_free, dims="legislator")
 
         else:
@@ -1873,6 +1939,7 @@ def build_and_sample(
     strategy: str = IdentificationStrategy.ANCHOR_PCA,
     party_indices: dict[str, list[int]] | None = None,
     external_priors: np.ndarray | None = None,
+    external_prior_sigma: float = 0.5,
 ) -> tuple[az.InferenceData, float]:
     """Build 2PL IRT model and sample with nutpie.
 
@@ -1893,6 +1960,8 @@ def build_and_sample(
         strategy: IdentificationStrategy constant.
         party_indices: Party membership indices for constraint strategies.
         external_priors: Per-legislator prior means for external-prior strategy.
+        external_prior_sigma: Width of external prior (0.5 for Shor-McCarty,
+            1.0 for PC2 horseshoe remediation).
 
     Returns (InferenceData, sampling_time_seconds).
     """
@@ -1907,6 +1976,7 @@ def build_and_sample(
         strategy=strategy,
         party_indices=party_indices,
         external_priors=external_priors,
+        external_prior_sigma=external_prior_sigma,
     )
     n_anchors = len(anchors)
 
@@ -3696,6 +3766,13 @@ def main() -> None:
         else:
             print("  PCA scores not available — skipping PCA-informed initialization")
             pca_house, pca_senate = None, None
+
+        # Load PCA loadings for PC2-filtered vote selection (horseshoe remediation)
+        pca_loadings_house, pca_loadings_senate = None, None
+        if args.horseshoe_remediate:
+            pca_loadings_house, pca_loadings_senate = load_pca_loadings(pca_dir)
+            if pca_loadings_house is None and pca_loadings_senate is None:
+                print("  WARNING: PCA loadings not found — horseshoe remediation unavailable")
         rollcalls, legislators = load_metadata(data_dir, use_csv=args.csv)
         from analysis.db import load_votes as db_load_votes
 
@@ -3720,6 +3797,7 @@ def main() -> None:
         ppc_results: dict[str, dict] = {}
         validation_results: dict[str, dict] = {}
         pca_scores_dict = {"House": pca_house, "Senate": pca_senate}
+        pca_loadings_dict = {"House": pca_loadings_house, "Senate": pca_loadings_senate}
         strategy_results: dict[str, dict] = {}
 
         # Build robustness flags (ADR-0104)
@@ -4055,6 +4133,122 @@ def main() -> None:
                         f"(xi={horseshoe['most_neg_r_xi']:+.3f}) < D mean "
                         f"({horseshoe['d_mean']:+.3f})"
                     )
+
+                # ── Horseshoe remediation: PC2-filtered refit ──
+                if args.horseshoe_remediate and horseshoe["detected"]:
+                    pca_loadings = pca_loadings_dict.get(chamber)
+                    if pca_loadings is None:
+                        print("  Remediation skipped: PCA loadings not available")
+                    elif pca_scores is None:
+                        print("  Remediation skipped: PCA scores not available")
+                    else:
+                        print_header(f"HORSESHOE REMEDIATION — {chamber}")
+                        # Step 1: Filter to PC2-dominant votes
+                        rem_matrix, n_kept, n_total_v = filter_pc2_dominant_votes(
+                            matrix,
+                            pca_loadings,
+                        )
+                        print(
+                            f"  PC2-dominant votes: {n_kept} of {n_total_v} "
+                            f"({100 * n_kept / n_total_v:.0f}%)"
+                        )
+
+                        if n_kept < MIN_PC2_VOTES_FOR_REFIT:
+                            print(
+                                f"  Remediation skipped: only {n_kept} PC2-dominant votes "
+                                f"(need {MIN_PC2_VOTES_FOR_REFIT})"
+                            )
+                            chamber_robustness["horseshoe_remediation"] = {
+                                "n_kept": n_kept,
+                                "n_total": n_total_v,
+                                "skipped": True,
+                            }
+                        else:
+                            # Step 2: Prepare data on filtered votes
+                            rem_data = prepare_irt_data(rem_matrix, chamber)
+
+                            # Step 3: Get PC2 scores as informative prior
+                            slug_order = {s: i for i, s in enumerate(rem_data["leg_slugs"])}
+                            pc2_vals = (
+                                pca_scores.filter(
+                                    pl.col("legislator_slug").is_in(rem_data["leg_slugs"])
+                                )
+                                .sort(pl.col("legislator_slug").replace_strict(slug_order))["PC2"]
+                                .to_numpy()
+                            )
+                            pc2_std = (pc2_vals - pc2_vals.mean()) / (pc2_vals.std() + 1e-8)
+
+                            # Step 4: Sample with external-prior strategy (PC2)
+                            print(
+                                f"  Fitting PC2-remediated model: "
+                                f"{rem_data['n_legislators']} legislators x "
+                                f"{rem_data['n_votes']} votes"
+                            )
+                            print(f"  Strategy: external-prior (PC2, sigma={PC2_PRIOR_SIGMA})")
+                            rem_idata, rem_time = build_and_sample(
+                                rem_data,
+                                [],  # no anchors — prior identifies
+                                args.n_samples,
+                                args.n_tune,
+                                args.n_chains,
+                                xi_initvals=pc2_std.astype(np.float64),
+                                strategy=IS.EXTERNAL_PRIOR,
+                                external_priors=pc2_std.astype(np.float64),
+                                external_prior_sigma=PC2_PRIOR_SIGMA,
+                            )
+                            print(f"  PC2-remediated sampling complete in {rem_time:.1f}s")
+
+                            # Step 5: Convergence check
+                            rem_convergence = check_convergence(rem_idata, chamber)
+
+                            # Step 6: Extract and compare
+                            rem_ideal = extract_ideal_points(
+                                rem_idata,
+                                rem_data,
+                                legislators,
+                            )
+                            merged = ideal_points.select(
+                                "legislator_slug",
+                                pl.col("xi_mean").alias("xi_primary"),
+                            ).join(
+                                rem_ideal.select(
+                                    "legislator_slug",
+                                    pl.col("xi_mean").alias("xi_remediated"),
+                                ),
+                                on="legislator_slug",
+                                how="inner",
+                            )
+                            if merged.height >= 3:
+                                pearson_r = float(
+                                    merged.select(pl.corr("xi_primary", "xi_remediated")).item()
+                                )
+                                print(f"  Primary vs remediated: Pearson r = {pearson_r:.4f}")
+                            else:
+                                pearson_r = float("nan")
+
+                            # Step 7: Check remediation quality
+                            rem_horseshoe = detect_horseshoe(
+                                rem_ideal,
+                                pca_scores,
+                                chamber,
+                            )
+                            rem_verdict = (
+                                "RESOLVED" if not rem_horseshoe["detected"] else "PERSISTS"
+                            )
+                            print(f"  Horseshoe after remediation: {rem_verdict}")
+                            print(f"    D wrong side: {rem_horseshoe['dem_wrong_side_frac']:.1%}")
+
+                            chamber_robustness["horseshoe_remediation"] = {
+                                "n_kept": n_kept,
+                                "n_total": n_total_v,
+                                "skipped": False,
+                                "ideal_points": rem_ideal,
+                                "convergence": rem_convergence,
+                                "sampling_time": rem_time,
+                                "correlation_with_primary": pearson_r,
+                                "horseshoe_resolved": not rem_horseshoe["detected"],
+                                "dem_wrong_side_frac": rem_horseshoe["dem_wrong_side_frac"],
+                            }
 
             if args.contested_only:
                 print_header(f"ROBUSTNESS: CONTESTED-ONLY REFIT — {chamber}")
