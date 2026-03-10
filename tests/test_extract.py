@@ -10,6 +10,7 @@ from tallgrass.extract.extractor import (
     generate_slug,
     infer_phase_name,
     list_sections,
+    parse_report_css,
     parse_report_session,
     parse_report_title,
     render_extracted,
@@ -169,6 +170,25 @@ class TestParseReportSession:
         assert parse_report_session("<html></html>") == ""
 
 
+class TestParseReportCSS:
+    def test_extracts_css(self):
+        html = "<html><head><style>body { color: red; }</style></head></html>"
+        assert parse_report_css(html) == "body { color: red; }"
+
+    def test_missing_style(self):
+        assert parse_report_css("<html></html>") == ""
+
+    def test_extracts_from_report(self):
+        css = parse_report_css(MINIMAL_REPORT)
+        # MINIMAL_REPORT has no <style> tag.
+        assert css == ""
+
+    def test_extracts_from_styled_report(self):
+        styled = MINIMAL_REPORT.replace("<head>", "<head><style>.test { margin: 0; }</style>")
+        css = parse_report_css(styled)
+        assert ".test" in css
+
+
 class TestInferPhaseName:
     def test_standard_path(self):
         assert infer_phase_name(Path("results/06_irt_2d/report.html")) == "06_irt_2d"
@@ -326,14 +346,19 @@ class TestRenderExtracted:
         with pytest.raises(ValueError, match="No sections to render"):
             render_extracted([])
 
-    def test_contains_report_css(self):
-
+    def test_contains_fallback_css(self):
         source = Path("results/06_irt_2d/report.html")
         sections = extract_sections(MINIMAL_REPORT, ["1"], source)
         html = render_extracted(sections)
-        # Check a distinctive CSS rule is present.
+        # Fallback CSS includes distinctive rules.
         assert "report-section" in html
         assert "Segoe UI" in html
+
+    def test_source_css_used_when_provided(self):
+        source = Path("results/06_irt_2d/report.html")
+        sections = extract_sections(MINIMAL_REPORT, ["1"], source)
+        html = render_extracted(sections, source_css="body { font-family: CustomFont; }")
+        assert "CustomFont" in html
 
     def test_plotly_deps_in_head(self):
         source = Path("results/06_irt_2d/report.html")
