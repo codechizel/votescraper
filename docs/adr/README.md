@@ -166,6 +166,7 @@ What are the trade-offs?
 | [0099](0099-analysis-pipeline-db-integration.md) | Analysis pipeline database integration (DB5) |
 | [0100](0100-report-symlink-and-pipeline-resilience.md) | Report symlink stability and pipeline resilience (3 fixes) |
 | [0106](0106-bespoke-report-extraction.md) | Bespoke multi-report section extraction (tallgrass-extract) |
+| [0107](0107-shared-init-strategy.md) | Shared MCMC initialization strategy (`--init-strategy`, Django-ready) |
 
 ## Chronological Index
 
@@ -277,6 +278,7 @@ What are the trade-offs?
 | [0104](0104-irt-robustness-flags.md) | IRT robustness flags (horseshoe diagnostic, contested-only refit, 2D cross-reference) | Accepted | 2026-03-08 |
 | [0105](0105-experiment-lab-cleanup.md) | Experiment lab cleanup (dead code, nutpie migration, platform safety) | Accepted | 2026-03-09 |
 | [0106](0106-bespoke-report-extraction.md) | Bespoke multi-report section extraction (tallgrass-extract, multi-report composition, CDN dedup) | Accepted | 2026-03-10 |
+| [0107](0107-shared-init-strategy.md) | Shared MCMC initialization strategy (`--init-strategy`, IRT-informed/PCA-informed/auto, Django-ready) | Accepted | 2026-03-10 |
 
 ## Creating a New ADR
 

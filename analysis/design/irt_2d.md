@@ -70,7 +70,7 @@ Constrain the discrimination matrix to be lower triangular with positive diagona
 
 3. **Dim 1 sign fix:** Post-hoc verification that Republican mean on Dim 1 is positive. Same approach as 1D IRT and hierarchical IRT.
 
-4. **Dim 2 sign is PLT-determined, not post-hoc corrected.** The PLT constraint (`beta[1,1] > 0` via HalfNormal) determines the Dim 2 sign. In practice, positive Dim 2 corresponds to establishment loyalty (legislators who align with party leadership on routine bills), while negative Dim 2 corresponds to insurgent/contrarian behavior. This is the opposite of PCA PC2's convention (where contrarians are positive), but is a natural consequence of the PLT parameterization. No post-hoc flip is applied — the axis is labeled "Establishment" to match the PLT direction.
+4. **Dim 2 sign is PLT-determined, not post-hoc corrected.** The PLT constraint (`beta[1,1] > 0` via HalfNormal) determines the Dim 2 sign. In practice, positive Dim 2 corresponds to establishment alignment (legislators who align with party leadership on routine bills), while negative Dim 2 corresponds to contrarian behavior. This is the opposite of PCA PC2's convention (where contrarians are positive), but is a natural consequence of the PLT parameterization. No post-hoc flip is applied — the axis is labeled "Contrarian ← → Establishment" to match the PLT direction.
 
 ### Anchor Item Selection
 
@@ -99,26 +99,38 @@ beta_col1 = pt.set_subtensor(beta_col1[2:], beta_col1_rest)
 beta = pt.stack([beta_col0, beta_col1], axis=1)
 ```
 
-## Initialization Strategy
+## Initialization Strategy (ADR-0107)
 
-### 2D PCA Initialization
+Uses `analysis/init_strategy.py` — the shared MCMC initialization module.
 
-```python
-# xi[:, 0] initialized from PCA PC1 (standardized)
-# xi[:, 1] initialized from PCA PC2 (standardized)
-xi_init = np.column_stack([
-    (pc1 - pc1.mean()) / pc1.std(),
-    (pc2 - pc2.mean()) / pc2.std(),
-])
+### CLI
+
+```bash
+just irt-2d --init-strategy auto          # default: prefer 1D IRT, fall back to PCA
+just irt-2d --init-strategy irt-informed  # force 1D IRT ideal points for Dim 1
+just irt-2d --init-strategy pca-informed  # force PCA PC1 for Dim 1 (legacy behavior)
 ```
 
-- Passed via nutpie `initial_points={"xi": xi_init}` with `jitter_rvs` excluding xi
-- PCA orientation provides mode identification for Dim 1
-- PC2 orientation provides starting direction for Dim 2
+### Dim 1 (Ideology)
+
+- **`irt-informed` (preferred):** 1D IRT posterior means (xi_mean) from Phase 05. Converged estimates directly measuring ideology — strongest starting point.
+- **`pca-informed` (fallback):** PCA PC1 scores from Phase 02. Less precise but always available.
+- **`auto`:** Prefer IRT, fall back to PCA if Phase 05 hasn't run.
+
+### Dim 2 (Establishment–Contrarian)
+
+Always initialized from PCA PC2 (no 1D equivalent exists). Standardized to unit scale.
+
+### Mechanics
+
+```python
+xi_init = np.column_stack([dim1_std, dim2_std])  # shape: (n_leg, 2)
+# Passed via nutpie initial_points={"xi": xi_init}, jitter_rvs excludes xi
+```
 
 ### Why Not Random Initialization
 
-The 1D IRT mode-splitting investigation (ADR-0023) showed that random initialization causes 5/16 convergence failures due to reflection invariance. With 8 modes instead of 2, the risk is much higher. PCA initialization places chains near the correct mode.
+The 1D IRT mode-splitting investigation (ADR-0023) showed that random initialization causes 5/16 convergence failures due to reflection invariance. With 8 modes instead of 2, the risk is much higher. Informed initialization places chains near the correct mode.
 
 ## Downstream Outputs
 

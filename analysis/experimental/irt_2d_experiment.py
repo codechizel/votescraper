@@ -504,7 +504,7 @@ def plot_2d_scatter(ideal_2d: pl.DataFrame, output_dir: Path) -> None:
             )
 
     ax.set_xlabel("Dimension 1 (Ideology: Liberal ← → Conservative)", fontsize=11)
-    ax.set_ylabel("Dimension 2 (Establishment)", fontsize=11)
+    ax.set_ylabel("Dimension 2 (Contrarian ← → Establishment)", fontsize=11)
     ax.set_title(
         "2D Bayesian IRT Ideal Points — Kansas Senate",
         fontsize=13,

@@ -108,7 +108,7 @@ Standalone structural experiments (2D IRT, PC2-targeted IRT) bypass `run_experim
 
 ## Concurrency (MCMC)
 
-- **MCMC (all models)**: nutpie Rust NUTS sampler — single process, Rust threads for parallel chains (ADR-0051, ADR-0053). Graph-building functions (`build_per_chamber_graph()`, `build_joint_graph()`, `build_irt_graph()`) return PyMC models without sampling. Sampling functions compile with `nutpie.compile_pymc_model()` and sample with `nutpie.sample()`. PCA-informed init via `initial_points`; `jitter_rvs` excludes the PCA-initialized variable.
+- **MCMC (all models)**: nutpie Rust NUTS sampler — single process, Rust threads for parallel chains (ADR-0051, ADR-0053). Graph-building functions (`build_per_chamber_graph()`, `build_joint_graph()`, `build_irt_graph()`) return PyMC models without sampling. Sampling functions compile with `nutpie.compile_pymc_model()` and sample with `nutpie.sample()`. Initialization via `analysis/init_strategy.py`: `--init-strategy {auto,irt-informed,pca-informed}` (ADR-0107). Auto prefers 1D IRT, falls back to PCA. `jitter_rvs` excludes the initialized variable.
 - **Apple Silicon (M3 Pro, 6P+6E)**: run bienniums sequentially; cap thread pools (`OMP_NUM_THREADS=6`); never use `taskpolicy -c background`. See ADR-0022.
 - **PyTensor C compiler**: requires `clang++`/`g++` for C-compiled kernels. Without it, falls back to pure Python (~18x slower). Common failure: Xcode update requires opening Xcode.app to accept license.
 - **R (optional)**: Required for Phase 16 (W-NOMINATE/OC) and Phase 19 TSA enrichment. Not managed by uv. R CSV files use literal "NA" — always pass `null_values="NA"` to `pl.read_csv()` when reading R output (ADR-0073).

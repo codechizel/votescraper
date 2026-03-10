@@ -96,6 +96,11 @@ try:
 except ImportError:
     from phase_utils import print_header, save_fig  # type: ignore[no-redef]
 
+try:
+    from analysis.init_strategy import resolve_init_source
+except ModuleNotFoundError:
+    from init_strategy import resolve_init_source  # type: ignore[no-redef]
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 HIERARCHICAL_PRIMER = """\
@@ -271,6 +276,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--run-joint", action="store_true",
         help="Run joint cross-chamber model (off by default — ADR-0074)",
+    )
+    parser.add_argument(
+        "--init-strategy",
+        default="auto",
+        choices=["auto", "irt-informed", "pca-informed"],
+        help="xi_offset initialization source (default: auto — prefer IRT, fall back to PCA)",
     )
     return parser.parse_args()
 
@@ -1678,23 +1689,18 @@ def main() -> None:
             # Prepare data with party indices
             data = prepare_hierarchical_data(matrix, legislators, chamber)
 
-            # PCA-informed initialization of xi_offset (ADR-0044)
-            # Standardized PC1 scores approximate the N(0,1) prior on xi_offset,
+            # xi_offset initialization: configurable via --init-strategy
+            # Standardized scores approximate the N(0,1) prior on xi_offset,
             # preventing reflection mode-splitting. Same principle as flat IRT (ADR-0023).
-            xi_init = None
-            if pca_scores is not None:
-                slug_order = {s: i for i, s in enumerate(data["leg_slugs"])}
-                pc1_vals = (
-                    pca_scores.filter(pl.col("legislator_slug").is_in(data["leg_slugs"]))
-                    .sort(pl.col("legislator_slug").replace_strict(slug_order))["PC1"]
-                    .to_numpy()
-                )
-                pc1_std = (pc1_vals - pc1_vals.mean()) / (pc1_vals.std() + 1e-8)
-                xi_init = pc1_std.astype(np.float64)
-                print(
-                    f"  PCA init: {len(xi_init)} params, "
-                    f"range [{xi_init.min():.2f}, {xi_init.max():.2f}]"
-                )
+            xi_init_vals, init_strat, init_source = resolve_init_source(
+                strategy=args.init_strategy,
+                slugs=data["leg_slugs"],
+                irt_scores=flat_ip[ch],
+                pca_scores=pca_scores,
+                pca_column="PC1",
+            )
+            xi_init = xi_init_vals.astype(np.float64) if init_strat != "none" else None
+            print(f"  Init: {init_source} (strategy: {init_strat})")
 
             # Build and sample
             print_header(f"SAMPLING — {chamber}")
@@ -1770,32 +1776,27 @@ def main() -> None:
                 house_data = per_chamber_results["House"]["data"]
                 senate_data = per_chamber_results["Senate"]["data"]
 
-                # PCA-informed initialization for joint model (Priority 1 from
-                # docs/joint-model-deep-dive.md). Concatenate per-chamber PCA init
-                # values in the same order as the joint model's legislator list
-                # (House first, then Senate — matching build_joint_graph()).
-                joint_xi_init = None
-                if house_pca is not None and senate_pca is not None:
-                    joint_init_parts = []
-                    for chamber_label, chamber_data, pca_scores in [
-                        ("House", house_data, house_pca),
-                        ("Senate", senate_data, senate_pca),
-                    ]:
-                        slug_order = {s: i for i, s in enumerate(chamber_data["leg_slugs"])}
-                        pc1_vals = (
-                            pca_scores.filter(
-                                pl.col("legislator_slug").is_in(chamber_data["leg_slugs"])
-                            )
-                            .sort(pl.col("legislator_slug").replace_strict(slug_order))["PC1"]
-                            .to_numpy()
-                        )
-                        pc1_std = (pc1_vals - pc1_vals.mean()) / (pc1_vals.std() + 1e-8)
-                        joint_init_parts.append(pc1_std.astype(np.float64))
-                    joint_xi_init = np.concatenate(joint_init_parts)
-                    print(
-                        f"  Joint PCA init: {len(joint_xi_init)} params, "
-                        f"range [{joint_xi_init.min():.2f}, {joint_xi_init.max():.2f}]"
+                # Init for joint model: concatenate per-chamber init values
+                # in the same order as build_joint_graph() (House first, Senate).
+                joint_init_parts = []
+                for chamber_label, chamber_data, pca_scores, ch_key in [
+                    ("House", house_data, house_pca, "house"),
+                    ("Senate", senate_data, senate_pca, "senate"),
+                ]:
+                    vals, _, src = resolve_init_source(
+                        strategy=args.init_strategy,
+                        slugs=chamber_data["leg_slugs"],
+                        irt_scores=flat_ip[ch_key],
+                        pca_scores=pca_scores,
+                        pca_column="PC1",
                     )
+                    joint_init_parts.append(vals.astype(np.float64))
+                    print(f"  Joint init ({chamber_label}): {src}")
+                joint_xi_init = np.concatenate(joint_init_parts)
+                print(
+                    f"  Joint init total: {len(joint_xi_init)} params, "
+                    f"range [{joint_xi_init.min():.2f}, {joint_xi_init.max():.2f}]"
+                )
 
                 joint_idata, combined_data, joint_time = build_joint_model(
                     house_data,

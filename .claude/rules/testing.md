@@ -8,7 +8,7 @@ paths:
 ## Commands
 
 ```bash
-just test                    # run all tests (~2869)
+just test                    # run all tests (~2896)
 just test-scraper            # scraper tests only (-m scraper, ~643)
 just test-fast               # skip slow tests (-m "not slow")
 just test-web                # Django/database tests only (-m web, requires PostgreSQL)
@@ -109,6 +109,7 @@ Registered in `pyproject.toml`. Module-level `pytestmark` variables (not per-cla
 - `tests/test_bill_lifecycle.py` — bill lifecycle Sankey data: action categorization, stage transitions, died inference, chamber filtering, Sankey plot, constants (~31 tests)
 - `tests/test_model_legislation.py` — ALEC scraper (mocked HTML), OpenStates adapter (mocked API), cosine similarity, match classification, n-gram overlap, match summary, report builder, CLI args (~58 tests)
 - `tests/test_extract.py` — bespoke report extraction: section parsing, extraction by number/ID, multi-report composition, Plotly/DataTables CDN dedup, provenance, CSS extraction, slug generation, CLI list/extract/multi-report (~50 tests)
+- `tests/test_init_strategy.py` — shared MCMC initialization strategies: constants, resolution, auto-detection, IRT/PCA sources, error cases, rationale generation, file loading (~27 tests)
 
 ## Integration & Structure Test Files
 

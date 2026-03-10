@@ -84,14 +84,14 @@ src/tallgrass/
   extract/      - Bespoke report extraction (tallgrass-extract)
 ```
 
-27-phase analysis pipeline in `analysis/01_eda/` through `analysis/27_dynamic_irt/`. PEP 302 meta-path finder redirects `from analysis.eda import X` to numbered subdirectories (ADR-0030). `analysis/db.py` provides PostgreSQL loading (psycopg3 + Polars `read_database()`) with CSV fallback; `--csv` flag forces CSV-only mode (ADR-0099). See `.claude/rules/analysis-framework.md`.
+27-phase analysis pipeline in `analysis/01_eda/` through `analysis/27_dynamic_irt/`. PEP 302 meta-path finder redirects `from analysis.eda import X` to numbered subdirectories (ADR-0030). `analysis/db.py` provides PostgreSQL loading (psycopg3 + Polars `read_database()`) with CSV fallback; `--csv` flag forces CSV-only mode (ADR-0099). `analysis/init_strategy.py` provides shared MCMC initialization strategies (`--init-strategy {auto,irt-informed,pca-informed}`, ADR-0107). See `.claude/rules/analysis-framework.md`.
 
 Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `.claude/rules/database.md`.
 
 ## Key Conventions
 
 - Scraper: concurrent fetch (ThreadPoolExecutor), sequential parse. Never mutate shared state during fetch.
-- MCMC: nutpie Rust NUTS sampler for all models (ADR-0051, ADR-0053). PCA-informed init. IRT identification: `--identification {auto,anchor-pca,anchor-agreement,...}` (ADR-0103). Robustness flags: `--horseshoe-diagnostic`, `--horseshoe-remediate`, `--contested-only`, `--promote-2d` (ADR-0104).
+- MCMC: nutpie Rust NUTS sampler for all models (ADR-0051, ADR-0053). Init strategy: `--init-strategy {auto,irt-informed,pca-informed}` (ADR-0107). IRT identification: `--identification {auto,anchor-pca,anchor-agreement,...}` (ADR-0103). Robustness flags: `--horseshoe-diagnostic`, `--horseshoe-remediate`, `--contested-only`, `--promote-2d` (ADR-0104).
 - Apple Silicon (M3 Pro): run bienniums sequentially; cap thread pools (`OMP_NUM_THREADS=6`).
 - PyTensor C compiler: requires `clang++`. Xcode updates can break it silently (~18x slower fallback).
 
@@ -111,6 +111,6 @@ Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `
 
 ## Documentation
 
-- ADRs: `docs/adr/README.md` (106 decisions)
+- ADRs: `docs/adr/README.md` (107 decisions)
 - Design docs: `analysis/design/README.md`
 - Deep dives: `docs/*.md` (search by topic name)

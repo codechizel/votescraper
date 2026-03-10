@@ -1622,8 +1622,8 @@ def _add_promote_2d(
             title=f"{chamber} — Flagged Legislators (1D vs 2D Rank Shift)",
             source_note=(
                 "These legislators have significantly different positions in the 1D vs 2D models. "
-                "The 2D model separates ideology (Dim 1) from establishment loyalty (Dim 2), "
-                "so differences may indicate the 1D model conflates these two patterns."
+                "The 2D model separates ideology (Dim 1) from the establishment–contrarian "
+                "axis (Dim 2), so differences may indicate the 1D model conflates these."
             ),
         )
         report.add(

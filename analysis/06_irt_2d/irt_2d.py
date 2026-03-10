@@ -3,7 +3,8 @@ Kansas Legislature — 2D Bayesian IRT Ideal Point Estimation (Phase 4b, EXPERIM
 
 EXPERIMENTAL: This phase uses a multidimensional 2-Parameter Logistic (M2PL) IRT model
 with Positive Lower Triangular (PLT) identification to estimate 2D ideal points. It
-resolves the Tyson paradox by separating ideology (Dim 1) from establishment loyalty (Dim 2).
+resolves the Tyson paradox by separating ideology (Dim 1) from the
+establishment–contrarian axis (Dim 2).
 
 Convergence caveats: Dim 2 has known convergence challenges (R-hat up to 1.05, ESS ~200)
 due to weak signal (~11% variance). Relaxed thresholds are used. Dim 2 credible intervals
@@ -72,6 +73,15 @@ try:
 except ModuleNotFoundError:
     from irt_2d_report import build_irt_2d_report  # type: ignore[no-redef]
 
+try:
+    from analysis.init_strategy import InitStrategy, load_irt_scores, resolve_init_source
+except ModuleNotFoundError:
+    from init_strategy import (  # type: ignore[no-redef]
+        InitStrategy,
+        load_irt_scores,
+        resolve_init_source,
+    )
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 IRT_2D_PRIMER = """\
@@ -81,13 +91,14 @@ IRT_2D_PRIMER = """\
 
 The 2D IRT model extends the canonical 1D baseline by estimating two-dimensional
 ideal points for each legislator. Dimension 1 captures ideology (liberal-conservative),
-while Dimension 2 captures secondary patterns such as establishment loyalty — the
-degree to which legislators align with party leadership on routine bills.
+while Dimension 2 captures the establishment–contrarian axis — the degree to which
+legislators align with party leadership on routine bills.
 
 This phase was developed to resolve the "Tyson paradox": Senator Caryn Tyson appears
 as the most conservative legislator by 1D IRT, yet votes Nay on routine bills that
 nearly all Republicans support. The 2D model reveals this as a real multidimensional
-pattern (high on Dim 1 ideology, extreme on Dim 2 establishment loyalty), not a model artifact.
+pattern (high on Dim 1 ideology, extreme on the Dim 2 establishment–contrarian
+axis), not a model artifact.
 
 ## EXPERIMENTAL STATUS
 
@@ -139,7 +150,7 @@ Post-hoc Dim 1 sign check: Republican mean must be positive.
 - **Dim 1** (x-axis): Ideology. Positive = conservative, negative = liberal.
   Should correlate strongly (r > 0.90) with 1D IRT and PCA PC1.
 - **Dim 2** (y-axis): Secondary pattern. In the Senate, this captures
-  establishment loyalty. Interpretation varies by chamber and session.
+  the establishment–contrarian axis. Interpretation varies by chamber and session.
 - **Wide Dim 2 HDIs** are expected for most legislators — the second dimension
   has weak signal. Only legislators with narrow Dim 2 HDIs have reliable
   second-dimension estimates.
@@ -183,7 +194,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data-dir", default=None, help="Override data directory path")
     parser.add_argument("--eda-dir", default=None, help="Override EDA results directory")
     parser.add_argument("--pca-dir", default=None, help="Override PCA results directory")
+    parser.add_argument("--irt-dir", default=None, help="Override 1D IRT results directory")
     parser.add_argument("--run-id", default=None, help="Run ID for grouped pipeline output")
+    parser.add_argument(
+        "--init-strategy",
+        default="auto",
+        choices=["auto", "irt-informed", "pca-informed"],
+        help="Dim 1 initialization source (default: auto — prefer IRT, fall back to PCA)",
+    )
     parser.add_argument("--n-samples", type=int, default=N_SAMPLES)
     parser.add_argument("--n-tune", type=int, default=N_TUNE)
     parser.add_argument("--n-chains", type=int, default=N_CHAINS)
@@ -551,7 +569,7 @@ def plot_2d_scatter(ideal_2d: pl.DataFrame, chamber: str, output_dir: Path) -> N
             )
 
     ax.set_xlabel("Dimension 1 (Ideology: Liberal <- -> Conservative)", fontsize=11)
-    ax.set_ylabel("Dimension 2 (Establishment)", fontsize=11)
+    ax.set_ylabel("Dimension 2 (Contrarian <- -> Establishment)", fontsize=11)
     ax.set_title(
         f"2D Bayesian IRT Ideal Points — Kansas {chamber} (EXPERIMENTAL)",
         fontsize=13,
@@ -676,7 +694,7 @@ def plot_2d_scatter_interactive(ideal_2d: pl.DataFrame, chamber: str, output_dir
     fig.update_layout(
         title=f"2D Bayesian IRT Ideal Points — Kansas {chamber} (EXPERIMENTAL)",
         xaxis_title="Dimension 1 (Ideology: Liberal ← → Conservative)",
-        yaxis_title="Dimension 2 (Establishment)",
+        yaxis_title="Dimension 2 (Contrarian ← → Establishment)",
         hovermode="closest",
         template="plotly_white",
         width=800,
@@ -840,6 +858,12 @@ def main() -> None:
         args.run_id,
         Path(args.pca_dir) if args.pca_dir else None,
     )
+    irt_dir = resolve_upstream_dir(
+        "05_irt",
+        results_root,
+        args.run_id,
+        Path(args.irt_dir) if args.irt_dir else None,
+    )
 
     with RunContext(
         session=args.session,
@@ -855,6 +879,7 @@ def main() -> None:
         print(f"  Data:    {data_dir}")
         print(f"  EDA:     {eda_dir}")
         print(f"  PCA:     {pca_dir}")
+        print(f"  IRT:     {irt_dir}")
         print(f"  Output:  {ctx.run_dir}")
         print(f"  Samples: {args.n_samples} draws, {args.n_tune} tune, {args.n_chains} chains")
         print()
@@ -871,18 +896,29 @@ def main() -> None:
         pca_house, pca_senate = load_pca_scores(pca_dir)
         rollcalls, legislators = load_metadata(data_dir)
 
+        # Load 1D IRT ideal points (for init strategy)
+        irt_data_dir = irt_dir / "data"
+        irt_house = load_irt_scores(irt_data_dir, "house")
+        irt_senate = load_irt_scores(irt_data_dir, "senate")
+        for ch, irt_df in [("House", irt_house), ("Senate", irt_senate)]:
+            if irt_df is not None:
+                print(f"  1D IRT loaded: {ch} ({irt_df.height} legislators)")
+            else:
+                print(f"  1D IRT not found: {ch}")
+
         print(f"  House filtered: {house_matrix.height} x {len(house_matrix.columns) - 1}")
         print(f"  Senate filtered: {senate_matrix.height} x {len(senate_matrix.columns) - 1}")
+        print(f"  Init strategy: {args.init_strategy}")
 
         chamber_configs = [
-            ("House", house_matrix, pca_house),
-            ("Senate", senate_matrix, pca_senate),
+            ("House", house_matrix, pca_house, irt_house),
+            ("Senate", senate_matrix, pca_senate, irt_senate),
         ]
 
         all_results: dict[str, dict] = {}
         t_total = time.time()
 
-        for chamber, matrix, pca_scores in chamber_configs:
+        for chamber, matrix, pca_scores, irt_1d in chamber_configs:
             if matrix.height < 5:
                 print(f"\n  Skipping {chamber}: too few legislators ({matrix.height})")
                 continue
@@ -897,31 +933,33 @@ def main() -> None:
             print(f"\n  Selecting 1D anchors for {chamber} (reference only):")
             select_anchors(pca_scores, matrix, chamber)
 
-            # ── Build 2D PCA initialization ──
-            print_header(f"2D PCA INITIALIZATION — {chamber}")
+            # ── Build initialization for 2D model ──
+            print_header(f"2D INITIALIZATION — {chamber}")
             slugs = data["leg_slugs"]
 
-            pca_pc1_map = {
-                row["legislator_slug"]: row["PC1"] for row in pca_scores.iter_rows(named=True)
-            }
-            pca_pc2_map = {
-                row["legislator_slug"]: row["PC2"] for row in pca_scores.iter_rows(named=True)
-            }
-
-            pc1_vals = np.array([pca_pc1_map.get(s, 0.0) for s in slugs])
-            pc2_vals = np.array([pca_pc2_map.get(s, 0.0) for s in slugs])
-
-            pc1_std = (
-                (pc1_vals - pc1_vals.mean()) / pc1_vals.std() if pc1_vals.std() > 0 else pc1_vals
+            # Dim 1: configurable via --init-strategy
+            dim1_std, dim1_strategy, dim1_source = resolve_init_source(
+                strategy=args.init_strategy,
+                slugs=slugs,
+                irt_scores=irt_1d,
+                pca_scores=pca_scores,
+                pca_column="PC1",
             )
-            pc2_std = (
-                (pc2_vals - pc2_vals.mean()) / pc2_vals.std() if pc2_vals.std() > 0 else pc2_vals
-            )
+            print(f"  Dim 1 init: {dim1_source} (strategy: {dim1_strategy})")
 
-            xi_initvals_2d = np.column_stack([pc1_std, pc2_std])
-            print(f"  PCA initvals shape: {xi_initvals_2d.shape}")
-            print(f"  PC1 range: [{pc1_std.min():.2f}, {pc1_std.max():.2f}]")
-            print(f"  PC2 range: [{pc2_std.min():.2f}, {pc2_std.max():.2f}]")
+            # Dim 2: always PCA PC2 (no 1D equivalent exists)
+            dim2_std, _, dim2_source = resolve_init_source(
+                strategy=InitStrategy.PCA_INFORMED,
+                slugs=slugs,
+                pca_scores=pca_scores,
+                pca_column="PC2",
+            )
+            print(f"  Dim 2 init: {dim2_source}")
+
+            xi_initvals_2d = np.column_stack([dim1_std, dim2_std])
+            print(f"  Initvals shape: {xi_initvals_2d.shape}")
+            print(f"  Dim 1 range: [{dim1_std.min():.2f}, {dim1_std.max():.2f}]")
+            print(f"  Dim 2 range: [{dim2_std.min():.2f}, {dim2_std.max():.2f}]")
 
             # ── Build and sample 2D model ──
             print_header(f"MCMC SAMPLING — 2D IRT ({chamber})")
