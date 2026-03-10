@@ -31,6 +31,7 @@ just test-web                                # → Django tests only (-m web, re
 just pipeline 2025-26                        # → single-biennium pipeline (phases 01-25)
 just cross-pipeline                          # → cross-biennium pipeline (phases 26-27)
 just scrape 2025 --auto-load                 # → scrape + load CSVs into PostgreSQL
+just extract report.html --section 15        # → tallgrass-extract (bespoke report extraction)
 ```
 
 Analysis recipes (all pass `*args` through): `just eda`, `just pca`, `just mca`, `just umap`, `just irt`, `just irt-2d`, `just ppc`, `just clustering`, `just lca`, `just network`, `just bipartite`, `just indices`, `just betabinom`, `just hierarchical`, `just synthesis`, `just profiles`, `just tsa`, `just cross-session`, `just external-validation`, `just dime`, `just dynamic-irt`, `just wnominate`, `just text-analysis`, `just tbip`, `just issue-irt`, `just model-legislation`. Each maps to `uv run python analysis/NN_phase/phase.py`.
@@ -80,6 +81,7 @@ src/tallgrass/
   text/         - Bill text retrieval subpackage (tallgrass-text)
   alec/         - ALEC model legislation scraper (tallgrass-alec)
   kanfocus/     - KanFocus vote data adapter (tallgrass-kanfocus, 1999-2026)
+  extract/      - Bespoke report extraction (tallgrass-extract)
 ```
 
 27-phase analysis pipeline in `analysis/01_eda/` through `analysis/27_dynamic_irt/`. PEP 302 meta-path finder redirects `from analysis.eda import X` to numbered subdirectories (ADR-0030). `analysis/db.py` provides PostgreSQL loading (psycopg3 + Polars `read_database()`) with CSV fallback; `--csv` flag forces CSV-only mode (ADR-0099). See `.claude/rules/analysis-framework.md`.

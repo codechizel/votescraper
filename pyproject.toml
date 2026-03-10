@@ -16,6 +16,7 @@ tallgrass = "tallgrass.cli:main"
 tallgrass-text = "tallgrass.text.cli:main"
 tallgrass-kanfocus = "tallgrass.kanfocus.cli:main"
 tallgrass-alec = "tallgrass.alec.cli:main"
+tallgrass-extract = "tallgrass.extract.cli:main"
 
 [dependency-groups]
 web = [

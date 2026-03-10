@@ -382,6 +382,10 @@ db-load-all *args:
 db-load-alec *args:
     DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py load_alec {{args}}
 
+# Extract sections from pipeline HTML reports into standalone files
+extract *args:
+    uv run tallgrass-extract {{args}}
+
 # Generic manage.py passthrough
 django *args:
     DJANGO_SETTINGS_MODULE=tallgrass_web.settings.local PYTHONPATH=src/web uv run --group web python src/web/manage.py {{args}}
