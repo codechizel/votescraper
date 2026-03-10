@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-09 (horseshoe remediation roadmap; interactive Plotly plots; experiment results)
+**Last updated:** 2026-03-10 (bespoke report extraction tool)
 
 ---
 
@@ -72,6 +72,7 @@ What's been done, what's next, and what's on the horizon for the Tallgrass analy
 | — | OpenStates Legislator Identity | 2026-03-02 | OCD person IDs (`ocd-person/{uuid}`) from OpenStates for stable cross-biennium legislator identity. `roster.py` module: GitHub tarball download, YAML parsing, slug→ocd_id mapping cached as JSON. 3-phase matching in Phase 13 (OCD ID → name → fuzzy). Dynamic IRT roster groups by OCD ID. Correctly separates same-name legislators (two Mike Thompsons). Backward compatible with older CSVs. 22 new roster tests + 11 OCD matching tests. ADR-0085. |
 | 18b | Text-Based Ideal Points (TBIP) | 2026-03-03 | Embedding-vote approach (not true TBIP due to ~92% committee sponsorship). Multiplies vote matrix by Phase 18 bill embeddings, PCA on legislator text profiles, PC1 = text-derived ideal point. Validates against IRT (flat + hierarchical). Standalone with `just tbip`; not in pipeline (requires BT1 + IRT results). Design: `analysis/design/tbip.md`, ADR-0086. |
 | 20 | Model Legislation Detection (BT5) | 2026-03-03 | ALEC template matching + cross-state diffusion (MO, OK, NE, CO via OpenStates API). Cosine similarity on BGE embeddings (same vector space as Phase 18) with three-tier classification (near-identical >= 0.95, strong >= 0.85, related >= 0.70). 5-gram overlap confirmation for strong matches. ALEC corpus: ~1,057 model policies scraped via `just alec`. 9-section HTML report. 58 tests. Design: `analysis/design/model_legislation.md`, ADR-0089. |
+| — | Bespoke Report Extraction | 2026-03-10 | `tallgrass-extract` CLI tool: extract sections from one or more pipeline HTML reports into standalone, self-contained HTML files for presentations. Multi-report composition with per-section provenance, Plotly/DataTables CDN deduplication, CSS extraction from source reports. `just extract`. 50 tests. Design: `docs/bespoke-report-extraction.md`, ADR-0106. |
 
 ---
 

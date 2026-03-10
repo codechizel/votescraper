@@ -24,7 +24,7 @@ just lint                                    # → ruff check --fix + ruff forma
 just lint-check                              # → ruff check + ruff format --check
 just typecheck                               # → ty check src/ + ty check analysis/
 just check                                   # → lint-check + typecheck + test (quality gate)
-just test                                    # → uv run pytest tests/ -v (~2824 tests)
+just test                                    # → uv run pytest tests/ -v (~2869 tests)
 just test-scraper                            # → pytest -m scraper (~643 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just test-web                                # → Django tests only (-m web, requires PostgreSQL)
@@ -111,6 +111,6 @@ Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `
 
 ## Documentation
 
-- ADRs: `docs/adr/README.md` (105 decisions)
+- ADRs: `docs/adr/README.md` (106 decisions)
 - Design docs: `analysis/design/README.md`
 - Deep dives: `docs/*.md` (search by topic name)
