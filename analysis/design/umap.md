@@ -54,9 +54,9 @@
 
 ### UMAP1 orientation convention
 
-**Decision:** Flip UMAP1 sign so Republicans have positive mean scores, matching the PCA PC1 convention (positive = conservative).
+**Decision:** Center the embedding at the origin, then flip UMAP1 sign so Republicans have positive mean scores, matching the PCA PC1 convention (positive = conservative).
 
-**Why:** UMAP axes have arbitrary sign. Without this convention, UMAP1 might place Democrats on the positive side in some runs, confusing comparisons with PCA and IRT. The flip is applied before saving embeddings.
+**Why:** UMAP axes have arbitrary translation and sign. Without centering, the entire embedding can land in one quadrant (e.g., all-negative UMAP1 in the 79th Senate). Without the sign convention, UMAP1 might place Democrats on the positive side in some runs. Both corrections are applied before saving embeddings.
 
 ### No t-SNE
 

@@ -163,6 +163,31 @@ class TestOrientUmap1:
         # R mean = -1 < D mean = 2 -> flip
         assert result[0, 0] > 0
 
+    def test_centers_embedding_at_origin(self, legislators_df: pl.DataFrame) -> None:
+        """Embedding is centered before sign check — all-negative inputs get centered."""
+        # All negative: rep_a (R) = -1, rep_b (D) = -3, rep_c (R) = -2
+        # Mean = -2, so after centering: rep_a=+1, rep_b=-1, rep_c=0
+        # R mean = +0.5, D mean = -1 -> no flip needed
+        embedding = np.array([[-1.0, -5.0], [-3.0, -7.0], [-2.0, -6.0]])
+        slugs = ["rep_a", "rep_b", "rep_c"]
+        result = orient_umap1(embedding, slugs, legislators_df)
+        # Both axes should be centered at zero
+        assert abs(result[:, 0].mean()) < 1e-10
+        assert abs(result[:, 1].mean()) < 1e-10
+        # Republicans should be positive
+        assert result[0, 0] > 0  # rep_a (R)
+
+    def test_centers_all_positive_embedding(self, legislators_df: pl.DataFrame) -> None:
+        """All-positive embedding gets centered too."""
+        # rep_a (R) = 10, rep_b (D) = 4, rep_c (R) = 8 -> mean = 7.33
+        embedding = np.array([[10.0, 5.0], [4.0, 3.0], [8.0, 4.0]])
+        slugs = ["rep_a", "rep_b", "rep_c"]
+        result = orient_umap1(embedding, slugs, legislators_df)
+        assert abs(result[:, 0].mean()) < 1e-10
+        assert abs(result[:, 1].mean()) < 1e-10
+        # R mean should still be > D mean (positive)
+        assert result[0, 0] > 0
+
 
 # ── TestBuildEmbeddingDf ────────────────────────────────────────────────────
 

@@ -341,11 +341,19 @@ def orient_umap1(
     slugs: list[str],
     legislators: pl.DataFrame,
 ) -> np.ndarray:
-    """Flip UMAP1 sign so Republicans have positive mean scores.
+    """Center embedding at the origin and flip UMAP1 so Republicans are positive.
 
-    UMAP axes have arbitrary orientation — this convention makes interpretation
-    consistent: positive UMAP1 = conservative, negative UMAP1 = liberal.
+    UMAP axes have arbitrary translation and orientation. This function:
+    1. Centers both axes at zero (subtracts column means)
+    2. Flips UMAP1 sign if needed so Republicans have positive mean scores
+
+    The centering is essential — without it, UMAP can place the entire embedding
+    in one quadrant, making all scores negative (or all positive) even when the
+    relative party ordering is correct.
     """
+    # Center at origin — UMAP translation is arbitrary
+    embedding = embedding - embedding.mean(axis=0)
+
     slug_to_party = dict(legislators.select("legislator_slug", "party").iter_rows())
     parties = [slug_to_party.get(s, "Unknown") for s in slugs]
 
