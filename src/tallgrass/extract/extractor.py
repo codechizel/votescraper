@@ -36,6 +36,9 @@ TITLE_RE = re.compile(r"<title>(.*?)</title>", re.DOTALL)
 # Matches the session string from the report header meta.
 SESSION_RE = re.compile(r"Session:\s*<strong>(.*?)</strong>")
 
+# Matches the <style>...</style> block in the HTML head.
+STYLE_RE = re.compile(r"<style>(.*?)</style>", re.DOTALL)
+
 # CDN script tags to deduplicate across extracted sections.
 PLOTLY_SCRIPT_RE = re.compile(
     r'<script\s+src="https://cdn\.plot\.ly/[^"]*"[^>]*>\s*</script>', re.IGNORECASE
@@ -71,6 +74,15 @@ class ExtractedSection:
     source_report: str  # e.g., "06_irt_2d"
     source_session: str  # e.g., "91st_2025-2026"
     source_path: Path
+
+
+def parse_report_css(html: str) -> str:
+    """Extract the <style> block content from a report's HTML.
+
+    Returns the CSS string, or empty string if not found.
+    """
+    m = STYLE_RE.search(html)
+    return m.group(1) if m else ""
 
 
 def parse_report_title(html: str) -> str:
@@ -218,18 +230,19 @@ def _collect_and_strip_dependencies(
 def render_extracted(
     sections: list[ExtractedSection],
     title: str | None = None,
+    source_css: str = "",
 ) -> str:
     """Render extracted sections into a standalone HTML page.
 
     Args:
         sections: Sections to include, in display order.
         title: Page title. Defaults to "Extracted Report".
+        source_css: CSS extracted from a source report via parse_report_css().
+            If empty, uses a minimal fallback.
 
     Returns:
         Complete HTML string.
     """
-    from analysis.report import REPORT_CSS
-
     if not sections:
         msg = "No sections to render"
         raise ValueError(msg)
@@ -291,13 +304,16 @@ def render_extracted(
   border-left: 3px solid #ddd;
 }"""
 
+    # Use source CSS if provided, otherwise minimal fallback.
+    css = source_css or _FALLBACK_CSS
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{page_title}</title>
-  <style>{REPORT_CSS}{provenance_css}</style>
+  <style>{css}{provenance_css}</style>
   {deps_html}
 </head>
 <body>
@@ -318,6 +334,34 @@ def render_extracted(
   </footer>
 </body>
 </html>"""
+
+
+# Minimal fallback CSS when no source report CSS is available.
+_FALLBACK_CSS = """\
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 1100px; margin: 0 auto; padding: 24px 32px;
+  color: #1a1a1a; background: #ffffff; line-height: 1.5;
+}
+header { border-bottom: 3px solid #1a1a1a; padding-bottom: 12px; margin-bottom: 24px; }
+header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+header .meta { font-size: 13px; color: #555; }
+header .meta span { margin-right: 16px; }
+section.report-section { margin-bottom: 36px; }
+section.report-section h2 {
+  font-size: 18px; font-weight: 600;
+  border-bottom: 2px solid #333;
+  padding-bottom: 4px; margin-bottom: 16px;
+}
+.section-number { color: #888; font-weight: 400; margin-right: 6px; }
+.figure-container { text-align: center; margin: 12px 0; }
+.figure-container img { max-width: 100%; height: auto; }
+footer {
+  margin-top: 48px; padding-top: 12px;
+  border-top: 1px solid #ccc;
+  font-size: 11px; color: #888; text-align: center;
+}"""
 
 
 # ── Output Path ──────────────────────────────────────────────────────────────

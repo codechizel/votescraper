@@ -31,6 +31,7 @@ from tallgrass.extract.extractor import (
     extract_sections,
     generate_slug,
     list_sections,
+    parse_report_css,
     parse_report_title,
     render_extracted,
     write_extracted,
@@ -140,12 +141,15 @@ def main(argv: list[str] | None = None) -> None:
     if not has_sections:
         _error("No --section selectors provided. Use --list to see available sections.")
 
-    # Extract sections from each report.
+    # Extract sections from each report; capture CSS from first source.
     all_extracted: list[ExtractedSection] = []
+    source_css = ""
     for path, selectors in groups:
         if not selectors:
             continue
         html = path.read_text(encoding="utf-8")
+        if not source_css:
+            source_css = parse_report_css(html)
         extracted = extract_sections(html, selectors, source_path=path)
         all_extracted.extend(extracted)
 
@@ -154,7 +158,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # Render.
     title = global_opts["title"]
-    rendered = render_extracted(all_extracted, title=title)
+    rendered = render_extracted(all_extracted, title=title, source_css=source_css)
 
     # Determine output path.
     if global_opts["output"]:
