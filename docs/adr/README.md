@@ -84,6 +84,7 @@ What are the trade-offs?
 | [0103](0103-irt-identification-strategy-system.md) | IRT identification strategy system (7 strategies, auto-detection) |
 | [0104](0104-irt-robustness-flags.md) | IRT robustness flags (horseshoe diagnostic, contested-only refit, 2D cross-reference) |
 | [0108](0108-dim1-informative-prior.md) | Dimension 1 informative prior for ideology recovery (`--dim1-prior`) |
+| [0109](0109-canonical-ideal-points.md) | Canonical ideal point routing (auto-select 1D or 2D Dim 1 per chamber) |
 
 ### Classical Analysis
 
@@ -281,6 +282,7 @@ What are the trade-offs?
 | [0106](0106-bespoke-report-extraction.md) | Bespoke multi-report section extraction (tallgrass-extract, multi-report composition, CDN dedup) | Accepted | 2026-03-10 |
 | [0107](0107-shared-init-strategy.md) | Shared MCMC initialization strategy (`--init-strategy`, IRT-informed/PCA-informed/auto, Django-ready) | Accepted | 2026-03-10 |
 | [0108](0108-dim1-informative-prior.md) | Dimension 1 informative prior for ideology recovery (`--dim1-prior`, 2D IRT Dim 1 as Bayesian prior) | Accepted | 2026-03-11 |
+| [0109](0109-canonical-ideal-points.md) | Canonical ideal point routing (auto-select 1D or 2D Dim 1 per chamber, DW-NOMINATE standard) | Accepted | 2026-03-11 |
 
 ## Creating a New ADR
 

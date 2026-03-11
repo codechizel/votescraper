@@ -107,8 +107,10 @@ divergences < 50) compared to the production 1D model (R-hat < 1.01, ESS > 400,
 divergences < 10). Dimension 2 captures ~11% of variance and may have wide credible
 intervals for most legislators. Dim 2 HDIs should be interpreted with caution.
 
-The 2D model does NOT replace the 1D model. All downstream phases (synthesis,
-profiles, cross-session) continue to use 1D ideal points.
+For horseshoe-affected chambers (supermajority, where 1D IRT conflates ideology
+with establishment-loyalty), 2D Dim 1 is the canonical ideology score, following
+the DW-NOMINATE standard. For balanced chambers, 1D IRT remains canonical.
+See docs/canonical-ideal-points.md.
 
 ## Method
 
@@ -198,9 +200,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-id", default=None, help="Run ID for grouped pipeline output")
     parser.add_argument(
         "--init-strategy",
-        default="auto",
+        default="pca-informed",
         choices=["auto", "irt-informed", "pca-informed"],
-        help="Dim 1 initialization source (default: auto — prefer IRT, fall back to PCA)",
+        help=(
+            "Dim 1 initialization source (default: pca-informed). "
+            "PCA is always safe for 2D init — avoids horseshoe contamination "
+            "from confounded 1D IRT scores. See docs/canonical-ideal-points.md."
+        ),
     )
     parser.add_argument("--n-samples", type=int, default=N_SAMPLES)
     parser.add_argument("--n-tune", type=int, default=N_TUNE)
@@ -651,6 +657,97 @@ def plot_dim2_vs_pc2(
     save_fig(fig, output_dir / f"dim2_vs_pc2_{chamber.lower()}.png")
 
 
+# ── Dim 1 Forest Plot ───────────────────────────────────────────────────────
+
+
+def plot_dim1_forest(ideal_2d: pl.DataFrame, chamber: str, output_dir: Path) -> None:
+    """Forest plot: Dim 1 ideal points with 95% HDI bars, party-colored, sorted.
+
+    This is the canonical ideology ranking from the 2D model — Dim 1 separated
+    from the establishment–contrarian axis. For horseshoe-affected chambers,
+    this is the correct ordering (unlike 1D IRT which conflates dimensions).
+    """
+    from matplotlib.patches import Patch
+
+    # Map 2D column names to the standard forest plot expectations
+    forest_df = ideal_2d.select(
+        "legislator_slug",
+        "full_name",
+        "party",
+        pl.col("xi_dim1_mean").alias("xi_mean"),
+        pl.col("xi_dim1_hdi_3%").alias("xi_hdi_low"),
+        pl.col("xi_dim1_hdi_97%").alias("xi_hdi_high"),
+    ).sort("xi_mean")
+
+    n = forest_df.height
+    fig, ax = plt.subplots(figsize=(10, max(14, n * 0.22)))
+
+    y_pos = np.arange(n)
+    for i, row in enumerate(forest_df.iter_rows(named=True)):
+        color = PARTY_COLORS.get(row["party"], "#888888")
+        slug = row["legislator_slug"]
+        is_annotated = slug in ANNOTATE_SLUGS
+
+        ax.hlines(
+            i,
+            row["xi_hdi_low"],
+            row["xi_hdi_high"],
+            colors=color,
+            alpha=0.7 if is_annotated else 0.4,
+            linewidth=2.5 if is_annotated else 1.5,
+        )
+        ax.scatter(
+            row["xi_mean"],
+            i,
+            c=color,
+            s=40 if is_annotated else 20,
+            zorder=5,
+            edgecolors="black",
+            linewidth=0.3,
+            marker="D" if is_annotated else "o",
+        )
+
+        if is_annotated:
+            ax.annotate(
+                row["full_name"],
+                (row["xi_hdi_high"], i),
+                fontsize=7,
+                fontweight="bold",
+                color="#333333",
+                xytext=(8, 0),
+                textcoords="offset points",
+                va="center",
+                bbox={"boxstyle": "round,pad=0.2", "fc": "lightyellow", "alpha": 0.7},
+            )
+
+    labels = []
+    for row in forest_df.iter_rows(named=True):
+        name = row["full_name"]
+        party_initial = row["party"][0] if row["party"] else "?"
+        labels.append(f"{name} ({party_initial})")
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels, fontsize=5.5)
+    ax.axvline(0, color="gray", linestyle="--", alpha=0.3)
+    ax.set_xlabel("Dim 1 Ideal Point (Liberal \u2190 \u2192 Conservative)")
+    ax.set_title(
+        f"{chamber} \u2014 Dim 1 Ideology Ranking (from 2D IRT)",
+        fontsize=12,
+    )
+    legend_handles = [
+        Patch(facecolor=PARTY_COLORS["Republican"], label="Republican"),
+        Patch(facecolor=PARTY_COLORS["Democrat"], label="Democrat"),
+    ]
+    if ideal_2d.filter(pl.col("party") == "Independent").height > 0:
+        legend_handles.append(Patch(facecolor=PARTY_COLORS["Independent"], label="Independent"))
+    ax.legend(handles=legend_handles, loc="lower right")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    fig.tight_layout()
+    save_fig(fig, output_dir / f"dim1_forest_{chamber.lower()}.png")
+
+
 # ── Interactive Plotly Plots ─────────────────────────────────────────────────
 
 
@@ -997,6 +1094,7 @@ def main() -> None:
 
             # ── Generate plots ──
             plot_2d_scatter(ideal_2d, chamber, ctx.plots_dir)
+            plot_dim1_forest(ideal_2d, chamber, ctx.plots_dir)
             plot_dim1_vs_pc1(ideal_2d, pca_scores, chamber, ctx.plots_dir)
             plot_dim2_vs_pc2(ideal_2d, pca_scores, chamber, ctx.plots_dir)
 
@@ -1055,6 +1153,22 @@ def main() -> None:
             json.dump(summary, f, indent=2, default=str)
         print("\n  Saved: convergence_summary.json")
 
+        # ── Canonical ideal point routing ──
+        print_header("CANONICAL IDEAL POINT ROUTING")
+        try:
+            from analysis.canonical_ideal_points import write_canonical_ideal_points
+        except ModuleNotFoundError:
+            from canonical_ideal_points import (
+                write_canonical_ideal_points,  # type: ignore[no-redef]
+            )
+
+        canonical_dir = ctx.run_dir / "canonical_irt"
+        canonical_sources = write_canonical_ideal_points(
+            irt_1d_dir=irt_dir,
+            irt_2d_dir=ctx.run_dir,
+            output_dir=canonical_dir,
+        )
+
         # ── Build HTML report ──
         print_header("BUILDING HTML REPORT")
         build_irt_2d_report(
@@ -1064,6 +1178,7 @@ def main() -> None:
             n_samples=args.n_samples,
             n_tune=args.n_tune,
             n_chains=args.n_chains,
+            canonical_sources=canonical_sources,
         )
 
         # ── Final summary ──

@@ -42,6 +42,24 @@ def _read_manifest(path: Path) -> dict:
     return {}
 
 
+def _load_canonical_irt(
+    results_base: Path, run_id: str | None, chamber: str
+) -> pl.DataFrame | None:
+    """Load canonical ideal points from Phase 06's routing output.
+
+    Canonical routing selects 1D IRT or 2D Dim 1 per chamber based on horseshoe
+    detection. When available, this supersedes raw Phase 05 output.
+    See docs/canonical-ideal-points.md.
+    """
+    irt_2d_dir = resolve_upstream_dir("06_irt_2d", results_base, run_id)
+    canonical_path = irt_2d_dir / "canonical_irt" / f"canonical_ideal_points_{chamber}.parquet"
+    if canonical_path.exists():
+        df = pl.read_parquet(canonical_path)
+        source = df["source"][0] if "source" in df.columns else "unknown"
+        print(f"  Canonical IRT ({chamber}): loaded from {source}")
+        return df
+    return None
+
 
 def load_all_upstream(results_base: Path, run_id: str | None = None) -> dict:
     """Read all parquets and manifests from the 10 upstream phases.
@@ -66,9 +84,14 @@ def load_all_upstream(results_base: Path, run_id: str | None = None) -> dict:
         # Per-chamber parquets
         for chamber in ("house", "senate"):
             if phase == "05_irt":
-                df = _read_parquet_safe(data_dir / f"ideal_points_{chamber}.parquet")
-                if df is not None:
-                    upstream[chamber]["irt"] = df
+                # Prefer canonical routing (from Phase 06) over raw 1D IRT
+                canonical_df = _load_canonical_irt(results_base, run_id, chamber)
+                if canonical_df is not None:
+                    upstream[chamber]["irt"] = canonical_df
+                else:
+                    df = _read_parquet_safe(data_dir / f"ideal_points_{chamber}.parquet")
+                    if df is not None:
+                        upstream[chamber]["irt"] = df
             elif phase == "13_indices":
                 df = _read_parquet_safe(data_dir / f"maverick_scores_{chamber}.parquet")
                 if df is not None:

@@ -47,18 +47,22 @@ def build_irt_2d_report(
     n_samples: int,
     n_tune: int,
     n_chains: int,
+    canonical_sources: dict[str, str] | None = None,
 ) -> None:
     """Build the full 2D IRT HTML report by adding sections to the ReportBuilder."""
-    findings = _generate_irt_2d_key_findings(results)
+    findings = _generate_irt_2d_key_findings(results, canonical_sources)
     if findings:
         report.add(KeyFindingsSection(findings=findings))
 
     _add_experimental_banner(report)
+    if canonical_sources:
+        _add_canonical_routing_summary(report, canonical_sources)
     _add_model_specification(report)
 
     for chamber, result in results.items():
         _add_convergence_table(report, result, chamber)
         _add_ideal_point_table(report, result, chamber)
+        _add_dim1_forest_figure(report, plots_dir, chamber)
         _add_scatter_figure(report, plots_dir, chamber)
         _add_scatter_interactive(report, plots_dir, chamber)
         _add_dim1_vs_pc1_figure(report, plots_dir, chamber)
@@ -95,11 +99,41 @@ def _add_experimental_banner(report: ReportBuilder) -> None:
                 "for most legislators.</strong> The second dimension captures "
                 "~11% of variance and has inherently weak signal. Only legislators "
                 "with narrow Dim 2 HDIs have reliable second-dimension estimates.</p>"
-                "<p>The 2D model does NOT replace the 1D model. All downstream "
-                "phases (synthesis, profiles, cross-session) continue to use "
-                "1D ideal points.</p>"
+                "<p>For <strong>horseshoe-affected chambers</strong> (supermajority), "
+                "2D Dim 1 is the canonical ideology score, following the DW-NOMINATE "
+                "standard. For balanced chambers, 1D IRT remains canonical. "
+                "See <code>docs/canonical-ideal-points.md</code>.</p>"
                 "</div>"
             ),
+        )
+    )
+
+
+def _add_canonical_routing_summary(
+    report: ReportBuilder, canonical_sources: dict[str, str]
+) -> None:
+    """Table showing which ideal point source was selected per chamber."""
+    rows = []
+    for chamber, source in canonical_sources.items():
+        source_label = (
+            "2D IRT Dim 1 (horseshoe corrected)" if source == "2d_dim1" else "1D IRT (standard)"
+        )
+        rows.append({"Chamber": chamber, "Canonical Source": source_label, "Source ID": source})
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title="Canonical Ideal Point Routing",
+        source_note=(
+            "For horseshoe-affected chambers, 2D Dim 1 is used as the canonical ideology score. "
+            "See docs/canonical-ideal-points.md."
+        ),
+    )
+    report.add(
+        TableSection(
+            id="canonical-routing",
+            title="Canonical Ideal Point Routing",
+            html=html,
         )
     )
 
@@ -269,6 +303,31 @@ def _add_ideal_point_table(
             html=html,
         )
     )
+
+
+def _add_dim1_forest_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:
+    """Forest plot: Dim 1 ideal points ranked with HDI bars."""
+    path = plots_dir / f"dim1_forest_{chamber.lower()}.png"
+    if path.exists():
+        report.add(
+            FigureSection.from_file(
+                f"fig-dim1-forest-{chamber.lower()}",
+                f"{chamber} Dim 1 Ideal Points (Ideology Ranking)",
+                path,
+                caption=(
+                    f"Dim 1 ideology ranking ({chamber}) from the 2D IRT model. "
+                    "Each dot is a legislator's posterior mean; horizontal bars show "
+                    "the 95% HDI. Red = Republican, Blue = Democrat. "
+                    "For horseshoe-affected chambers, this ranking corrects the "
+                    "distortion present in 1D IRT by separating ideology from "
+                    "the establishment-contrarian axis."
+                ),
+                alt_text=(
+                    f"Forest plot of 2D IRT Dim 1 ideal points for {chamber}, "
+                    "showing each legislator ranked by ideology with 95% credible intervals."
+                ),
+            )
+        )
 
 
 def _add_scatter_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:
@@ -455,14 +514,20 @@ def _add_interpretation_guide(report: ReportBuilder) -> None:
                 "&ldquo;we cannot tell where this legislator sits on Dim 2.&rdquo;</p>"
                 "<p><strong>Caution:</strong> The 2D model uses relaxed convergence "
                 "thresholds. Dim 2 posterior summaries should be treated as "
-                "exploratory, not definitive. The 1D model remains the canonical "
-                "baseline for all downstream analyses.</p>"
+                "exploratory, not definitive.</p>"
+                "<p><strong>Canonical routing:</strong> For horseshoe-affected chambers, "
+                "Dim 1 from this 2D model is the canonical ideology score consumed by "
+                "downstream phases. For balanced chambers, the simpler 1D IRT model "
+                "remains canonical. See <code>docs/canonical-ideal-points.md</code>.</p>"
             ),
         )
     )
 
 
-def _generate_irt_2d_key_findings(results: dict[str, dict]) -> list[str]:
+def _generate_irt_2d_key_findings(
+    results: dict[str, dict],
+    canonical_sources: dict[str, str] | None = None,
+) -> list[str]:
     """Generate 2-4 key findings from 2D IRT results."""
     findings: list[str] = []
 
@@ -493,6 +558,19 @@ def _generate_irt_2d_key_findings(results: dict[str, dict]) -> list[str]:
                 + "."
             )
         break
+
+    # Canonical routing
+    if canonical_sources:
+        dim1_chambers = [c for c, s in canonical_sources.items() if s == "2d_dim1"]
+        if dim1_chambers:
+            findings.append(
+                f"<strong>Canonical routing:</strong> {', '.join(dim1_chambers)} "
+                "using 2D Dim 1 (horseshoe detected in 1D)."
+            )
+        else:
+            findings.append(
+                "<strong>Canonical routing:</strong> all chambers using 1D IRT (no horseshoe)."
+            )
 
     return findings
 

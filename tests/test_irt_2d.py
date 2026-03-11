@@ -26,6 +26,8 @@ from analysis.irt_2d import (  # noqa: E402
     TYSON_SLUGS,
     apply_dim1_sign_check,
     correlate_with_pca,
+    parse_args,
+    plot_dim1_forest,
 )
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -187,3 +189,30 @@ class TestConstants:
 
     def test_annotate_slugs_union(self):
         assert ANNOTATE_SLUGS == TYSON_SLUGS | THOMPSON_SLUGS
+
+
+# ── Init Strategy Default ────────────────────────────────────────────────────
+
+
+class TestInitStrategyDefault:
+    """Phase 06 must default to pca-informed to avoid horseshoe contamination."""
+
+    def test_default_is_pca_informed(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["irt_2d.py"])
+        args = parse_args()
+        assert args.init_strategy == "pca-informed"
+
+
+# ── Dim 1 Forest Plot ───────────────────────────────────────────────────────
+
+
+class TestPlotDim1Forest:
+    """Smoke tests for the Dim 1 forest plot."""
+
+    def test_creates_png(self, ideal_2d_positive, tmp_path):
+        plot_dim1_forest(ideal_2d_positive, "Senate", tmp_path)
+        assert (tmp_path / "dim1_forest_senate.png").exists()
+
+    def test_creates_png_house(self, ideal_2d_positive, tmp_path):
+        plot_dim1_forest(ideal_2d_positive, "House", tmp_path)
+        assert (tmp_path / "dim1_forest_house.png").exists()

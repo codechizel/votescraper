@@ -478,8 +478,9 @@ def parse_args() -> argparse.Namespace:
         choices=["auto", "irt-informed", "pca-informed", "2d-dim1"],
         help=(
             "Override chain initialization source. "
-            "2d-dim1 uses 2D IRT Dim 1 (ideology axis) for iterative refinement. "
-            "Default: uses strategy-specific init (PCA, agreement, or party-based)."
+            "2d-dim1 uses 2D IRT Dim 1 for iterative refinement [research only]. "
+            "Default: uses strategy-specific init. "
+            "Production uses canonical routing (ADR-0109)."
         ),
     )
     parser.add_argument("--csv", action="store_true", help="Force CSV loading (skip database)")
@@ -518,8 +519,8 @@ def parse_args() -> argparse.Namespace:
     robustness.add_argument(
         "--horseshoe-remediate",
         action="store_true",
-        help="Auto-refit with PC2-filtered votes when horseshoe detected "
-        "(implies --horseshoe-diagnostic)",
+        help="[Research] Auto-refit with PC2-filtered votes when horseshoe detected "
+        "(implies --horseshoe-diagnostic). Production uses canonical routing (ADR-0109).",
     )
     robustness.add_argument(
         "--promote-2d",
@@ -534,8 +535,9 @@ def parse_args() -> argparse.Namespace:
     robustness.add_argument(
         "--dim1-prior",
         action="store_true",
-        help="Use 2D IRT Dimension 1 as informative prior for ideology recovery "
-        "(requires Phase 06 results; implies --promote-2d). ADR-0108.",
+        help="[Research] Use 2D IRT Dim 1 as informative prior for ideology recovery "
+        "(requires Phase 06 results; implies --promote-2d). "
+        "Production uses canonical routing (ADR-0109).",
     )
     robustness.add_argument(
         "--dim1-prior-sigma",
@@ -552,6 +554,17 @@ def parse_args() -> argparse.Namespace:
     # --dim1-prior implies --promote-2d (for automatic cross-referencing in report)
     if parsed.dim1_prior:
         parsed.promote_2d = True
+    # Research-only flag warnings (production uses canonical routing, ADR-0109)
+    if parsed.horseshoe_remediate:
+        print(
+            "  NOTE: --horseshoe-remediate is retained for research. "
+            "Production pipelines use canonical ideal point routing (ADR-0109)."
+        )
+    if parsed.dim1_prior:
+        print(
+            "  NOTE: --dim1-prior is retained for research. "
+            "Production pipelines use canonical ideal point routing (ADR-0109)."
+        )
     return parsed
 
 

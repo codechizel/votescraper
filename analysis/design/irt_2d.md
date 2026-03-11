@@ -144,13 +144,16 @@ The 1D IRT mode-splitting investigation (ADR-0023) showed that random initializa
 |------|-------------|
 | `ideal_points_2d_house.parquet` | House 2D ideal points with HDIs |
 | `ideal_points_2d_senate.parquet` | Senate 2D ideal points with HDIs |
-| `convergence_summary.json` | Per-chamber R-hat, ESS, divergences, correlations |
+| `convergence_summary.json` | Per-chamber convergence diagnostics |
+| `canonical_irt/canonical_ideal_points_{chamber}.parquet` | Canonical ideal points (routed: 1D or 2D Dim 1) |
+| `canonical_irt/routing_manifest.json` | Routing decision log |
 
 ### Plots (per chamber)
 
 | File | Description |
 |------|-------------|
 | `2d_scatter_{chamber}.png` | Dim 1 vs Dim 2, party-colored, Tyson/Thompson annotated |
+| `dim1_forest_{chamber}.png` | Dim 1 ideal points ranked with HDI bars (ideology ranking) |
 | `dim1_vs_pc1_{chamber}.png` | 2D Dim 1 vs PCA PC1, with Pearson r |
 | `dim2_vs_pc2_{chamber}.png` | 2D Dim 2 vs PCA PC2, with Pearson r |
 | `2d_scatter_interactive_{chamber}.html` | Plotly interactive Dim 1 vs Dim 2 with hover details |
@@ -171,15 +174,14 @@ Interactive plots use Plotly (`fig.to_html(full_html=False, include_plotlyjs="cd
 
 ## Relationship to 1D Model
 
-The 2D model does NOT replace the 1D model because:
+The 2D model complements the 1D model:
 
-1. **Most legislators are 1D.** For 95%+ of legislators, Dim 2 will be near zero with wide HDIs. The extra dimension adds noise, not signal.
-2. **Prediction barely improves.** The 1D model already achieves 0.98 AUC. The second dimension captures behavior on low-discrimination bills.
-3. **Interpretability decreases.** A single ideal point per legislator is easy to explain to policymakers. Two numbers per legislator is harder.
-4. **Computational cost is 3-6x.** Not justified for routine pipeline runs.
-5. **Identification is fragile.** PLT constraints work but add complexity. The 1D model's anchor identification is simpler and better-validated.
+- **Balanced chambers:** 1D IRT is canonical (simpler, sufficient, better-converged).
+- **Horseshoe-affected chambers:** 2D Dim 1 is canonical (separates ideology from establishment-loyalty).
 
-The 2D model is valuable as a **diagnostic tool**: it confirms that the Tyson paradox is a real multidimensional pattern (not a model artifact), estimates uncertainty on the second dimension, and identifies which bills drive the contrarianism pattern.
+The routing is automatic via `analysis/canonical_ideal_points.py` (ADR-0109). Downstream phases (synthesis, profiles) read canonical output and don't need to know which source was selected.
+
+The 2D model retains its diagnostic value: Dim 2 captures the establishment-contrarian axis, the 2D scatter makes horseshoe distortion visible, and the Dim 1 forest plot provides the corrected ideology ranking.
 
 ## Horseshoe Diagnostic Value
 
