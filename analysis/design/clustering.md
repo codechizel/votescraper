@@ -105,6 +105,10 @@ Cross-method agreement (measured by Adjusted Rand Index) validates that the clus
 
 **Why:** Veto overrides reveal cross-party coalitions (some Rs join Ds, or vice versa) that are invisible in the full-dataset clusters. The higher threshold creates different alignment incentives than simple-majority votes.
 
+### Horseshoe-aware cluster labeling
+
+When `horseshoe_detected=True` is passed to `characterize_clusters()`, the labeling strategy changes: instead of xi_mean-based labels like "Conservative R" / "Moderate R", clusters are labeled by party composition (e.g., `"R-dominated (14R/0D)"`). This avoids misleading ideological labels when horseshoe distortion compresses the 1D scale. See ADR-0114.
+
 ## Key Findings (2026-02-20)
 
 The initial hypothesis predicted k=3 (conservative Rs, moderate Rs, Democrats). **All silhouette-based methods found k=2 as optimal for both chambers.** The two clusters correspond exactly to the party split: all Republicans in one cluster, all Democrats in the other.

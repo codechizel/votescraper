@@ -1639,6 +1639,7 @@ def characterize_clusters(
     loyalty: pl.DataFrame | None,
     k: int,
     chamber: str,
+    horseshoe_detected: bool = False,
 ) -> pl.DataFrame:
     """Summarize cluster characteristics: party composition, IRT stats, loyalty.
 
@@ -1671,9 +1672,11 @@ def characterize_clusters(
             if non_null.height > 0:
                 loy_mean = float(non_null["loyalty_rate"].mean())
 
-        # Heuristic label
+        # Heuristic label — use party-composition when horseshoe distorts xi_mean
         dominant_party = "R" if n_r > n_d else "D"
-        if dominant_party == "R" and xi_mean > 1.0:
+        if horseshoe_detected:
+            label = f"{dominant_party}-dominated ({n_r}R/{n_d}D)"
+        elif dominant_party == "R" and xi_mean > 1.0:
             label = "Conservative R"
         elif dominant_party == "R":
             label = "Moderate R"
@@ -2412,7 +2415,11 @@ def main() -> None:
                         f"({km_df.height}) — skipping 2D cluster column"
                     )
             km_df.write_parquet(ctx.data_dir / f"kmeans_assignments_{chamber.lower()}.parquet")
-            ctx.export_csv(km_df, f"kmeans_assignments_{chamber.lower()}.csv", f"K-means cluster assignments for {chamber} legislators")
+            ctx.export_csv(
+                km_df,
+                f"kmeans_assignments_{chamber.lower()}.csv",
+                f"K-means cluster assignments for {chamber} legislators",
+            )
             print(f"  Saved: kmeans_assignments_{chamber.lower()}.parquet")
 
             plot_elbow_silhouette(km_results, chamber, ctx.plots_dir)
@@ -2554,9 +2561,7 @@ def main() -> None:
 
             # Party labels aligned to IRT slug order for ARI-vs-party diagnostic
             party_arr = np.array(irt_ip["party"].to_list())
-            comparison = compare_methods(
-                method_assignments, chamber, party_labels=party_arr
-            )
+            comparison = compare_methods(method_assignments, chamber, party_labels=party_arr)
             chamber_results["comparison"] = comparison
 
             # ── Phase 7: Cluster Characterization ──

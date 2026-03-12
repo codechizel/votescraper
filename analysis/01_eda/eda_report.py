@@ -596,8 +596,8 @@ def _add_absenteeism_analysis(report: ReportBuilder, absence: pl.DataFrame) -> N
                 "total_votes": "Total Votes",
             },
             number_formats={
-                "overall_absence_rate": "{:.1%}",
-                "pl_absence_rate": "{:.1%}",
+                "overall_absence_rate": "{:.2%}",
+                "pl_absence_rate": "{:.2%}",
                 "absence_ratio": "{:.1f}x",
             },
             source_note=(

@@ -47,13 +47,29 @@ def build_network_report(
     kappa_threshold: float = 0.40,
     skip_cross_chamber: bool = False,
     skip_high_disc: bool = False,
+    horseshoe_status: dict[str, dict] | None = None,
 ) -> None:
     """Build the full network HTML report by adding sections to the ReportBuilder."""
+    from analysis.phase_utils import horseshoe_warning_html
+
     chambers = [c for c in ["House", "Senate"] if c in results and "summary" in results[c]]
 
     findings = _generate_network_key_findings(results)
     if findings:
         report.add(KeyFindingsSection(findings=findings))
+
+    # Horseshoe warnings
+    if horseshoe_status:
+        for chamber, status in horseshoe_status.items():
+            warning = horseshoe_warning_html(chamber, status)
+            if warning:
+                report.add(
+                    TextSection(
+                        id=f"horseshoe-warning-{chamber.lower()}",
+                        title=f"{chamber} Horseshoe Warning",
+                        html=warning,
+                    )
+                )
 
     _add_data_summary(report, results, chambers)
     _add_how_to_read(report)

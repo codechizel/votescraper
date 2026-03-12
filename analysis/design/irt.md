@@ -296,3 +296,5 @@ See `docs/79th-horseshoe-robustness-analysis.md` for empirical validation of the
 The identification strategy system (ADR-0103) auto-selects strategies designed to mitigate horseshoe effects in supermajority chambers via `anchor-agreement` or `sort-constraint` approaches.
 
 When identification strategies alone are insufficient (e.g., the 79th Senate where PCA dimensions are swapped), `--horseshoe-remediate` auto-refits using PC2-filtered votes and a PC2 informative prior. This redirects the 1D model from the establishment-loyalty axis (PC1) to the ideology axis (PC2). The remediation is gated on `detect_horseshoe()` — only chambers that fail the diagnostic are refitted. See `results/experimental_lab/2026-03-09_pc2-targeted-irt/experiment.md` for the validation experiment.
+
+At the report level, 8 report builders accept `horseshoe_status` from `phase_utils.load_horseshoe_status()` and inject styled warning banners via `horseshoe_warning_html()` when distortion is detected (ADR-0114). The IRT report also adds a key finding when Republican mean < Democrat mean (party mean inversion), and uses data-driven IRT-PCA correlation captions instead of hardcoded text.

@@ -505,7 +505,15 @@ def run_umap_for_chamber(
     validation.
     """
     print_header(f"UMAP -- {chamber}")
-    print(f"  Matrix: {matrix.height} legislators x {len(matrix.columns) - 1} votes")
+    n_members = matrix.height
+    max_neighbors = max(2, n_members // 3)
+    if n_neighbors > max_neighbors:
+        print(
+            f"  WARNING: n_neighbors={n_neighbors} exceeds {n_members}//3="
+            f"{max_neighbors} — capping to {max_neighbors}"
+        )
+        n_neighbors = max_neighbors
+    print(f"  Matrix: {n_members} legislators x {len(matrix.columns) - 1} votes")
     print(f"  Parameters: n_neighbors={n_neighbors}, min_dist={min_dist}, metric={DEFAULT_METRIC}")
 
     # Compute imputation rates before imputation

@@ -107,7 +107,9 @@ def _add_inertia_summary(
         source_note=(
             f"Inertia corrected using {correction} method. "
             "Raw MCA percentages are much lower than PCA due to indicator matrix inflation — "
-            "the correction compensates for this."
+            "the correction compensates for this. "
+            "Corrected cumulative inertia may exceed 100% — this is a known artifact of "
+            "the Greenacre correction and does not indicate an error."
         ),
     )
     report.add(
@@ -282,6 +284,27 @@ def _add_top_contributions(
                 html=html,
             )
         )
+
+        # Warn if dimension is absence-dominated
+        top5_cats = top.head(5)["category"].to_list()
+        n_absent = sum(1 for c in top5_cats if "__Absent" in str(c))
+        if n_absent >= 4:
+            report.add(
+                TextSection(
+                    id=f"absence-warning-dim{dim}-{chamber.lower()}",
+                    title=f"{chamber} Dim{dim} Absence Warning",
+                    html=(
+                        f'<div style="background:#fff3cd; border:1px solid #ffc107; '
+                        f'border-radius:6px; padding:12px 16px; margin:8px 0;">'
+                        f"<strong>Absence-Dominated Dimension:</strong> "
+                        f"{n_absent} of the top 5 Dim{dim} contributions are "
+                        f"absence categories. This dimension primarily captures "
+                        f"attendance patterns rather than ideological variation. "
+                        f"Interpret Dim{dim} scores as an attendance axis, not a "
+                        f"policy axis.</div>"
+                    ),
+                )
+            )
 
 
 def _add_absence_map_figure(

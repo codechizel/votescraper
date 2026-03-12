@@ -20,6 +20,7 @@ try:
         KeyFindingsSection,
         ReportBuilder,
         TableSection,
+        TextSection,
         make_gt,
     )
 except ModuleNotFoundError:
@@ -28,6 +29,7 @@ except ModuleNotFoundError:
         KeyFindingsSection,
         ReportBuilder,
         TableSection,
+        TextSection,
         make_gt,
     )
 
@@ -51,7 +53,7 @@ def build_pca_report(
     for chamber, result in results.items():
         _add_pca_summary(report, result, chamber)
         _add_dimensionality_diagnostics(report, result, chamber)
-        _add_scree_figure(report, plots_dir, chamber)
+        _add_scree_figure(report, plots_dir, chamber, result)
         _add_ideological_map_figure(report, plots_dir, chamber)
         _add_pc1_distribution_figure(report, plots_dir, chamber)
         _add_top_loadings(report, result, chamber, pc=1)
@@ -63,6 +65,25 @@ def build_pca_report(
         _add_sensitivity_table(report, sensitivity_findings)
         for chamber in results:
             _add_sensitivity_figure(report, plots_dir, chamber)
+        # Warn when sensitivity r is low
+        for chamber, data in sensitivity_findings.items():
+            r = data.get("pearson_r", 1.0)
+            if r < 0.95:
+                report.add(
+                    TextSection(
+                        id=f"sensitivity-warning-{chamber.lower()}",
+                        title=f"{chamber} Sensitivity Warning",
+                        html=(
+                            '<div style="background:#fff3cd; border:1px solid #ffc107; '
+                            'border-radius:6px; padding:12px 16px; margin:8px 0;">'
+                            f"<strong>Low Sensitivity Correlation ({chamber}):</strong> "
+                            f"r = {r:.3f} between default and sensitivity filter thresholds. "
+                            f"PC1 scores are sensitive to the vote-filtering threshold, "
+                            f"meaning results may change materially with different inclusion "
+                            f"criteria. Interpret with caution.</div>"
+                        ),
+                    )
+                )
 
     if validation_results:
         _add_validation_table(report, validation_results)
@@ -239,17 +260,28 @@ def _add_reconstruction_error(
     )
 
 
-def _add_scree_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:
+def _add_scree_figure(report: ReportBuilder, plots_dir: Path, chamber: str, result: dict) -> None:
     path = plots_dir / f"scree_{chamber.lower()}.png"
     if path.exists():
+        eigenvalue_ratio = result.get("eigenvalue_ratio", 0.0)
+        if eigenvalue_ratio > 5:
+            scree_caption = (
+                "Sharp elbow after PC1 indicates a strongly one-dimensional legislature."
+            )
+        elif eigenvalue_ratio > 3:
+            scree_caption = "Elbow after PC1 indicates a predominantly one-dimensional legislature."
+        else:
+            scree_caption = (
+                f"Eigenvalue ratio ({eigenvalue_ratio:.1f}) suggests a meaningful "
+                "second dimension is present."
+            )
         report.add(
             FigureSection.from_file(
                 f"fig-scree-{chamber.lower()}",
                 f"{chamber} Scree Plot",
                 path,
                 caption=(
-                    f"Individual and cumulative explained variance for {chamber}. "
-                    "Sharp elbow after PC1 indicates a one-dimensional legislature."
+                    f"Individual and cumulative explained variance for {chamber}. {scree_caption}"
                 ),
                 alt_text=(
                     f"Bar-and-line chart showing PCA eigenvalues for {chamber}. "
@@ -325,7 +357,10 @@ def _add_top_loadings(
     # Top negative loadings
     top_neg = loadings_df.sort(pc_col, descending=False).head(TOP_LOADINGS)
 
+    from analysis.phase_utils import drop_empty_optional_columns
+
     combined = pl.concat([top_pos, top_neg])
+    combined = drop_empty_optional_columns(combined, ["short_title"])
 
     # Select columns to display
     display_cols = [pc_col, "vote_id", "bill_number"]

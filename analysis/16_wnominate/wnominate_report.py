@@ -359,13 +359,21 @@ def _add_fit_statistics(report: ReportBuilder, all_results: dict[str, dict]) -> 
                         return float("nan")
                     return float(v)
 
+                def _normalize_proportion(v: float) -> float:
+                    """Normalize to 0-1 scale (W-NOMINATE reports 0-100)."""
+                    return v / 100.0 if v > 1.0 else v
+
+                cc_f = _normalize_proportion(_to_float(cc))
+                apre_f = _normalize_proportion(_to_float(apre))
+                gmp_f = _to_float(gmp)
+
                 rows.append(
                     {
                         "Chamber": chamber,
                         "Method": "W-NOMINATE" if method == "wnominate" else "OC",
-                        "Correct Classification": _to_float(cc),
-                        "APRE": _to_float(apre),
-                        "GMP": _to_float(gmp),
+                        "Correct Classification": cc_f,
+                        "APRE": apre_f,
+                        "GMP": gmp_f,
                     }
                 )
 
@@ -541,7 +549,9 @@ def _generate_wnominate_key_findings(all_results: dict[str, dict]) -> list[str]:
                 cc_values.append((chamber, label, cc))
 
     if cc_values:
-        best = max(cc_values, key=lambda x: x[2])
+        # Normalize to 0-1 scale (W-NOMINATE reports CC as 0-100)
+        cc_normalized = [(ch, label, v / 100.0 if v > 1.0 else v) for ch, label, v in cc_values]
+        best = max(cc_normalized, key=lambda x: x[2])
         findings.append(
             f"Best classification: <strong>{best[1]}</strong> in <strong>{best[0]}</strong> "
             f"correctly classifies <strong>{best[2]:.1%}</strong> of votes."

@@ -71,6 +71,8 @@ Daily Rice would produce ~2 observations per day (one per vote), which is noisy 
 
 PC1 signs are aligned per window so that the Republican mean is positive. This matches the convention established in Phase 2 (PCA) and Phase 4 (IRT). Without per-window alignment, PCA sign indeterminacy would cause artificial "drift" artifacts.
 
+**Horseshoe override:** When `full_session_scores` are provided to `align_pc_signs()`, per-window PC1 is correlated against the full-session PC1 scores instead of using the Republican-mean convention. This avoids sign-flip artifacts in horseshoe-affected chambers where the Republican mean may be near zero or negative. See ADR-0114.
+
 ### Desposato Small-Group Rice Correction
 
 Rice Index is systematically inflated for small groups: a caucus of 8 members voting randomly will show higher apparent Rice than a caucus of 32 voting randomly (Desposato 2005, *BJPS*). This matters for Kansas: Senate Democrats have ~8 members vs ~32 Republicans.

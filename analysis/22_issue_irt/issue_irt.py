@@ -48,8 +48,10 @@ except ModuleNotFoundError:
 
 try:
     from analysis.issue_irt_report import build_issue_irt_report
+    from analysis.report import TextSection
 except ModuleNotFoundError:
     from issue_irt_report import build_issue_irt_report  # type: ignore[no-redef]
+    from report import TextSection  # type: ignore[no-redef]
 
 try:
     from analysis.issue_irt_data import (
@@ -619,7 +621,30 @@ def main() -> None:
         else resolve_upstream_dir("20_bill_text", results_root, args.run_id)
     )
     if not (bt_dir / "data").exists():
-        print("[Phase 22] Skipping: bill text analysis not yet run (run `just text-analysis` first)")
+        print(
+            "[Phase 22] Skipping: bill text analysis not yet run (run `just text-analysis` first)"
+        )
+        # Generate minimal "Phase Skipped" report so the dashboard doesn't show a gap
+        with RunContext(
+            session=args.session,
+            analysis_name="22_issue_irt",
+            params=vars(args),
+            primer="Phase skipped — no bill text topic taxonomy available.",
+            run_id=args.run_id,
+        ) as skip_ctx:
+            skip_ctx.report.add(
+                TextSection(
+                    id="phase-skipped",
+                    title="Phase Skipped",
+                    html=(
+                        "<p>Issue-specific IRT requires bill text topic assignments from "
+                        "Phase 20 (bill text analysis). No topic taxonomy data was found "
+                        "for this session.</p>"
+                        "<p>This is expected for KanFocus-only bienniums (pre-2011) and sessions "
+                        "where <code>just text-analysis</code> has not been run.</p>"
+                    ),
+                )
+            )
         return
 
     # Resolve upstream dirs

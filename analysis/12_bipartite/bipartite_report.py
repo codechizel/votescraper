@@ -203,6 +203,10 @@ def _add_polarization_table(
     if pol is None or pol.height == 0:
         return
 
+    from analysis.phase_utils import drop_empty_optional_columns
+
+    pol = drop_empty_optional_columns(pol, ["short_title"])
+
     # Select display columns
     display_cols = [
         "vote_id",
@@ -284,9 +288,13 @@ def _add_bridge_bills_table(
     chamber: str,
 ) -> None:
     """Table: Top bridge bills by bipartite betweenness."""
+    from analysis.phase_utils import drop_empty_optional_columns
+
     bridge = chamber_results.get("bridge_bills")
     if bridge is None or bridge.height == 0:
         return
+
+    bridge = drop_empty_optional_columns(bridge, ["short_title"])
 
     display_cols = [
         "vote_id",

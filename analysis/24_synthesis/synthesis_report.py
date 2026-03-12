@@ -52,11 +52,27 @@ def build_synthesis_report(
     upstream_plots: dict[str, Path],
     notables: dict,
     session: str,
+    horseshoe_status: dict[str, dict] | None = None,
 ) -> None:
     """Build the full synthesis report (29-32 sections depending on detections)."""
+    from analysis.phase_utils import horseshoe_warning_html
+
     findings = _generate_synthesis_key_findings(leg_dfs, notables)
     if findings:
         report.add(KeyFindingsSection(findings=findings))
+
+    # Horseshoe warnings
+    if horseshoe_status:
+        for chamber, status in horseshoe_status.items():
+            warning = horseshoe_warning_html(chamber, status)
+            if warning:
+                report.add(
+                    TextSection(
+                        id=f"horseshoe-warning-{chamber.lower()}",
+                        title=f"{chamber} Horseshoe Warning",
+                        html=warning,
+                    )
+                )
 
     # 1. intro
     _add_intro(report, manifests, notables)
@@ -512,7 +528,7 @@ def _add_forest_figure(report: object, upstream_plots: dict, chamber: str, notab
         mav = notables.get("mavericks", {}).get(chamber)
         if mav is not None:
             callout_parts.append(
-                f"{mav.full_name.split()[-1]} (most bipartisan {chamber_title} member)"
+                f"{mav.full_name.split()[-1]} (lowest party loyalty in {chamber_title})"
             )
         paradoxes = notables.get("paradoxes", {})
         for slug, p in paradoxes.items():
@@ -686,6 +702,33 @@ def _add_paradox_profile(report: object, plots_dir: Path, notables: dict) -> Non
     )
 
 
+def _veto_rice_interpretation(
+    h_rice_r: float,
+    h_rice_d: float,
+    s_rice_r: float,
+    s_rice_d: float,
+) -> str:
+    """Data-driven interpretation of veto override Rice indices."""
+    avg_rice = (h_rice_r + h_rice_d + s_rice_r + s_rice_d) / 4
+    if avg_rice > 0.80:
+        return (
+            "Both parties vote almost unanimously on override votes. "
+            "There is no bipartisan coalition to find. The veto overrides are "
+            "simply another expression of party discipline."
+        )
+    if avg_rice > 0.50:
+        return (
+            "Override votes show moderate party cohesion with notable intra-party "
+            "dissent. Some legislators cross party lines on overrides, suggesting "
+            "genuine policy disagreement within caucuses."
+        )
+    return (
+        "Override votes reveal significant intra-party splits. "
+        "Party discipline breaks down on overrides, with substantial "
+        "cross-party coalitions forming around specific bills."
+    )
+
+
 def _add_veto_narrative(report: object, manifests: dict) -> None:
     """Section 20: Veto Overrides Tell You Nothing New."""
     indices = manifests.get("13_indices", {})
@@ -717,10 +760,7 @@ def _add_veto_narrative(report: object, manifests: dict) -> None:
                 f"<li>Senate Republican Rice Index on overrides: <strong>{s_rice_r:.2f}</strong> "
                 f"(Democrat: {s_rice_d:.2f})</li>"
                 "</ul>"
-                "<p>Both parties vote almost unanimously on override votes — Republicans "
-                "override, Democrats oppose (or vice versa). There is no bipartisan "
-                "coalition to find. The veto overrides are simply another expression "
-                "of party discipline.</p>"
+                f"<p>{_veto_rice_interpretation(h_rice_r, h_rice_d, s_rice_r, s_rice_d)}</p>"
             ),
         )
     )

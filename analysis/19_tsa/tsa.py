@@ -345,10 +345,17 @@ def rolling_window_pca(
 def align_pc_signs(
     rolling_df: pl.DataFrame,
     legislator_meta: pl.DataFrame,
+    full_session_scores: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     """Align PC1 signs so Republicans are positive (party convention).
 
     For each window, compute mean PC1 for Republicans. If negative, flip all scores.
+
+    When *full_session_scores* is provided (a DataFrame with ``slug`` and
+    ``pc1_score`` columns from the full-session PCA), per-window PC1 is
+    correlated with those scores instead of relying on the Republican-mean
+    convention.  This avoids sign-flip artifacts in horseshoe-affected
+    chambers where the Republican-mean heuristic is unreliable.
     """
     if rolling_df.height == 0:
         return rolling_df
@@ -361,6 +368,15 @@ def align_pc_signs(
         if slug and party:
             party_map[slug] = party
 
+    # Build full-session score mapping if available
+    full_score_map: dict[str, float] = {}
+    if full_session_scores is not None:
+        for row in full_session_scores.iter_rows(named=True):
+            s = row.get("slug") or row.get("legislator_slug", "")
+            score = row.get("pc1_score")
+            if s and score is not None:
+                full_score_map[s] = float(score)
+
     # Process each window
     windows = rolling_df["window_idx"].unique().sort().to_list()
     result_rows: list[dict] = []
@@ -370,9 +386,25 @@ def align_pc_signs(
         scores = window_data["pc1_score"].to_numpy()
         slugs = window_data["slug"].to_list()
 
-        # Compute Republican mean
-        rep_scores = [s for slug, s in zip(slugs, scores) if party_map.get(slug) == "Republican"]
-        flip = -1.0 if rep_scores and np.mean(rep_scores) < 0 else 1.0
+        if full_score_map:
+            # Horseshoe-safe: correlate with full-session scores
+            pairs = [
+                (s, full_score_map[slug])
+                for slug, s in zip(slugs, scores)
+                if slug in full_score_map
+            ]
+            if pairs:
+                w_scores, f_scores = zip(*pairs)
+                corr = float(np.corrcoef(w_scores, f_scores)[0, 1])
+                flip = -1.0 if corr < 0 else 1.0
+            else:
+                flip = 1.0
+        else:
+            # Standard: Republican-mean convention
+            rep_scores = [
+                s for slug, s in zip(slugs, scores) if party_map.get(slug) == "Republican"
+            ]
+            flip = -1.0 if rep_scores and np.mean(rep_scores) < 0 else 1.0
 
         for row_dict in window_data.iter_rows(named=True):
             row_dict["pc1_score"] = row_dict["pc1_score"] * flip

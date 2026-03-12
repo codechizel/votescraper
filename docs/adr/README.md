@@ -173,6 +173,7 @@ What are the trade-offs?
 | [0106](0106-bespoke-report-extraction.md) | Bespoke multi-report section extraction (tallgrass-extract) |
 | [0107](0107-shared-init-strategy.md) | Shared MCMC initialization strategy (`--init-strategy`, Django-ready) |
 | [0113](0113-legislature-number-session-resolution.md) | Legislature number session resolution (fix "79" → "79th_2001-2002") |
+| [0114](0114-horseshoe-aware-report-system.md) | Horseshoe-aware report system (warnings, data-driven captions, 27-issue audit) |
 
 ## Chronological Index
 
@@ -291,6 +292,7 @@ What are the trade-offs?
 | [0111](0111-canonical-init-strategy-hierarchical.md) | Canonical init strategy for hierarchical IRT (`--init-strategy canonical`, auto-detect) | Accepted | 2026-03-11 |
 | [0112](0112-2d-irt-supermajority-tuning.md) | 2D IRT tuning for supermajority chambers (adaptive N_TUNE, beta init from PCA, contested-only) | Accepted | 2026-03-11 |
 | [0113](0113-legislature-number-session-resolution.md) | Legislature number session resolution (fix "79" → "79th_2001-2002") | Accepted | 2026-03-11 |
+| [0114](0114-horseshoe-aware-report-system.md) | Horseshoe-aware report system (warnings in 8 phases, data-driven captions, 27-issue audit) | Accepted | 2026-03-12 |
 
 ## Creating a New ADR
 

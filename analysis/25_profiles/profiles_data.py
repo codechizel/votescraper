@@ -431,10 +431,14 @@ def find_defection_bills(
         if col in rollcalls.columns:
             rc_cols.append(col)
 
-    result = defections.head(n).join(
-        rollcalls.select(rc_cols).unique(subset=["vote_id"]),
-        on="vote_id",
-        how="left",
+    result = (
+        defections.head(n)
+        .unique(subset=["vote_id"])
+        .join(
+            rollcalls.select(rc_cols).unique(subset=["vote_id"]),
+            on="vote_id",
+            how="left",
+        )
     )
 
     # Ensure expected metadata columns exist (rollcalls may lack them)
@@ -499,9 +503,7 @@ def compute_sponsorship_stats(
         return None
 
     # Split and check membership
-    matched = with_slugs.filter(
-        pl.col("sponsor_slugs").str.split("; ").list.contains(slug)
-    )
+    matched = with_slugs.filter(pl.col("sponsor_slugs").str.split("; ").list.contains(slug))
     if matched.height == 0:
         return _empty_sponsorship_df()
 

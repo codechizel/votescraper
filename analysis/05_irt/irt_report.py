@@ -55,12 +55,28 @@ def build_irt_report(
     n_chains: int,
     robustness_flags: list | None = None,
     robustness_results: dict[str, dict] | None = None,
+    horseshoe_status: dict[str, dict] | None = None,
 ) -> None:
     """Build the full IRT HTML report by adding sections to the ReportBuilder."""
+    from analysis.phase_utils import horseshoe_warning_html
+
     # Key findings
     findings = _generate_irt_key_findings(results, pca_comparisons)
     if findings:
         report.add(KeyFindingsSection(findings=findings))
+
+    # Horseshoe warnings
+    if horseshoe_status:
+        for chamber, status in horseshoe_status.items():
+            warning = horseshoe_warning_html(chamber, status)
+            if warning:
+                report.add(
+                    TextSection(
+                        id=f"horseshoe-warning-{chamber.lower()}",
+                        title=f"{chamber} Horseshoe Warning",
+                        html=warning,
+                    )
+                )
 
     # Model config + convergence + identification
     for chamber, result in results.items():
@@ -131,7 +147,7 @@ def build_irt_report(
         for chamber in results:
             if chamber == "Joint":
                 continue
-            _add_pca_comparison_figure(report, plots_dir, chamber)
+            _add_pca_comparison_figure(report, plots_dir, chamber, pca_comparisons)
             _add_irt_vs_pca_interactive(report, plots_dir, chamber)
         _add_pca_comparison_table(report, pca_comparisons)
 
@@ -600,10 +616,37 @@ def _add_ppc_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> Non
         )
 
 
+def _pca_comparison_caption(chamber: str, pca_comparisons: dict[str, dict]) -> str:
+    """Data-driven caption for IRT vs PCA scatter."""
+    data = pca_comparisons.get(chamber, {})
+    r = data.get("pearson_r")
+    if r is not None:
+        abs_r = abs(r)
+        if abs_r > 0.95:
+            return (
+                f"IRT ideal points vs PCA PC1 scores ({chamber}). "
+                f"High correlation (r={r:.3f}) confirms consistent ideological estimates."
+            )
+        if abs_r > 0.85:
+            return (
+                f"IRT ideal points vs PCA PC1 scores ({chamber}). "
+                f"Moderate correlation (r={r:.3f}) — some divergence between methods."
+            )
+        return (
+            f"IRT ideal points vs PCA PC1 scores ({chamber}). "
+            f"Low correlation (r={r:.3f}) — investigate horseshoe or model fit."
+        )
+    return (
+        f"IRT ideal points vs PCA PC1 scores ({chamber}). "
+        "High correlation (r > 0.95) confirms consistent ideological estimates."
+    )
+
+
 def _add_pca_comparison_figure(
     report: ReportBuilder,
     plots_dir: Path,
     chamber: str,
+    pca_comparisons: dict[str, dict] | None = None,
 ) -> None:
     path = plots_dir / f"irt_vs_pca_{chamber.lower()}.png"
     if path.exists():
@@ -612,10 +655,7 @@ def _add_pca_comparison_figure(
                 f"fig-irt-pca-{chamber.lower()}",
                 f"{chamber} IRT vs PCA Comparison",
                 path,
-                caption=(
-                    f"IRT ideal points vs PCA PC1 scores ({chamber}). "
-                    "High correlation (r > 0.95) confirms consistent ideological estimates."
-                ),
+                caption=_pca_comparison_caption(chamber, pca_comparisons or {}),
                 alt_text=(
                     f"Scatter plot comparing IRT ideal points to PCA first principal component "
                     f"scores for {chamber} legislators. Points fall along a strong linear "
@@ -1668,11 +1708,18 @@ def _generate_irt_key_findings(
         r_mean = ip.filter(pl.col("party") == "Republican")["xi_mean"].mean()
         d_mean = ip.filter(pl.col("party") == "Democrat")["xi_mean"].mean()
         if r_mean is not None and d_mean is not None:
-            separation = abs(float(r_mean) - float(d_mean))
+            r_val, d_val = float(r_mean), float(d_mean)
+            separation = abs(r_val - d_val)
             findings.append(
                 f"{chamber} party separation: <strong>{separation:.2f}</strong> IRT units "
-                f"(R mean={float(r_mean):.2f}, D mean={float(d_mean):.2f})."
+                f"(R mean={r_val:.2f}, D mean={d_val:.2f})."
             )
+            if r_val < d_val:
+                findings.append(
+                    f"<strong>WARNING:</strong> {chamber} Republican mean ({r_val:.2f}) is "
+                    f"below Democrat mean ({d_val:.2f}). Consistent with horseshoe "
+                    "distortion — 1D IRT folds the small minority toward the majority."
+                )
 
     # Most extreme legislator
     for chamber, result in results.items():

@@ -105,8 +105,9 @@
 
 ### For IRT (Phase 3)
 - **PCA scores are used to select IRT anchors.** IRT picks the most-conservative (highest PC1) and most-liberal (lowest PC1) legislators as anchors, constrained to xi=+1 and xi=-1 respectively. If PCA scores are wrong, the IRT model will be anchored to the wrong legislators.
-- **PCA-IRT correlation is a validation check.** Pearson r > 0.95 between IRT ideal points and PCA PC1 is expected. Lower correlation suggests IRT is capturing nonlinearities that PCA misses.
+- **PCA-IRT correlation is a validation check.** Pearson r > 0.95 between IRT ideal points and PCA PC1 is expected. Lower correlation suggests IRT is capturing nonlinearities that PCA misses. The IRT report now uses a data-driven caption for the IRT-PCA scatter plot based on the actual r value (|r| > 0.95 → "High correlation", |r| > 0.85 → "Moderate", else → "Low — investigate horseshoe").
 - **Row-mean imputation is NOT used by IRT.** IRT handles missing data natively. The imputation artifacts that affect PCA (e.g., Miller's PC2 extreme) will not carry over to IRT.
+- **2D IRT initialization from PCA.** Phase 06 (2D IRT) uses PCA loadings for beta initialization when horseshoe is detected, avoiding contamination from 1D IRT estimates that may already be horseshoe-distorted (ADR-0112). PCA sensitivity r < 0.95 triggers a warning in the PCA report.
 
 ### For Clustering (Phase 5)
 - PCA scores (PC1-2 or more) can be used as clustering input features.

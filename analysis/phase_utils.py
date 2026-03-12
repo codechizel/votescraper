@@ -3,13 +3,14 @@
 Extracted from per-phase duplicates (R1-R3 in code audit).
 """
 
+import json
 import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import polars as pl
 
-from analysis.run_context import strip_leadership_suffix
+from analysis.run_context import resolve_upstream_dir, strip_leadership_suffix
 
 # ── Console Output ─────────────────────────────────────────────────────────
 
@@ -35,9 +36,7 @@ def save_fig(fig: plt.Figure, path: Path, dpi: int = 150) -> None:
 # ── Data Loading ───────────────────────────────────────────────────────────
 
 
-def load_metadata(
-    data_dir: Path, *, use_csv: bool = False
-) -> tuple[pl.DataFrame, pl.DataFrame]:
+def load_metadata(data_dir: Path, *, use_csv: bool = False) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Load rollcalls and legislators for metadata enrichment.
 
     Returns (rollcalls, legislators) with leadership suffixes stripped
@@ -165,3 +164,94 @@ def match_sponsor_to_party(sponsor_text: str, legislators: pl.DataFrame) -> str 
     if matched.height == 0:
         return None
     return matched[0, "party"]
+
+
+# ── Horseshoe Status ─────────────────────────────────────────────────────
+
+
+def load_horseshoe_status(
+    results_root: Path,
+    run_id: str | None = None,
+) -> dict[str, dict]:
+    """Load per-chamber horseshoe detection status from the canonical routing manifest.
+
+    Returns a dict mapping chamber name to its routing metadata, e.g.:
+        {"Senate": {"detected": True, "source": "2d_dim1", "reason": "..."}, ...}
+
+    Returns empty dict if no manifest exists (pre-canonical-routing pipelines).
+    """
+    canonical_dir = resolve_upstream_dir("canonical_irt", results_root, run_id=run_id)
+    manifest_path = canonical_dir / "routing_manifest.json"
+    if not manifest_path.exists():
+        return {}
+
+    manifest = json.loads(manifest_path.read_text())
+    sources = manifest.get("sources", {})
+    metadata = manifest.get("metadata", {})
+
+    result: dict[str, dict] = {}
+    for chamber in sources:
+        meta = metadata.get(chamber, {})
+        horseshoe = meta.get("horseshoe", {})
+        result[chamber] = {
+            "detected": horseshoe.get("detected", False),
+            "source": sources.get(chamber, "unknown"),
+            "reason": meta.get("reason", ""),
+            "dem_wrong_side_frac": horseshoe.get("dem_wrong_side_frac", 0.0),
+            "overlap_frac": horseshoe.get("overlap_frac", 0.0),
+        }
+    return result
+
+
+def horseshoe_warning_html(chamber: str, status: dict) -> str:
+    """Generate an HTML warning banner for a horseshoe-affected chamber.
+
+    Args:
+        chamber: Chamber name (e.g., "Senate").
+        status: Per-chamber dict from ``load_horseshoe_status()``.
+
+    Returns HTML string. Empty string if horseshoe not detected.
+    """
+    if not status.get("detected", False):
+        return ""
+
+    source = status.get("source", "unknown")
+    if source == "2d_dim1":
+        routing_note = (
+            "Canonical ideal points use <strong>2D IRT Dim 1</strong> to correct "
+            "for the horseshoe distortion."
+        )
+    else:
+        routing_note = (
+            "2D IRT was unavailable or did not converge; downstream phases use the "
+            "distorted <strong>1D IRT</strong> scores. Interpret with caution."
+        )
+
+    return (
+        '<div style="background:#fff3cd; border:1px solid #ffc107; border-radius:6px; '
+        'padding:12px 16px; margin:16px 0;">'
+        f"<strong>Horseshoe Effect Detected ({chamber})</strong><br>"
+        f"The {chamber} has a large party-size imbalance that causes the standard 1D IRT "
+        "model to fold minority-party members back toward the majority, distorting ideal "
+        "point estimates. This is visible as a U-shaped (horseshoe) pattern in PCA and MCA. "
+        f"{routing_note}"
+        "</div>"
+    )
+
+
+def drop_empty_optional_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
+    """Drop columns that are all-null or all-empty-string.
+
+    Useful for KanFocus sessions where optional fields like ``short_title`` are
+    unavailable.
+    """
+    to_drop = []
+    for col in columns:
+        if col not in df.columns:
+            continue
+        series = df[col]
+        if series.is_null().all():
+            to_drop.append(col)
+        elif series.dtype == pl.String and series.fill_null("").str.strip_chars().eq("").all():
+            to_drop.append(col)
+    return df.drop(to_drop) if to_drop else df

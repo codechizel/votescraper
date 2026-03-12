@@ -42,11 +42,27 @@ def build_profiles_report(
     all_data: dict[str, dict],
     plots_dir: Path,
     session: str,
+    horseshoe_status: dict[str, dict] | None = None,
 ) -> None:
     """Build the full profiles report with intro + per-legislator sections."""
+    from analysis.phase_utils import horseshoe_warning_html
+
     findings = _generate_profiles_key_findings(targets, all_data)
     if findings:
         report.add(KeyFindingsSection(findings=findings))
+
+    # Horseshoe warnings
+    if horseshoe_status:
+        for chamber, status in horseshoe_status.items():
+            warning = horseshoe_warning_html(chamber, status)
+            if warning:
+                report.add(
+                    TextSection(
+                        id=f"horseshoe-warning-{chamber.lower()}",
+                        title=f"{chamber} Horseshoe Warning",
+                        html=warning,
+                    )
+                )
 
     _add_intro(report, targets, session)
 
@@ -260,14 +276,20 @@ def _add_defections_table(
     report: object, target: ProfileTarget, defections: pl.DataFrame | None
 ) -> None:
     """Table of key votes where this legislator broke ranks."""
+    from analysis.phase_utils import drop_empty_optional_columns
+
     if defections is None or defections.height == 0:
         return
 
+    defections = drop_empty_optional_columns(defections, ["short_title"])
     slug_short = target.slug.replace("rep_", "").replace("sen_", "")
 
     display_cols = [
         pl.col("bill_number").alias("Bill"),
-        pl.col("short_title").alias("Title"),
+    ]
+    if "short_title" in defections.columns:
+        display_cols.append(pl.col("short_title").alias("Title"))
+    display_cols += [
         pl.col("motion").alias("Motion"),
         pl.col("legislator_vote").alias("Their Vote"),
         pl.col("party_majority_vote").alias("Party Majority"),

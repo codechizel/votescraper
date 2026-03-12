@@ -52,11 +52,27 @@ def build_tsa_report(
     skip_changepoints: bool = False,
     penalty: float = 10.0,
     r_available: bool = False,
+    horseshoe_status: dict[str, dict] | None = None,
 ) -> None:
     """Build the full TSA HTML report by adding sections to the ReportBuilder."""
+    from analysis.phase_utils import horseshoe_warning_html
+
     findings = _generate_tsa_key_findings(results)
     if findings:
         report.add(KeyFindingsSection(findings=findings))
+
+    # Horseshoe warnings
+    if horseshoe_status:
+        for chamber, status in horseshoe_status.items():
+            warning = horseshoe_warning_html(chamber, status)
+            if warning:
+                report.add(
+                    TextSection(
+                        id=f"horseshoe-warning-{chamber.lower()}",
+                        title=f"{chamber} Horseshoe Warning",
+                        html=warning,
+                    )
+                )
 
     _add_data_summary(report, results)
     _add_how_to_read(report)
@@ -81,6 +97,8 @@ def build_tsa_report(
             for chamber, result in results.items():
                 _add_bai_perron_table(report, result, chamber)
                 _add_bai_perron_figures(report, plots_dir, chamber)
+            for chamber, result in results.items():
+                _add_pelt_bp_crossref(report, result, chamber)
             _add_r_enrichment_interpretation(report)
 
         _add_veto_crossref_table(report, results)
@@ -600,6 +618,78 @@ def _add_bai_perron_figures(
                     ),
                 )
             )
+
+
+def _add_pelt_bp_crossref(
+    report: ReportBuilder,
+    result: dict,
+    chamber: str,
+) -> None:
+    """Table: Compare PELT break dates with Bai-Perron CIs — confirmed vs unconfirmed."""
+    import datetime
+
+    cp_results = result.get("changepoints", {})
+    if not cp_results:
+        return
+
+    rows = []
+    for party in ["Republican", "Democrat"]:
+        # PELT break dates
+        pelt_key = party
+        pelt_data = cp_results.get(pelt_key, {})
+        pelt_dates = pelt_data.get("dates", [])
+
+        # Bai-Perron breaks
+        bp_key = f"{party}_bai_perron"
+        bp_data = cp_results.get(bp_key, {})
+        bp_df = bp_data.get("bp_df")
+        if not pelt_dates or bp_df is None or bp_df.height == 0:
+            continue
+
+        for pelt_date in pelt_dates:
+            pelt_d = (
+                datetime.date.fromisoformat(str(pelt_date)[:10])
+                if not isinstance(pelt_date, datetime.date)
+                else pelt_date
+            )
+            confirmed = False
+            bp_match = "—"
+            for bp_row in bp_df.iter_rows(named=True):
+                ci_lo = datetime.date.fromisoformat(str(bp_row["ci_lower_date"])[:10])
+                ci_hi = datetime.date.fromisoformat(str(bp_row["ci_upper_date"])[:10])
+                if ci_lo <= pelt_d <= ci_hi:
+                    confirmed = True
+                    bp_match = str(bp_row["break_date"])[:10]
+                    break
+            rows.append(
+                {
+                    "Party": party,
+                    "PELT Date": str(pelt_d),
+                    "Confirmed by BP": "Yes" if confirmed else "No",
+                    "BP Match": bp_match,
+                }
+            )
+
+    if not rows:
+        return
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title=f"{chamber} — PELT vs Bai-Perron Cross-Reference",
+        subtitle="PELT breaks confirmed when they fall within a Bai-Perron 95% CI",
+        source_note=(
+            "Confirmed breaks are supported by two independent methods "
+            "(PELT penalized likelihood + Bai-Perron F-tests)."
+        ),
+    )
+    report.add(
+        TableSection(
+            id=f"pelt-bp-crossref-{chamber.lower()}",
+            title=f"{chamber} Break Confirmation",
+            html=html,
+        )
+    )
 
 
 def _add_r_enrichment_interpretation(report: ReportBuilder) -> None:

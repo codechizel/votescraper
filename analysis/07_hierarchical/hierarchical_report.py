@@ -44,11 +44,27 @@ def build_hierarchical_report(
     joint_results: dict | None,
     linking_results: dict | None = None,
     plots_dir: Path,
+    horseshoe_status: dict[str, dict] | None = None,
 ) -> None:
     """Build the full hierarchical IRT HTML report by adding sections."""
+    from analysis.phase_utils import horseshoe_warning_html
+
     findings = _generate_hierarchical_key_findings(chamber_results)
     if findings:
         report.add(KeyFindingsSection(findings=findings))
+
+    # Horseshoe warnings
+    if horseshoe_status:
+        for chamber, status in horseshoe_status.items():
+            warning = horseshoe_warning_html(chamber, status)
+            if warning:
+                report.add(
+                    TextSection(
+                        id=f"horseshoe-warning-{chamber.lower()}",
+                        title=f"{chamber} Horseshoe Warning",
+                        html=warning,
+                    )
+                )
 
     _add_intro(report)
     _add_how_to_read(report)
@@ -627,6 +643,32 @@ def _add_linking_section(report: ReportBuilder, linking_results: dict) -> None:
                     html=html,
                 )
             )
+
+            # Warn when methods disagree substantially on slope
+            slopes = [float(c.get("A", 0)) for c in all_methods.values() if c.get("A")]
+            if len(slopes) >= 2:
+                mean_slope = sum(slopes) / len(slopes)
+                if mean_slope != 0:
+                    sd_slope = (sum((s - mean_slope) ** 2 for s in slopes) / len(slopes)) ** 0.5
+                    cv = sd_slope / abs(mean_slope)
+                    if cv > 0.20:
+                        report.add(
+                            TextSection(
+                                id="linking-disagreement-warning",
+                                title="Linking Method Disagreement",
+                                html=(
+                                    '<div style="background:#fff3cd; border:1px solid '
+                                    "#ffc107; border-radius:6px; padding:12px 16px; "
+                                    'margin:8px 0;">'
+                                    "<strong>High Cross-Method Disagreement:</strong> "
+                                    f"Slope CV = {cv:.2f} across "
+                                    f"{len(slopes)} linking methods. "
+                                    "Cross-chamber ideal point comparisons may be "
+                                    "unreliable — different methods place legislators "
+                                    "on substantially different scales.</div>"
+                                ),
+                            )
+                        )
 
     # Linked ideal points interactive table
     if linked_df is not None and linked_df.height > 0:

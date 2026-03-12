@@ -462,7 +462,7 @@ def _add_rice_interpretation(report: ReportBuilder) -> None:
                 "Strong cohesion with a few dissenters.</li>"
                 "<li><strong>Rice = 0.50:</strong> A 75-25 split. The party is more unified than "
                 "divided, but a significant minority broke ranks.</li>"
-                "<li><strong>Rice < 0.50:</strong> The party is more divided than united. "
+                "<li><strong>Rice &lt; 0.50:</strong> The party is more divided than united. "
                 "More than 25% of the party voted against the majority position.</li>"
                 "</ul>"
                 "<p>In a state like Kansas with a Republican supermajority, the Republican "

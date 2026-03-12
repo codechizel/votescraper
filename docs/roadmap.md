@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-10 (bespoke report extraction tool)
+**Last updated:** 2026-03-12 (horseshoe resolution → canonical routing, KanFocus backfill complete)
 
 ---
 
@@ -639,157 +639,84 @@ See `docs/method-evaluation.md` for detailed rationale on each rejection.
 
 ---
 
-## Pending Operational Tasks
+## ~~Pending Operational Tasks~~ — All Cleared
 
 | Item | Command | Context |
 |------|---------|---------|
-| **Run 83rd pipeline** | `just pipeline 2009-10` | KanFocus data downloaded + DB-loaded (1,180 rollcalls, 66,575 votes, 170 legislators). Needs full 27-phase analysis. |
+| ~~**Run 83rd pipeline**~~ | `just pipeline 2009-10` | **Complete (2026-03-06/07).** 19 phase reports generated across 6 run IDs. KanFocus-only data (1,180 rollcalls, 66,575 votes, 170 legislators). |
+| ~~**KanFocus backfill (78th-83rd)**~~ | — | **Complete.** All 6 KanFocus-only bienniums (78th-83rd, 1999-2010) scraped and loaded. Each has 3 CSVs (votes, rollcalls, legislators). Gap-fill for 84th-91st also merged. Coverage now spans 78th-91st (1999-2026). ADR-0088. |
 | ~~**Investigate KanFocus scraper duplicate output**~~ | — | **Resolved.** Deep dive confirmed the original duplicates were an operational issue (write interruption), not a reproducible code bug. A clean re-run from cache produces 1,186 rollcalls with 0 duplicates. Three defensive improvements shipped: (1) rollcall dedup by `vote_id` in `save_csvs()`, (2) early dedup + tally-mismatch warning in `convert_to_standard()`, (3) parser fix for `Result:` regex bleeding into "All Members" table header (8 affected records across 5 bienniums). 7 new tests. |
 
 ---
 
 ## ~~IRT Sign Flip Fix (Supermajority Chambers)~~ — Done (Phase 05)
 
-**Completed 2026-03-07.** `validate_sign()` in Phase 05 flat IRT.
-
-PCA-based anchor selection produces sign flips in supermajority chambers where a rebel faction within the majority party votes with the minority. The horseshoe effect folds far-right rebels onto the same end of the latent dimension as Democrats, and `orient_pc1()` + `select_anchors()` lock in the wrong polarity. The model's shape is correct — only the sign is wrong.
-
-**Evidence:** In the 79th Kansas Senate (2001-02), Tim Huelskamp (ultra-conservative, later Freedom Caucus) is placed at xi = -3.26 ("most liberal"), while Sandy Praeger (moderate R) is the conservative anchor at +1.00. Cross-party contested vote agreement confirms this is inverted: Huelskamp has low agreement with Democrats on contested votes, Praeger has high agreement.
-
-**Proposed fix — post-hoc sign validation:**
-
-1. After MCMC, identify contested votes (both parties split, ≥10% threshold)
-2. Compute per-legislator cross-party agreement rate on contested votes
-3. Correlate agreement rate with ideal point magnitude
-4. If correlation is positive (extremes agree more with the other party), negate all ideal points and discrimination parameters — selecting the other posterior mode
-5. Add supermajority diagnostic: flag when within-party variance > between-party gap
-
-**Affected code:**
-- `analysis/05_irt/irt.py` — `select_anchors()`, post-MCMC validation
-- `analysis/07_hierarchical/hierarchical.py` — post-MCMC validation
-- `analysis/02_pca/pca.py` — `orient_pc1()` (upstream, may need awareness)
-
-**Documentation:**
-- Deep dive: [`docs/irt-sign-identification-deep-dive.md`](irt-sign-identification-deep-dive.md)
-- ADR-0101: Party-aware IRT anchor selection
-- ADR-0103: IRT identification strategy system (7 strategies, auto-detection)
-- ADR-0104: IRT robustness flags (`--horseshoe-diagnostic`, `--contested-only`, `--promote-2d`)
-- Empirical analysis: [`docs/79th-horseshoe-robustness-analysis.md`](79th-horseshoe-robustness-analysis.md) — 79th horseshoe confirmed (Senate: 30% Dems wrong side, 88% overlap; House r=0.41 contested-only)
+**Completed 2026-03-07.** `validate_sign()` in Phase 05 flat IRT. PCA-based anchor selection produces sign flips in supermajority chambers where a rebel faction within the majority party votes with the minority. The identification strategy system (ADR-0103) with 7 strategies and auto-detection handles this automatically. Documentation: ADR-0101, ADR-0103, ADR-0104, [`docs/irt-sign-identification-deep-dive.md`](irt-sign-identification-deep-dive.md), [`docs/79th-horseshoe-robustness-analysis.md`](79th-horseshoe-robustness-analysis.md).
 
 ---
 
-## Horseshoe Remediation
+## ~~Horseshoe Remediation~~ — Resolved (Canonical Ideal Points)
 
-The horseshoe effect is a geometric dimension-reduction artifact in 1D IRT: when a supermajority chamber has two near-equal ideological dimensions (left–right and establishment–rebel), compressing to 1D folds far-right rebels onto the same end as Democrats. Both groups vote Nay on establishment bills, and the 1D model cannot distinguish "Nay because liberal" from "Nay because contrarian." The 79th Kansas Senate (2001–02) is the canonical case — Tim Huelskamp (ultra-conservative, later Freedom Caucus) lands past every Democrat on the 1D scale.
+The horseshoe effect is a geometric dimension-reduction artifact in 1D IRT: when a supermajority chamber has two near-equal ideological dimensions (left–right and establishment–rebel), compressing to 1D folds far-right rebels onto the same end as Democrats. The 79th Kansas Senate (2001–02) is the canonical case — Tim Huelskamp (ultra-conservative, later Freedom Caucus) lands past every Democrat on the 1D scale.
 
-Three experiments (2026-03-08) established what works and what doesn't:
-- **Regularized horseshoe prior:** RULED OUT. Inverted the House dimension (r = -0.9999 vs baseline), failed Senate convergence. The horseshoe effect is geometric, not a vote-weighting problem.
-- **Smooth L1 approximation in PyMC:** Directionally promising (0% wrong side in House, r = 0.812 vs 1D) but computationally impractical with NUTS — 2,000 divergences, 3.3 hours, ESS of 3.
-- **Supermajority audit:** Only 3/28 chambers trigger horseshoe detection (79th, 80th, 82nd Senates), but 5 sessions show problematic 1D-2D disagreement (79th, 80th, 81st, 83rd, 88th Senates). The identification strategy system (anchor-agreement) handles post-2011 sessions well.
+### Resolution: Canonical Ideal Point Routing (2026-03-11)
 
-Full analysis: `docs/horseshoe-effect-and-solutions.md`. Experiment logs: `results/experimental_lab/2026-03-08_*/experiment.md`.
+After extensive experimentation (Mar 8-11), three attempts to fix 1D IRT were tried and found insufficient:
+- **`--horseshoe-remediate`** (H0, PC2-targeted 1D): worked for the 79th Senate but chamber-specific and fragile
+- **`--init-strategy 2d-dim1`**: initialization alone cannot overcome the data's pull toward the contrarian mode
+- **`--dim1-prior`** (ADR-0108): circular dependency — bad 1D poisons 2D init, which feeds back as corrupted prior
 
-### H0. PC2-Targeted 1D IRT (Dimension Nudging) — EXPERIMENT COMPLETE
+The project adopted the **field-standard DW-NOMINATE approach**: fit a 2D model and extract Dim 1 as the canonical ideology score — what Poole, Rosenthal, Shor & McCarty have done for 40 years. This is implemented as automatic routing in `analysis/canonical_ideal_points.py` (ADR-0109):
 
-**Effort:** Low. **Impact:** High — recovers the correct ideology dimension while staying in the 1D framework.
+- Horseshoe detected + 2D converged → use 2D Dim 1
+- Horseshoe detected + 2D failed → fall back to 1D (flagged)
+- No horseshoe → use 1D (simpler model is sufficient)
 
-**Result:** The combined approach (PC2 informative prior + PC2-filtered votes) is the clear winner for the Senate: r(PC2) = 0.842, zero Democrats on the wrong side, clean convergence (R-hat 1.004, ESS 704). Vote filtering is the essential mechanism — initialization and priors alone cannot overcome the data's pull toward PC1.
+Supporting infrastructure (all shipped 2026-03-11):
 
-**Critical finding: remediation must be chamber-specific.** The House does NOT have swapped dimensions — its PC1 is already ideology. Applying PC2 targeting to the House damages results (72.9% D wrong side). Production implementation must be gated on horseshoe detection.
+| ADR | What | Status |
+|-----|------|--------|
+| ADR-0109 | Canonical ideal point routing | **Done** |
+| ADR-0110 | Tiered convergence quality gate (Tier 1: R-hat < 1.10; Tier 2: R-hat < 2.50 + rank corr > 0.70; Tier 3: fall back to 1D) | **Done** |
+| ADR-0111 | Canonical init strategy for hierarchical IRT (`--init-strategy canonical`) | **Done** |
+| ADR-0112 | 2D IRT supermajority tuning (adaptive N_TUNE, beta init from PCA, `--contested-only` for 2D) | **Done** |
 
-**What to build for production:**
+### Superseded Approaches (Research-Only)
 
-1. **PC2-filtered vote selection:** New filter function `filter_pc2_dominant_votes()` following `filter_contested_votes()` pattern. Keep only bills where `|PC2 loading| > |PC1 loading|`.
-2. **PC2 informative prior:** Use the `external-prior` strategy (ADR-0103) with standardized PC2 scores. `xi ~ Normal(pc2_score, 1.0)`.
-3. **Horseshoe-gated trigger:** Only apply when `detect_horseshoe()` fires. Normal chambers continue with standard production IRT.
+All flags remain available for experimentation but are not part of the production pipeline:
 
-**Remaining question:** Does this generalize to the other 4 problematic sessions (80th, 81st, 83rd, 88th)?
+| Flag | ADR | Outcome |
+|------|-----|---------|
+| `--horseshoe-remediate` | ADR-0104 | PC2-targeted 1D; works for 79th Senate but doesn't generalize |
+| `--dim1-prior` | ADR-0108 | Circular dependency; superseded by canonical routing |
+| `--init-strategy 2d-dim1` | ADR-0107 | Insufficient — chains drift regardless of starting point |
+| `--promote-2d` | ADR-0104 | Subsumed by canonical routing (now automatic) |
 
-**Documentation:** `docs/horseshoe-effect-and-solutions.md` ("The Swapped Dimensions" section), experiment: `results/experimental_lab/2026-03-09_pc2-targeted-irt/`.
+### Ruled Out / Not Pursued
 
-### H1. Auto-Promote 2D When Horseshoe Detected
+| Approach | Why |
+|----------|-----|
+| Regularized horseshoe prior | Inverted House dimension (r = -0.9999), failed Senate convergence |
+| Smooth L1 in PyMC | Incompatible with NUTS — 2,000 divergences, ESS of 3 |
+| L1 via R package (H3) | `issueirt` is pre-1.0, 4 stars, rstan dependency — maintenance risk; canonical routing solves the problem without it |
+| DIME anchoring (H4) | Incomplete coverage for early bienniums; unnecessary given canonical routing |
+| Cross-session borrowing (H5) | High effort; unnecessary given canonical routing |
 
-**Effort:** Low. **Impact:** High — the single most practical improvement for affected sessions.
+### Experimental Record
 
-Currently, when `detect_horseshoe()` triggers, the pipeline reports a warning but still outputs 1D scores as the canonical result. A user who doesn't run `--horseshoe-diagnostic` gets misleading rankings with no indication anything is wrong. The 2D model (Phase 04b) correctly unfolds the horseshoe — Huelskamp goes from PC1 = -31 (most liberal) to Dim 1 = +1.4 (most conservative) — but it's opt-in.
+Full analysis: [`docs/horseshoe-effect-and-solutions.md`](horseshoe-effect-and-solutions.md), [`docs/canonical-ideal-points.md`](canonical-ideal-points.md), [`docs/79th-horseshoe-robustness-analysis.md`](79th-horseshoe-robustness-analysis.md). Experiment logs: `results/experimental_lab/2026-03-08_*/` and `2026-03-09_*/`.
 
-**What to build:** When `detect_horseshoe()` fires, automatically substitute 2D Dim 1 rankings as the primary ideal points for that chamber. This is a policy change + a small code change in `main()`: run Phase 04b if not already available, then swap the canonical output. The `--promote-2d` flag already does the cross-reference; this makes it the default behavior for flagged sessions.
+### 79th Report Audit (2026-03-12)
 
-**Open question:** Should this also auto-trigger for the 5 sessions with 1D-2D disagreement that don't formally trigger horseshoe detection (81st, 83rd, 88th Senates)? May need a softer threshold or a separate "1D-2D disagreement" flag.
+Full audit of all 20 HTML reports for the 79th Legislature uncovered 27 issues across 5 categories. All fixed in a single implementation pass (ADR-0114):
 
-**Prerequisites:** Phase 04b (2D IRT) must produce usable results for the affected sessions. The 79th has poor 2D convergence (R-hat up to 1.96) — this may require H3 first.
+- **5 critical bugs:** W-NOMINATE 8460% display, hardcoded base rates, hardcoded captions, legislator name references, HTML escaping
+- **6 horseshoe awareness issues:** Warning banners in 8 report phases, data-driven captions, party mean inversion detection
+- **4 template parameterization issues:** Cluster labels under horseshoe, beta-binomial multi-chamber findings, prediction feature guards, absenteeism display precision
+- **3 KanFocus graceful degradation issues:** Empty title column dropping, phase-skipped stub reports, district map documentation
+- **10 analytical improvements:** TSA sign-flip stability, MCA absence warnings, UMAP n_neighbors capping, PCA sensitivity warnings, Stocking-Lord disagreement flags, MCA inertia footnotes, defection deduplication, PELT/Bai-Perron cross-reference
 
-**Documentation:** ADR-0104 (robustness flags), `docs/horseshoe-effect-and-solutions.md` (approach #1), experiment: `results/experimental_lab/2026-03-08_supermajority-auto-promote/`.
-
-### H2. Contested-Only Default for Supermajority Sessions
-
-**Effort:** Low. **Impact:** Moderate — reduces noise from uninformative near-unanimous votes.
-
-In supermajority chambers, many votes are near-unanimous (establishment wins easily). These votes carry almost no ideological information but still influence the model. The `--contested-only` flag strips them, keeping only votes where both parties split at least 10% per side. This should reduce the horseshoe effect by removing the intra-party rebel dynamics that confuse the 1D axis.
-
-**What to build:** Run the contested-only refit across all supermajority sessions (≥70% single-party) and compare against the full-vote model. If contested-only consistently produces better party separation (lower wrong-side fraction, lower overlap), make it the default vote set for supermajority sessions. This is Run 3 of the auto-promote experiment, which is still pending.
-
-**Open question:** How many contested votes remain after filtering? The `MIN_CONTESTED_FOR_REFIT` threshold is 50 — some early-2000s sessions with smaller chambers may not have enough. If filtering is too aggressive, the model loses statistical power.
-
-**Prerequisites:** None — the `--contested-only` infrastructure already exists.
-
-**Documentation:** ADR-0104 (robustness flags), `docs/horseshoe-effect-and-solutions.md` (approach #2), experiment: `results/experimental_lab/2026-03-08_supermajority-auto-promote/`.
-
-### H3. L1-Based Ideal Point Model via R Package Subprocess
-
-**Effort:** Medium. **Impact:** High — anchor-free 2D recovery, the theoretically cleanest solution.
-
-Shin, Lim & Park (2025, JASA) showed that replacing Euclidean distance with Manhattan distance in the spatial voting utility collapses infinite rotational invariance to just 8 discrete signed permutations. The model is essentially identified without external anchors — a qualitative improvement over PLT constraints. Our smooth L1 approximation in PyMC proved the direction is right (0% wrong side in House) but the non-differentiable geometry is incompatible with gradient-based NUTS sampling.
-
-**What to build:** Call the authors' R package (`issueirt`) as a subprocess, following the same pattern we use for W-NOMINATE in Phase 20 and CROPS/Bai-Perron in Phase 15. Export vote matrix to CSV, call R, import results. The package uses a multivariate slice sampler designed specifically for the L1 geometry. This avoids the curvature problem that killed our PyMC approach.
-
-**Open question:** The `issueirt` package is pre-1.0, GitHub-only (4 stars), with an rstan dependency. Maintenance risk is real. We should evaluate whether the package is stable enough for production use, or whether it's better suited as an experimental validation tool (like W-NOMINATE).
-
-**Prerequisites:** R installation with `issueirt` package. The subprocess pattern from Phase 20 (`analysis/20_wnominate/`) provides the template.
-
-**Documentation:** `docs/horseshoe-effect-and-solutions.md` (approach #3), experiment: `results/experimental_lab/2026-03-08_l1-ideal-point/`, Shin et al. (2025) JASA paper.
-
-### H4. External Anchoring with DIME/CFscores
-
-**Effort:** Medium. **Impact:** Moderate — grounds the dimension in external data, but coverage is partial.
-
-DIME/CFscores (Bonica 2014) provide campaign-finance-derived ideology scores for state legislators. We already have DIME data loaded (Phase 22, external validation). Using these scores as informative priors on a subset of legislators could anchor the ideological dimension without relying on the model's internal geometry — the external data "tells" the model which direction is conservative, even when the voting pattern is ambiguous.
-
-**What to build:** A new identification strategy (`external-prior`) that sets `xi ~ Normal(dime_score, sigma)` for legislators with DIME matches, and `xi ~ Normal(0, 1)` for the rest. The `--identification external-prior` flag would select this strategy. Requires mapping DIME scores to our legislator roster (the name matcher from Phase 22 already does this).
-
-**Open question:** DIME coverage for Kansas state legislators is incomplete — not all legislators have campaign finance records in the database. For the 79th (2001–02), coverage may be especially sparse. If too few legislators have external anchors, the model falls back to internal identification. Also, DIME scores reflect donor ideology, not voting ideology — the two are correlated but not identical.
-
-**Prerequisites:** Phase 22 (DIME external validation) data. ADR-0103 identification strategy system (already supports `external-prior` as a registered strategy name).
-
-**Documentation:** `docs/horseshoe-effect-and-solutions.md` (approach #4), ADR-0103 (identification strategies).
-
-### H5. Cross-Session Borrowing for Horseshoe Sessions
-
-**Effort:** High. **Impact:** High — stabilizes estimates for poorly identified sessions by borrowing from adjacent bienniums.
-
-Legislators who serve across multiple bienniums provide natural bridges between sessions. A legislator whose ideology is well-identified in the 80th (where the horseshoe is moderate) can anchor their 79th estimate (where the horseshoe is severe). Dynamic IRT (Phase 27) already estimates cross-session ideal points, but it doesn't specifically target horseshoe remediation.
-
-**What to build:** Extend the dynamic IRT informative prior mechanism (ADR-0070) to explicitly transfer identification from clean sessions to horseshoe sessions. For a legislator serving in both the 78th (clean) and 79th (horseshoe), the 78th estimate constrains the 79th — preventing the model from folding them to the wrong end. This could be implemented as a two-pass approach: first estimate all clean sessions, then use those posteriors as priors for horseshoe sessions.
-
-**Open question:** How many legislators bridge the affected sessions? If turnover is high between the 78th and 79th, there may not be enough bridges. Also, this assumes ideology is stable across bienniums, which may not hold during realignment periods (and the early 2000s in Kansas were a period of conservative movement consolidation).
-
-**Prerequisites:** Phase 27 (dynamic IRT) infrastructure. Requires solving the 79th's 2D convergence issues (H1/H3) or accepting that cross-session borrowing operates on the 1D model with transferred priors.
-
-**Documentation:** `docs/horseshoe-effect-and-solutions.md` (approach #6), Phase 27 (dynamic IRT).
-
-### Implementation Order
-
-```
-H0 (PC2-targeted 1D) ──→ H1 (auto-promote 2D) ──→ H2 (contested-only default)
-                                                              │
-                          H3 (L1 via R package) ──────────────┤
-                                                              │
-                          H4 (DIME anchoring) ────────────────┤
-                                                              │
-                          H5 (cross-session) ─────────────────┘
-```
-
-H0 experiment is complete — PC2-targeted 1D IRT recovers the correct dimension with clean convergence for the 79th Senate (r(PC2) = 0.842, R-hat 1.004, ESS 704). Next: implement in production (gated on horseshoe detection) and test on the other 4 problematic sessions. H1 and H2 remain as fallbacks. H3-H5 are independent paths for sessions where even the targeted 1D model struggles.
+Audit record: [`docs/79th-report-audit.md`](79th-report-audit.md).
 
 ---
 
@@ -797,7 +724,7 @@ H0 experiment is complete — PC2-targeted 1D IRT recovers the correct dimension
 
 | Item | When | Details |
 |------|------|---------|
-| **Resume KanFocus backfill** | **Next session** | 91st complete. Resume from 90th: `PYTHONUNBUFFERED=1 bash scripts/kanfocus_all.sh --delay 12`. Script auto-skips cached pages. 90th had 72 pages cached when stopped. Remaining: 90th→78th (13 bienniums). Use `--delay 12` during business hours. |
+| ~~KanFocus backfill~~ | ~~Done~~ | All bienniums (78th-91st) scraped. 78th-83rd are KanFocus-only (3 CSVs each); 84th-91st gap-filled and merged with kslegislature.gov data. Coverage: 1999-2026. ADR-0088. |
 | Update `CURRENT_BIENNIUM_START` | 2027 | Change from 2025 to 2027 in `session.py` |
 | Add special sessions | As needed | Add year to `SPECIAL_SESSION_YEARS` in `session.py`, scrape, then `just merge-special <year>` |
 | Merge special sessions | After scraping | `just merge-special all` merges into parent bienniums (ADR-0082) |

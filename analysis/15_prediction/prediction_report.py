@@ -50,7 +50,7 @@ def build_prediction_report(
         report.add(KeyFindingsSection(findings=findings))
 
     _add_data_summary(report, results, chambers)
-    _add_how_to_read(report)
+    _add_how_to_read(report, results)
 
     for chamber in chambers:
         _add_feature_summary(report, results[chamber], chamber)
@@ -179,8 +179,17 @@ def _add_data_summary(
     report.add(TableSection(id="data-summary", title="Data Summary", html=html))
 
 
-def _add_how_to_read(report: ReportBuilder) -> None:
-    html = """
+def _add_how_to_read(report: ReportBuilder, results: dict[str, dict]) -> None:
+    # Compute actual Yea base rate across all chambers
+    yea_rates = []
+    for chamber_data in results.values():
+        yr = chamber_data.get("yea_rate")
+        if yr is not None:
+            yea_rates.append(yr)
+    avg_yea_rate = sum(yea_rates) / len(yea_rates) if yea_rates else 0.82
+    yea_pct = f"{avg_yea_rate:.0%}"
+
+    html = f"""
     <p><strong>This report presents vote prediction and bill passage prediction results
     for both chambers.</strong></p>
     <ul>
@@ -188,7 +197,7 @@ def _add_how_to_read(report: ReportBuilder) -> None:
     Three models compared: Logistic Regression (linear baseline), XGBoost (primary), Random
     Forest (non-boosted comparison).</li>
     <li><strong>AUC-ROC</strong> is the primary metric
-    (82% Yea base rate makes accuracy misleading).
+    ({yea_pct} Yea base rate makes accuracy misleading).
     AUC measures how well the model ranks Yea votes above Nay votes.</li>
     <li><strong>SHAP values</strong> explain feature importance: positive SHAP pushes toward Yea,
     negative pushes toward Nay. The beeswarm plot shows the distribution of SHAP values across
@@ -779,7 +788,7 @@ def _add_surprising_votes_interpretation(
                 "most confident but wrong. The split between error types reveals a base-rate "
                 "effect:</p>"
                 "<ul>" + "".join(parts) + "</ul>"
-                "<p><strong>Why the imbalance?</strong> With a ~73% Yea base rate, the model "
+                "<p><strong>Why the imbalance?</strong> With a high Yea base rate, the model "
                 "predicts Yea on most votes. When it is wrong, the error is almost always "
                 "a false positive (predicted Yea, actual Nay). This is not a model flaw — it "
                 "reflects the legislature's strong tendency to pass bills.</p>"
@@ -1077,6 +1086,7 @@ def _add_topic_words_figure(report: ReportBuilder, plots_dir: Path, chamber: str
 def _add_passage_interpretation(
     report: ReportBuilder,
     has_topics: bool = False,
+    has_sponsor_party: bool = True,
 ) -> None:
     parts = [
         "<p><strong>Bill Passage Interpretation:</strong></p>",
@@ -1093,9 +1103,14 @@ def _add_passage_interpretation(
         "<li>Expected performance: bill passage AUC will be lower than vote AUC because we lack "
         "legislator-level features at the bill level. The model sees bill characteristics but not "
         "who will vote on it.</li>",
-        "<li><strong>Sponsor party</strong> indicates whether the bill's primary sponsor is a "
-        "Republican. In a Republican supermajority, Republican-sponsored bills may have higher "
-        "passage rates, making this a useful structural feature.</li>",
+    ]
+    if has_sponsor_party:
+        parts.append(
+            "<li><strong>Sponsor party</strong> indicates whether the bill's primary sponsor is a "
+            "Republican. In a Republican supermajority, Republican-sponsored bills may have higher "
+            "passage rates, making this a useful structural feature.</li>"
+        )
+    parts += [
         "<li><strong>Stratified accuracy by bill prefix</strong> (HB vs SB) reveals whether the "
         "model performs differently on House bills vs Senate bills. Different passage rates and "
         "procedural paths can create systematic prediction gaps.</li>",

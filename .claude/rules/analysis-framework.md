@@ -47,6 +47,7 @@ Each phase produces a self-contained HTML report with SPSS/APA-style tables and 
 - `analysis/18_dime/external_validation_dime_data.py` — DIME parsing, name normalization, biennium filtering, CFscore matching
 - `analysis/27_dynamic_irt/dynamic_irt_data.py` — Global roster, cross-biennium vote stacking, bridge coverage, emIRT interface
 - `analysis/24_synthesis/coalition_labeler.py` — Auto-named coalitions from clusters (party composition, IRT ideal points)
+- `analysis/phase_utils.py` — Cross-phase utilities: `load_horseshoe_status()` (reads `routing_manifest.json`), `horseshoe_warning_html()` (styled HTML banner), `drop_empty_optional_columns()` (prunes all-null columns for KanFocus data)
 
 ## Design Documents
 

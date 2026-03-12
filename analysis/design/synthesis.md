@@ -57,6 +57,10 @@ synthesis.py          — Orchestrator (imports from all three, produces plots +
 
 **Alternatives:** Could use raw score differences instead of percentile ranks. Percentile ranks were chosen because they normalize across sessions with different score scales.
 
+### 5a. Horseshoe-aware narratives
+
+**Decision:** When horseshoe distortion is detected (via `phase_utils.load_horseshoe_status()`), the synthesis report injects a styled warning banner and adjusts narrative language. "Most bipartisan" is replaced with "lowest party loyalty" (accurate for both rightward and leftward defection). Veto override Rice interpretation uses data-driven thresholds (avg Rice > 0.80 → "almost unanimously", > 0.50 → "moderate cohesion", else → "significant splits"). See ADR-0114.
+
 ### 5. Graceful degradation
 
 **Decision:** Every detection function returns `None` when no suitable candidate is found. Report sections handle `None` by showing brief explanatory text ("no significant metric paradox detected") or by skipping the section entirely (profile cards). The report's section count varies from 29-32 depending on what is detected.

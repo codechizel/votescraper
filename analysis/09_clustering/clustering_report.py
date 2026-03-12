@@ -49,11 +49,27 @@ def build_clustering_report(
     plots_dir: Path,
     skip_gmm: bool = False,
     skip_sensitivity: bool = False,
+    horseshoe_status: dict[str, dict] | None = None,
 ) -> None:
     """Build the full clustering HTML report by adding sections to the ReportBuilder."""
+    from analysis.phase_utils import horseshoe_warning_html
+
     findings = _generate_clustering_key_findings(results)
     if findings:
         report.add(KeyFindingsSection(findings=findings))
+
+    # Horseshoe warnings
+    if horseshoe_status:
+        for chamber, status in horseshoe_status.items():
+            warning = horseshoe_warning_html(chamber, status)
+            if warning:
+                report.add(
+                    TextSection(
+                        id=f"horseshoe-warning-{chamber.lower()}",
+                        title=f"{chamber} Horseshoe Warning",
+                        html=warning,
+                    )
+                )
 
     _add_data_summary(report, results)
     _add_interpretation_intro(report)

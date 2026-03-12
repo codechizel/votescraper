@@ -443,7 +443,7 @@ def _generate_beta_binomial_key_findings(
                 f"least loyal: <strong>{least_name}</strong> ({least_rate:.0%})."
             )
 
-        break  # First chamber only
+        # Show findings for all chambers
 
     return findings
 

@@ -11,7 +11,9 @@
 
 2. **Bill passage prediction is a separate binary classification task.** Each observation is a roll call with target `passed` from the rollcalls CSV. The unit of analysis shifts from (legislator, vote) to (vote), reducing the dataset from ~68K to ~500 rows. This small sample requires regularization and careful validation. Roll calls where `passed` is null (e.g., procedural motions like "Motion to divide the question" that don't map to pass/fail) are dropped from the bill passage model. **Edge cases for historical sessions:** Some sessions have near-100% passage rates (e.g., 85th House = 100%, 85th Senate = 99.5%). `train_passage_models()` gracefully skips when: (a) all bills share the same outcome (single class), or (b) the minority class has fewer than 2 members (can't stratify). This avoids sklearn's `ValueError` on stratified splits with degenerate class distributions.
 
-3. **Features from upstream phases carry forward.** IRT ideal points, party loyalty, PCA scores, and network centrality are treated as fixed features (not re-estimated). Any uncertainty in these features (e.g., xi_sd) is captured as an input feature, not propagated through the prediction model.
+3. **Features from upstream phases carry forward.** IRT ideal points, party loyalty, PCA scores, and network centrality are treated as fixed features (not re-estimated). Any uncertainty in these features (e.g., xi_sd) is captured as an input feature, not propagated through the prediction model. IRT scores come from canonical ideal point routing (Phase 06 `routing_manifest.json`), which may select 2D Dim 1 scores in horseshoe-affected chambers.
+
+3a. **Report narratives are parameterized.** The "how to read" section computes the actual Yea base rate from the session data rather than using a hardcoded value. Sponsor-party narrative is guarded on feature availability (absent in KanFocus-era sessions).
 
 4. **Chambers are independent.** Models are trained separately for House and Senate. Cross-chamber prediction is not attempted (different legislators, different bill sets).
 
