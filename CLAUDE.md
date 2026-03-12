@@ -68,7 +68,7 @@ just wt-done feature-name                    # merge to main + cleanup (from mai
 ```
 src/tallgrass/
   config.py     - Constants (BASE_URL, delays, workers, user agent)
-  session.py    - KSSession: biennium URL resolution, STATE_DIR, data_dir/results_dir
+  session.py    - KSSession: biennium URL resolution, STATE_DIR, data_dir/results_dir, legislature number support
   bills.py      - Shared bill discovery (HTML + JS fallback)
   models.py     - IndividualVote + RollCall + BillAction dataclasses
   scraper.py    - KSVoteScraper: 4-step pipeline (bill URLs -> API filter -> vote parse -> enrich)
@@ -112,6 +112,6 @@ Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `
 
 ## Documentation
 
-- ADRs: `docs/adr/README.md` (112 decisions)
+- ADRs: `docs/adr/README.md` (113 decisions)
 - Design docs: `analysis/design/README.md`
 - Deep dives: `docs/*.md` (search by topic name)

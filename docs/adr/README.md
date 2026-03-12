@@ -172,6 +172,7 @@ What are the trade-offs?
 | [0100](0100-report-symlink-and-pipeline-resilience.md) | Report symlink stability and pipeline resilience (3 fixes) |
 | [0106](0106-bespoke-report-extraction.md) | Bespoke multi-report section extraction (tallgrass-extract) |
 | [0107](0107-shared-init-strategy.md) | Shared MCMC initialization strategy (`--init-strategy`, Django-ready) |
+| [0113](0113-legislature-number-session-resolution.md) | Legislature number session resolution (fix "79" → "79th_2001-2002") |
 
 ## Chronological Index
 
@@ -289,6 +290,7 @@ What are the trade-offs?
 | [0110](0110-tiered-convergence-quality-gate.md) | Tiered convergence quality gate for canonical routing (3 tiers, Spearman rank correlation check) | Accepted | 2026-03-11 |
 | [0111](0111-canonical-init-strategy-hierarchical.md) | Canonical init strategy for hierarchical IRT (`--init-strategy canonical`, auto-detect) | Accepted | 2026-03-11 |
 | [0112](0112-2d-irt-supermajority-tuning.md) | 2D IRT tuning for supermajority chambers (adaptive N_TUNE, beta init from PCA, contested-only) | Accepted | 2026-03-11 |
+| [0113](0113-legislature-number-session-resolution.md) | Legislature number session resolution (fix "79" → "79th_2001-2002") | Accepted | 2026-03-11 |
 
 ## Creating a New ADR
 

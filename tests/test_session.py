@@ -217,6 +217,44 @@ class TestFromSessionString:
         s = KSSession.from_session_string("2024s")
         assert s.label == "2024 Special"
 
+    def test_legislature_number_79th(self):
+        s = KSSession.from_session_string("79")
+        assert s.start_year == 2001
+        assert s.legislature_number == 79
+
+    def test_legislature_number_91st(self):
+        s = KSSession.from_session_string("91")
+        assert s.start_year == 2025
+        assert s.legislature_number == 91
+
+    def test_legislature_number_84th(self):
+        s = KSSession.from_session_string("84")
+        assert s.start_year == 2011
+        assert s.legislature_number == 84
+
+
+# ── from_legislature_number() ────────────────────────────────────────────────
+
+
+class TestFromLegislatureNumber:
+    """Create session from Kansas Legislature number (e.g., 79 → 2001-2002)."""
+
+    def test_79th(self):
+        s = KSSession.from_legislature_number(79)
+        assert s.start_year == 2001
+        assert s.end_year == 2002
+        assert s.output_name == "79th_2001-2002"
+
+    def test_91st(self):
+        s = KSSession.from_legislature_number(91)
+        assert s.start_year == 2025
+        assert s.output_name == "91st_2025-2026"
+
+    def test_roundtrip(self):
+        """from_legislature_number(n).legislature_number == n."""
+        for n in [79, 84, 88, 91]:
+            assert KSSession.from_legislature_number(n).legislature_number == n
+
 
 # ── data_dir_for_session() ───────────────────────────────────────────────────
 
@@ -235,6 +273,9 @@ class TestDataDirForSession:
 
     def test_special_string(self):
         assert KSSession.data_dir_for_session("2024s") == Path("data/kansas/2024s")
+
+    def test_legislature_number(self):
+        assert KSSession.data_dir_for_session("79") == Path("data/kansas/79th_2001-2002")
 
 
 # ── uses_odt ────────────────────────────────────────────────────────────────

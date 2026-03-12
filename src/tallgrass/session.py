@@ -203,30 +203,46 @@ class KSSession:
         return cls(start_year=year)
 
     @classmethod
+    def from_legislature_number(cls, number: int) -> "KSSession":
+        """Create a session from a Kansas Legislature number (e.g., 79 → 2001-2002).
+
+        Inverse of legislature_number: start_year = (number - 18) * 2 + 1879.
+        """
+        start_year = (number - 18) * 2 + 1879
+        return cls(start_year=start_year)
+
+    @classmethod
     def from_session_string(cls, session: str) -> "KSSession":
         """Create a session from a CLI-style session string.
 
-        Accepts biennium strings ('2025-26', '2025_26') and special session
-        strings ('2024s').
+        Accepts biennium strings ('2025-26', '2025_26'), special session
+        strings ('2024s'), and legislature numbers ('79', '91').
         """
         normalized = session.strip().replace("_", "-")
         if normalized.endswith("s"):
             return cls.from_year(int(normalized[:-1]), special=True)
         parts = normalized.split("-")
-        return cls.from_year(int(parts[0]))
+        year = int(parts[0])
+        # Legislature numbers are small integers (18-999); years are 4 digits
+        if year < 1000:
+            return cls.from_legislature_number(year)
+        return cls.from_year(year)
 
     @staticmethod
     def data_dir_for_session(session: str, special: bool = False) -> Path:
         """Convert a CLI-style session string to the data directory Path.
 
+        Delegates to from_session_string() for consistent parsing of all
+        session formats (bienniums, special sessions, legislature numbers).
+
         Examples:
             "2025-26" -> Path("data/kansas/91st_2025-2026")
             "2023-24" -> Path("data/kansas/90th_2023-2024")
             "2024s"   -> Path("data/kansas/2024s")
+            "79"      -> Path("data/kansas/79th_2001-2002")
         """
-        normalized = session.strip().replace("_", "-")
-        if normalized.endswith("s") or special:
+        if special:
+            normalized = session.strip().replace("_", "-")
             year = int(normalized.rstrip("s"))
             return KSSession.from_year(year, special=True).data_dir
-        parts = normalized.split("-")
-        return KSSession.from_year(int(parts[0])).data_dir
+        return KSSession.from_session_string(session).data_dir

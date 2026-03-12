@@ -102,6 +102,8 @@ def _normalize_session(session: str) -> str:
         "2024s"    -> "2024s"  (special sessions pass through)
         "2025_26"  -> "91st_2025-2026"
         "2001"     -> "79th_2001-2002"
+        "79"       -> "79th_2001-2002"  (legislature number)
+        "91"       -> "91st_2025-2026"  (legislature number)
     """
     # Normalize underscores to hyphens first
     session = session.replace("_", "-")
@@ -125,6 +127,16 @@ def _normalize_session(session: str) -> str:
         except ImportError:
             from session import KSSession  # type: ignore[no-redef]
         ks = KSSession.from_year(int(m.group(1)))
+        return ks.output_name
+
+    # Match legislature number (1-3 digits, e.g. "79" → "79th_2001-2002")
+    m = re.match(r"^(\d{1,3})$", session)
+    if m:
+        try:
+            from tallgrass.session import KSSession
+        except ImportError:
+            from session import KSSession  # type: ignore[no-redef]
+        ks = KSSession.from_legislature_number(int(m.group(1)))
         return ks.output_name
 
     return session

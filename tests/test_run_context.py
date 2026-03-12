@@ -104,6 +104,12 @@ class TestNormalizeSession:
         assert _normalize_session("2025") == "91st_2025-2026"
         assert _normalize_session("2001") == "79th_2001-2002"
 
+    def test_legislature_number_resolves_to_biennium(self):
+        """Legislature number (1-3 digits) resolves to full biennium name."""
+        assert _normalize_session("79") == "79th_2001-2002"
+        assert _normalize_session("91") == "91st_2025-2026"
+        assert _normalize_session("84") == "84th_2011-2012"
+
 
 # ── _next_run_label() ────────────────────────────────────────────────────────
 
