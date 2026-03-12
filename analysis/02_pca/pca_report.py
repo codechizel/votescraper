@@ -51,13 +51,19 @@ def build_pca_report(
         report.add(KeyFindingsSection(findings=findings))
 
     for chamber, result in results.items():
+        n_sig = result.get("n_significant", 2)
         _add_pca_summary(report, result, chamber)
         _add_dimensionality_diagnostics(report, result, chamber)
         _add_scree_figure(report, plots_dir, chamber, result)
         _add_ideological_map_figure(report, plots_dir, chamber)
         _add_pc1_distribution_figure(report, plots_dir, chamber)
-        _add_top_loadings(report, result, chamber, pc=1)
-        _add_top_loadings(report, result, chamber, pc=2)
+        _add_scatter_matrix_figure(report, plots_dir, chamber, n_sig)
+        _add_loading_heatmap_figure(report, plots_dir, chamber, n_sig)
+        _add_horseshoe_diagnostic(report, result, chamber)
+        _add_component_party_profile(report, result, chamber, n_sig)
+        _add_component_interpretation(report, result, chamber, n_sig)
+        for pc in range(1, n_sig + 1):
+            _add_top_loadings(report, result, chamber, pc=pc)
         _add_legislator_scores(report, result, chamber)
         _add_reconstruction_error(report, result, chamber)
 
@@ -405,24 +411,31 @@ def _add_legislator_scores(
 ) -> None:
     """Table: All legislators ranked by PC1 score."""
     scores = result["scores_df"].sort("PC1", descending=True)
+    n_sig = result.get("n_significant", 2)
 
-    # Select display columns
-    display_cols = ["full_name", "party", "district", "PC1", "PC2"]
+    # Dynamic PC columns based on significant dimensions
+    pc_cols = [f"PC{i}" for i in range(1, n_sig + 1) if f"PC{i}" in scores.columns]
+
+    display_cols = ["full_name", "party", "district", *pc_cols]
     available = [c for c in display_cols if c in scores.columns]
     df = scores.select(available)
+
+    column_labels: dict[str, str] = {
+        "full_name": "Legislator",
+        "party": "Party",
+        "district": "District",
+    }
+    number_formats: dict[str, str] = {}
+    for col in pc_cols:
+        column_labels[col] = col
+        number_formats[col] = ".3f"
 
     html = make_gt(
         df,
         title=f"{chamber} — Legislator Scores (ranked by PC1)",
         subtitle=f"{df.height} legislators, positive PC1 = conservative",
-        column_labels={
-            "full_name": "Legislator",
-            "party": "Party",
-            "district": "District",
-            "PC1": "PC1",
-            "PC2": "PC2",
-        },
-        number_formats={"PC1": ".3f", "PC2": ".3f"},
+        column_labels=column_labels,
+        number_formats=number_formats,
     )
     report.add(
         TableSection(
@@ -431,6 +444,301 @@ def _add_legislator_scores(
             html=html,
         )
     )
+
+
+def _add_scatter_matrix_figure(
+    report: ReportBuilder,
+    plots_dir: Path,
+    chamber: str,
+    n_significant: int,
+) -> None:
+    """FigureSection for the pairwise score scatter matrix."""
+    if n_significant < 2:
+        return
+    path = plots_dir / f"scatter_matrix_{chamber.lower()}.png"
+    if path.exists():
+        n = min(n_significant, 5)
+        report.add(
+            FigureSection.from_file(
+                f"fig-scatter-matrix-{chamber.lower()}",
+                f"{chamber} Score Scatter Matrix",
+                path,
+                caption=(
+                    f"Pairwise scatter matrix of PC1–PC{n} scores ({chamber}). "
+                    "Diagonal panels show per-party kernel density estimates. "
+                    "Off-diagonal panels show party-colored scatter with top outlier labels."
+                ),
+                alt_text=(
+                    f"Grid of scatter plots showing pairwise relationships between "
+                    f"PC1 through PC{n} for {chamber} legislators, colored by party."
+                ),
+            )
+        )
+
+
+def _add_loading_heatmap_figure(
+    report: ReportBuilder,
+    plots_dir: Path,
+    chamber: str,
+    n_significant: int,
+) -> None:
+    """FigureSection for the loading heatmap across significant PCs."""
+    if n_significant < 2:
+        return
+    path = plots_dir / f"loading_heatmap_{chamber.lower()}.png"
+    if path.exists():
+        n = min(n_significant, 5)
+        report.add(
+            FigureSection.from_file(
+                f"fig-loading-heatmap-{chamber.lower()}",
+                f"{chamber} Loading Heatmap",
+                path,
+                caption=(
+                    f"Top bill loadings across PC1–PC{n} ({chamber}). "
+                    "Red = positive loading (Yea-aligned), blue = negative loading (Nay-aligned). "
+                    "Bills are the union of the top 5 absolute loadings per component."
+                ),
+                alt_text=(
+                    f"Heatmap showing bill loadings across {n} principal components "
+                    f"for {chamber}. Red-blue diverging color scale centered at zero."
+                ),
+            )
+        )
+
+
+def _add_horseshoe_diagnostic(
+    report: ReportBuilder,
+    result: dict,
+    chamber: str,
+) -> None:
+    """Horseshoe diagnostic: PC2 ~ PC1 + PC1² quadratic fit."""
+    try:
+        from analysis.pca import diagnose_pc2_horseshoe
+    except ModuleNotFoundError:
+        from pca import diagnose_pc2_horseshoe  # type: ignore[no-redef]
+
+    diag = diagnose_pc2_horseshoe(result["scores_df"])
+    r2 = diag["r_squared"]
+
+    if diag["horseshoe_detected"]:
+        html = (
+            '<div style="background:#fff3cd; border:1px solid #ffc107; '
+            'border-radius:6px; padding:12px 16px; margin:8px 0;">'
+            f"<strong>Horseshoe Artifact Detected ({chamber}):</strong> "
+            f"PC2 has a quadratic relationship with PC1 (R² = {r2:.3f}). "
+            "This is a known artifact in supermajority legislatures where PC2 "
+            "captures curvature rather than a genuine second ideological dimension. "
+            "Interpret PC2 with caution — it may reflect within-majority-party variation "
+            "rather than a meaningful cross-cutting cleavage.</div>"
+        )
+    else:
+        html = (
+            f"<p>Horseshoe diagnostic ({chamber}): PC2 ~ PC1 + PC1² fit yields "
+            f"R² = {r2:.3f}, below the 0.30 threshold. No horseshoe artifact detected.</p>"
+        )
+
+    report.add(
+        TextSection(
+            id=f"horseshoe-diag-{chamber.lower()}",
+            title=f"{chamber} PC2 Horseshoe Diagnostic",
+            html=html,
+        )
+    )
+
+
+def _add_component_party_profile(
+    report: ReportBuilder,
+    result: dict,
+    chamber: str,
+    n_significant: int,
+) -> None:
+    """Table: per-party mean/std for each significant PC, with interpretation."""
+    scores_df = result["scores_df"]
+    n = min(n_significant, 5)
+
+    rows = []
+    for i in range(1, n + 1):
+        pc_col = f"PC{i}"
+        if pc_col not in scores_df.columns:
+            continue
+
+        r_scores = scores_df.filter(pl.col("party") == "Republican")
+        d_scores = scores_df.filter(pl.col("party") == "Democrat")
+
+        r_mean = float(r_scores[pc_col].mean()) if r_scores.height > 0 else float("nan")
+        r_std = float(r_scores[pc_col].std()) if r_scores.height > 1 else float("nan")
+        d_mean = float(d_scores[pc_col].mean()) if d_scores.height > 0 else float("nan")
+        d_std = float(d_scores[pc_col].std()) if d_scores.height > 1 else float("nan")
+
+        # Determine interpretation
+        if np.isnan(r_mean) or np.isnan(d_mean):
+            gap = float("nan")
+            interpretation = "Single-party"
+        else:
+            gap = abs(r_mean - d_mean)
+            if gap > 1.0:
+                interpretation = "Partisan"
+            elif gap < 0.5:
+                interpretation = "Within-party"
+            else:
+                interpretation = "Mixed"
+
+        rows.append(
+            {
+                "component": pc_col,
+                "r_mean": r_mean,
+                "r_std": r_std,
+                "d_mean": d_mean,
+                "d_std": d_std,
+                "gap": gap,
+                "interpretation": interpretation,
+            }
+        )
+
+    if not rows:
+        return
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title=f"{chamber} — Component Party Profile",
+        subtitle=(
+            "Per-party mean and standard deviation for each significant component. "
+            "|R−D| > 1.0 = Partisan, < 0.5 = Within-party, else Mixed."
+        ),
+        column_labels={
+            "component": "Component",
+            "r_mean": "R Mean",
+            "r_std": "R Std",
+            "d_mean": "D Mean",
+            "d_std": "D Std",
+            "gap": "|R−D|",
+            "interpretation": "Interpretation",
+        },
+        number_formats={
+            "r_mean": ".3f",
+            "r_std": ".3f",
+            "d_mean": ".3f",
+            "d_std": ".3f",
+            "gap": ".3f",
+        },
+    )
+    report.add(
+        TableSection(
+            id=f"party-profile-{chamber.lower()}",
+            title=f"{chamber} Component Party Profile",
+            html=html,
+        )
+    )
+
+
+def _add_component_interpretation(
+    report: ReportBuilder,
+    result: dict,
+    chamber: str,
+    n_significant: int,
+) -> None:
+    """Auto-generated narrative for PC2+ based on loadings and party means."""
+    scores_df = result["scores_df"]
+    loadings_df = result["loadings_df"]
+    X_raw = result.get("X_raw")
+    vote_ids = result.get("vote_ids", [])
+    n = min(n_significant, 5)
+
+    for i in range(2, n + 1):
+        pc_col = f"PC{i}"
+        if pc_col not in scores_df.columns or pc_col not in loadings_df.columns:
+            continue
+
+        # Party means
+        r_scores = scores_df.filter(pl.col("party") == "Republican")
+        d_scores = scores_df.filter(pl.col("party") == "Democrat")
+        r_mean = float(r_scores[pc_col].mean()) if r_scores.height > 0 else float("nan")
+        d_mean = float(d_scores[pc_col].mean()) if d_scores.height > 0 else float("nan")
+
+        # Top 3 positive/negative loading bills
+        sorted_pos = loadings_df.sort(pc_col, descending=True).head(3)
+        sorted_neg = loadings_df.sort(pc_col, descending=False).head(3)
+
+        def _bill_list(subset: pl.DataFrame) -> str:
+            items = []
+            for row in subset.iter_rows(named=True):
+                bill = row.get("bill_number") or row["vote_id"]
+                title = row.get("short_title")
+                loading = row[pc_col]
+                if title and str(title) != "None" and str(title).strip():
+                    items.append(f"{bill} ({str(title)[:40]}) [{loading:+.3f}]")
+                else:
+                    items.append(f"{bill} [{loading:+.3f}]")
+            return ", ".join(items)
+
+        pos_bills = _bill_list(sorted_pos)
+        neg_bills = _bill_list(sorted_neg)
+
+        # Auto-generated narrative
+        if np.isnan(r_mean) or np.isnan(d_mean):
+            narrative = f"{pc_col} captures variation in a single-party chamber."
+        elif abs(r_mean - d_mean) > 1.0:
+            higher = "Republicans" if r_mean > d_mean else "Democrats"
+            lower = "Democrats" if r_mean > d_mean else "Republicans"
+            narrative = (
+                f"{pc_col} separates {higher} (mean = {max(r_mean, d_mean):.2f}) "
+                f"from {lower} (mean = {min(r_mean, d_mean):.2f}), "
+                f"indicating a secondary partisan cleavage."
+            )
+        elif abs(r_mean - d_mean) < 0.5:
+            # Within-party: which party has more spread?
+            r_std = float(r_scores[pc_col].std()) if r_scores.height > 1 else 0.0
+            d_std = float(d_scores[pc_col].std()) if d_scores.height > 1 else 0.0
+            wider = "Republican" if r_std > d_std else "Democrat"
+            narrative = (
+                f"{pc_col} captures within-party variation "
+                f"(|R−D| = {abs(r_mean - d_mean):.2f}). "
+                f"The {wider} caucus shows greater spread on this dimension."
+            )
+        else:
+            narrative = (
+                f"{pc_col} shows a mixed pattern "
+                f"(R mean = {r_mean:.2f}, D mean = {d_mean:.2f}, "
+                f"|R−D| = {abs(r_mean - d_mean):.2f})."
+            )
+
+        # Absence diagnostic: fraction of top-10 loading bills with >30% null rate
+        absence_warning = ""
+        if X_raw is not None and len(vote_ids) > 0:
+            top_10 = loadings_df.select(pc_col).to_numpy().flatten()
+            top_10_idx = np.argsort(np.abs(top_10))[-10:]
+            high_absence_count = 0
+            for idx in top_10_idx:
+                if idx < X_raw.shape[1]:
+                    null_rate = np.isnan(X_raw[:, idx]).mean()
+                    if null_rate > 0.30:
+                        high_absence_count += 1
+            absence_frac = high_absence_count / len(top_10_idx)
+            if absence_frac > 0.30:
+                absence_warning = (
+                    f'<div style="background:#fff3cd; border:1px solid #ffc107; '
+                    f'border-radius:6px; padding:8px 12px; margin:8px 0;">'
+                    f"<strong>Absence Warning:</strong> {high_absence_count} of "
+                    f"{len(top_10_idx)} top-loading bills for {pc_col} have >30% "
+                    f"absence rate. This dimension may partly reflect attendance "
+                    f"patterns rather than ideology.</div>"
+                )
+
+        html = (
+            f"<p>{narrative}</p>"
+            f"<p><strong>Top positive loadings:</strong> {pos_bills}</p>"
+            f"<p><strong>Top negative loadings:</strong> {neg_bills}</p>"
+            f"{absence_warning}"
+        )
+
+        report.add(
+            TextSection(
+                id=f"interp-pc{i}-{chamber.lower()}",
+                title=f"{chamber} — {pc_col} Interpretation",
+                html=html,
+            )
+        )
 
 
 def _add_sensitivity_table(report: ReportBuilder, findings: dict) -> None:

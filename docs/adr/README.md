@@ -55,6 +55,7 @@ What are the trade-offs?
 | [0011](0011-umap-implementation-choices.md) | UMAP implementation choices |
 | [0027](0027-umap-validation-and-robustness.md) | UMAP validation and robustness improvements |
 | [0041](0041-mca-implementation-choices.md) | MCA implementation choices |
+| [0115](0115-pca-multidimensional-interpretation.md) | PCA multidimensional interpretation (scatter matrices, loading heatmaps, horseshoe diagnostic) |
 
 ### Bayesian Models
 
@@ -293,6 +294,7 @@ What are the trade-offs?
 | [0112](0112-2d-irt-supermajority-tuning.md) | 2D IRT tuning for supermajority chambers (adaptive N_TUNE, beta init from PCA, contested-only) | Accepted | 2026-03-11 |
 | [0113](0113-legislature-number-session-resolution.md) | Legislature number session resolution (fix "79" → "79th_2001-2002") | Accepted | 2026-03-11 |
 | [0114](0114-horseshoe-aware-report-system.md) | Horseshoe-aware report system (warnings in 8 phases, data-driven captions, 27-issue audit) | Accepted | 2026-03-12 |
+| [0115](0115-pca-multidimensional-interpretation.md) | PCA multidimensional interpretation (scatter matrices, loading heatmaps, horseshoe diagnostic, auto-narrative) | Accepted | 2026-03-12 |
 
 ## Creating a New ADR
 

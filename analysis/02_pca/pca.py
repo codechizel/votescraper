@@ -11,7 +11,8 @@ Usage:
 
 Outputs (in results/<session>/pca/<date>/):
   - data/:   Parquet files (PC scores, loadings, explained variance)
-  - plots/:  PNG visualizations (scree, ideological map, PC1 distribution, sensitivity)
+  - plots/:  PNG visualizations (scree, ideological map, PC1 distribution,
+             scatter matrix, loading heatmap, sensitivity)
   - filtering_manifest.json, run_info.json, run_log.txt
   - pca_report.html
 """
@@ -383,10 +384,14 @@ def run_pca_for_chamber(
     """Run the full PCA pipeline for one chamber.
 
     Returns dict with keys: scores_df, loadings_df, pca, scaler, X_imputed,
-    slugs, vote_ids, explained_variance.
+    X_raw, slugs, vote_ids, explained_variance.
     """
     print_header(f"PCA — {chamber}")
     print(f"  Matrix: {matrix.height} legislators x {len(matrix.columns) - 1} votes")
+
+    # Extract raw vote matrix (with NaN) before imputation — needed for absence diagnostics
+    vote_cols = [c for c in matrix.columns if c != "legislator_slug"]
+    X_raw = matrix.select(vote_cols).to_numpy().astype(np.float64)
 
     X, slugs, vote_ids = impute_vote_matrix(matrix)
     n_comp = min(n_components, X.shape[0], X.shape[1])
@@ -447,6 +452,7 @@ def run_pca_for_chamber(
         "pca": pca,
         "scaler": scaler,
         "X_imputed": X,
+        "X_raw": X_raw,
         "slugs": slugs,
         "vote_ids": vote_ids,
         "explained_variance": ev.tolist(),
@@ -704,6 +710,165 @@ def plot_pc1_distribution(
 
     fig.tight_layout()
     save_fig(fig, out_dir / f"pc1_distribution_{chamber.lower()}.png")
+
+
+def plot_score_scatter_matrix(
+    scores_df: pl.DataFrame,
+    chamber: str,
+    out_dir: Path,
+    n_significant: int,
+) -> None:
+    """Pairwise scatter matrix of significant PC scores, colored by party."""
+    if n_significant < 2:
+        return
+
+    import seaborn as sns
+
+    n = min(n_significant, 5)
+    pc_cols = [f"PC{i}" for i in range(1, n + 1)]
+
+    # Guard: skip if any PC column is missing
+    for col in pc_cols:
+        if col not in scores_df.columns:
+            return
+
+    # Build a pandas DataFrame for seaborn (pairplot requires pandas)
+    pdf = scores_df.select([*pc_cols, "party"]).to_pandas()
+
+    # Only include parties present in the data
+    present_parties = [p for p in PARTY_COLORS if p in pdf["party"].values]
+    palette = {p: PARTY_COLORS[p] for p in present_parties}
+
+    g = sns.pairplot(
+        pdf,
+        hue="party",
+        vars=pc_cols,
+        palette=palette,
+        diag_kind="kde",
+        plot_kws={"alpha": 0.6, "s": 40, "edgecolor": "black", "linewidth": 0.3},
+        diag_kws={"fill": True, "alpha": 0.3},
+        height=2.5,
+    )
+
+    # Label top-3 outliers on off-diagonal panels
+    for i, row_col in enumerate(pc_cols):
+        for j, col_col in enumerate(pc_cols):
+            if i == j:
+                continue
+            ax = g.axes[i, j]
+            abs_dist = scores_df[row_col].abs() + scores_df[col_col].abs()
+            top_idx = abs_dist.arg_sort(descending=True).head(3).to_list()
+            for idx in top_idx:
+                row = scores_df.row(idx, named=True)
+                raw_name = row.get("full_name") or row["legislator_slug"]
+                last_name = raw_name.split(" - ")[0].strip().split()[-1]
+                ax.annotate(
+                    last_name,
+                    (row[col_col], row[row_col]),
+                    fontsize=6,
+                    ha="left",
+                    va="bottom",
+                    xytext=(3, 3),
+                    textcoords="offset points",
+                )
+
+    g.figure.suptitle(
+        f"{chamber} — Score Scatter Matrix (PC1–PC{n})",
+        y=1.02,
+        fontsize=14,
+    )
+    g.figure.tight_layout()
+    save_fig(g.figure, out_dir / f"scatter_matrix_{chamber.lower()}.png")
+    plt.close(g.figure)
+
+
+def plot_loading_heatmap(
+    loadings_df: pl.DataFrame,
+    chamber: str,
+    out_dir: Path,
+    n_significant: int,
+) -> None:
+    """Heatmap of top loadings across significant PCs."""
+    if n_significant < 2:
+        return
+
+    import seaborn as sns
+
+    n = min(n_significant, 5)
+    pc_cols = [f"PC{i}" for i in range(1, n + 1)]
+
+    # Guard: skip if any PC column is missing
+    for col in pc_cols:
+        if col not in loadings_df.columns:
+            return
+
+    # Collect union of top-5 absolute-loading bills per significant PC
+    selected_indices: set[int] = set()
+    for col in pc_cols:
+        abs_vals = loadings_df[col].abs()
+        top_idx = abs_vals.arg_sort(descending=True).head(5).to_list()
+        selected_indices.update(top_idx)
+
+    if not selected_indices:
+        return
+
+    subset = loadings_df[sorted(selected_indices)]
+
+    # Build row labels: bill_number + short_title[:30]
+    row_labels = []
+    for row in subset.iter_rows(named=True):
+        label = row.get("bill_number") or row["vote_id"]
+        title = row.get("short_title")
+        if title and str(title) != "None" and str(title).strip():
+            label = f"{label} — {str(title)[:30]}"
+        row_labels.append(label)
+
+    # Extract loading values as numpy array
+    data = subset.select(pc_cols).to_numpy()
+
+    fig, ax = plt.subplots(figsize=(max(6, n * 1.5), max(8, len(row_labels) * 0.4)))
+    sns.heatmap(
+        data,
+        ax=ax,
+        cmap="RdBu_r",
+        center=0,
+        annot=True,
+        fmt=".3f",
+        xticklabels=pc_cols,
+        yticklabels=row_labels,
+        linewidths=0.5,
+        cbar_kws={"label": "Loading"},
+    )
+    ax.set_title(f"{chamber} — Top Loadings Across Significant Dimensions")
+    ax.set_ylabel("Bill")
+    ax.set_xlabel("Component")
+
+    fig.tight_layout()
+    save_fig(fig, out_dir / f"loading_heatmap_{chamber.lower()}.png")
+
+
+def diagnose_pc2_horseshoe(scores_df: pl.DataFrame) -> dict:
+    """Diagnose horseshoe artifact: fit PC2 ~ PC1 + PC1² and report R².
+
+    Returns {"r_squared": float, "horseshoe_detected": bool}.
+    """
+    if "PC1" not in scores_df.columns or "PC2" not in scores_df.columns:
+        return {"r_squared": 0.0, "horseshoe_detected": False}
+    if scores_df.height < 5:
+        return {"r_squared": 0.0, "horseshoe_detected": False}
+
+    pc1 = scores_df["PC1"].to_numpy()
+    pc2 = scores_df["PC2"].to_numpy()
+
+    # Fit quadratic: PC2 = a*PC1² + b*PC1 + c
+    coeffs = np.polyfit(pc1, pc2, 2)
+    pc2_pred = np.polyval(coeffs, pc1)
+
+    ss_res = np.sum((pc2 - pc2_pred) ** 2)
+    ss_tot = np.sum((pc2 - np.mean(pc2)) ** 2)
+    r_squared = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+
+    return {"r_squared": float(r_squared), "horseshoe_detected": r_squared > 0.30}
 
 
 # ── Phase 4: Sensitivity Analysis ───────────────────────────────────────────
@@ -1070,7 +1235,11 @@ def main() -> None:
 
             # Save parquet files
             result["scores_df"].write_parquet(ctx.data_dir / f"pc_scores_{label.lower()}.parquet")
-            ctx.export_csv(result["scores_df"], f"pc_scores_{label.lower()}.csv", f"PCA scores for {label} legislators")
+            ctx.export_csv(
+                result["scores_df"],
+                f"pc_scores_{label.lower()}.csv",
+                f"PCA scores for {label} legislators",
+            )
             result["loadings_df"].write_parquet(
                 ctx.data_dir / f"pc_loadings_{label.lower()}.parquet"
             )
@@ -1104,6 +1273,10 @@ def main() -> None:
             plot_scree(result["pca"], label, ctx.plots_dir, result["parallel_thresholds"])
             plot_ideological_map(result["scores_df"], label, ctx.plots_dir)
             plot_pc1_distribution(result["scores_df"], label, ctx.plots_dir)
+            n_sig = result["n_significant"]
+            if n_sig >= 2:
+                plot_score_scatter_matrix(result["scores_df"], label, ctx.plots_dir, n_sig)
+                plot_loading_heatmap(result["loadings_df"], label, ctx.plots_dir, n_sig)
 
         # ── Phase 4: Sensitivity analysis ──
         sensitivity_findings: dict = {}

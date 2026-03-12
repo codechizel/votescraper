@@ -19,7 +19,7 @@
 
 | Constant | Value | Justification |
 |----------|-------|---------------|
-| `DEFAULT_N_COMPONENTS` | 5 | Extracts 5 PCs per chamber. Only PC1-2 are typically interpretable; PC3-5 retained for IRT comparison. |
+| `DEFAULT_N_COMPONENTS` | 5 | Extracts 5 PCs per chamber. All significant PCs (per parallel analysis) are now interpreted in the report (ADR-0115). |
 | `MINORITY_THRESHOLD` | 0.025 | Inherited from EDA. PCA does not re-filter the default matrices. |
 | `SENSITIVITY_THRESHOLD` | 0.10 | Per workflow rules: re-run at 10% for sensitivity analysis. |
 | `MIN_VOTES` | 20 | Inherited from EDA. |
@@ -100,6 +100,29 @@
 **Why:** Complements PC2 extreme detection by identifying legislators who are anomalous for any reason. High reconstruction error candidates are likely to show IRT convergence issues or appear as synthesis outliers.
 
 **Impact:** Saved as a separate parquet file. High-error legislators shown in the HTML report. No impact on PCA fitting or downstream phases.
+
+### Multidimensional interpretation (ADR-0115)
+
+**Decision:** Extend the PCA report to interpret all significant dimensions (PC1 through n_significant, capped at 5), not just PC1-2. Three new analysis functions and five new report sections.
+
+**Visualizations:**
+- **Score scatter matrix** — Pairwise scatter of significant PCs using `seaborn.pairplot()`. Diagonal = per-party KDE, off-diagonal = party-colored scatter with top-3 outlier labels. Reveals pairwise structure (e.g., PC2 horseshoe curvature visible in PC1-vs-PC2 panel).
+- **Loading heatmap** — Top-5 absolute-loading bills per significant PC in a `seaborn.heatmap()` (RdBu_r, center=0, annotated). Shows which bills load on which dimensions simultaneously, revealing cross-cutting cleavages.
+
+**Diagnostics:**
+- **PC2 horseshoe detection** — Fits `PC2 ~ PC1 + PC1²` via `np.polyfit(pc1, pc2, 2)`, reports R². Threshold: R² > 0.30 triggers a yellow warning banner. This is an early-warning complement to ADR-0114's horseshoe-aware report system.
+- **Absence diagnostic** — For each PC2+ component, checks whether >30% of top-10 loading bills have >30% null rate in the raw vote matrix (`X_raw`). If so, warns that the dimension may reflect attendance patterns rather than ideology.
+
+**Auto-generated narratives (PC2+ only):**
+- Party mean comparison: `|R−D| > 1.0` → "Partisan", `< 0.5` → "Within-party" (with wider-spread caucus identified), else "Mixed".
+- Top 3 positive/negative loading bills with bill numbers and short titles.
+- Single-party chambers: "single-party" narrative instead of party comparison.
+
+**Modified existing sections:**
+- Loading tables now loop PC1 through n_significant (was hardcoded PC1, PC2).
+- Legislator scores table uses dynamic PC columns (was hardcoded `["PC1", "PC2"]`).
+
+**Edge cases:** `n_significant = 1` → all new sections no-op. No Democrats → NaN fill in party profile. Missing PC columns → guard clauses return early. KanFocus data (no bill titles) → heatmap uses bill_number only.
 
 ## Downstream Implications
 
