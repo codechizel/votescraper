@@ -224,27 +224,30 @@ def _add_polarization_table(
     existing = [c for c in display_cols if c in pol.columns]
     df = pol.select(existing)
 
+    all_labels = {
+        "vote_id": "Vote ID",
+        "bill_number": "Bill",
+        "short_title": "Title",
+        "polarization": "Polarization",
+        "pct_r_yea": "R %Yea",
+        "pct_d_yea": "D %Yea",
+        "n_r": "N(R)",
+        "n_d": "N(D)",
+        "beta_mean": "IRT β",
+    }
+    all_formats = {
+        "polarization": ".3f",
+        "pct_r_yea": ".3f",
+        "pct_d_yea": ".3f",
+        "beta_mean": ".3f",
+    }
+    cols = set(df.columns)
     html = make_gt(
         df,
         title=f"{chamber} Bill Polarization",
         subtitle=f"All {df.height} bills scored — |%R_Yea − %D_Yea|, sorted by polarization (desc)",
-        column_labels={
-            "vote_id": "Vote ID",
-            "bill_number": "Bill",
-            "short_title": "Title",
-            "polarization": "Polarization",
-            "pct_r_yea": "R %Yea",
-            "pct_d_yea": "D %Yea",
-            "n_r": "N(R)",
-            "n_d": "N(D)",
-            "beta_mean": "IRT β",
-        },
-        number_formats={
-            "polarization": ".3f",
-            "pct_r_yea": ".3f",
-            "pct_d_yea": ".3f",
-            "beta_mean": ".3f",
-        },
+        column_labels={k: v for k, v in all_labels.items() if k in cols},
+        number_formats={k: v for k, v in all_formats.items() if k in cols},
     )
     report.add(
         TableSection(
@@ -311,28 +314,31 @@ def _add_bridge_bills_table(
     existing = [c for c in display_cols if c in bridge.columns]
     df = bridge.select(existing)
 
+    all_labels = {
+        "vote_id": "Vote ID",
+        "bill_number": "Bill",
+        "short_title": "Title",
+        "betweenness": "Betweenness",
+        "polarization": "Polarization",
+        "pct_r_yea": "R %Yea",
+        "pct_d_yea": "D %Yea",
+        "degree": "Yea Votes",
+        "beta_mean": "IRT β",
+    }
+    all_formats = {
+        "betweenness": ".4f",
+        "polarization": ".3f",
+        "pct_r_yea": ".3f",
+        "pct_d_yea": ".3f",
+        "beta_mean": ".3f",
+    }
+    cols = set(df.columns)
     html = make_gt(
         df,
         title=f"{chamber} Bridge Bills",
         subtitle=f"Top {df.height} bills by bipartite betweenness centrality",
-        column_labels={
-            "vote_id": "Vote ID",
-            "bill_number": "Bill",
-            "short_title": "Title",
-            "betweenness": "Betweenness",
-            "polarization": "Polarization",
-            "pct_r_yea": "R %Yea",
-            "pct_d_yea": "D %Yea",
-            "degree": "Yea Votes",
-            "beta_mean": "IRT β",
-        },
-        number_formats={
-            "betweenness": ".4f",
-            "polarization": ".3f",
-            "pct_r_yea": ".3f",
-            "pct_d_yea": ".3f",
-            "beta_mean": ".3f",
-        },
+        column_labels={k: v for k, v in all_labels.items() if k in cols},
+        number_formats={k: v for k, v in all_formats.items() if k in cols},
         source_note=(
             "Bridge bills connect otherwise separate partisan blocs. "
             "Low polarization + high betweenness = genuine bridge."
