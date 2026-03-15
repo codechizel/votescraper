@@ -66,3 +66,16 @@ After extraction, check if Dim 2 separates parties better than Dim 1. If so, swa
 - Bafumi et al. (2005), Clinton/Jackman/Rivers (2004) — IRT identification
 - Lauderdale & Clark (2024) — theory-driven dimension identification (IRT-M)
 - Shin/Lim/Park (2024) — L1-based ideal points (rotational invariance)
+
+## Validation
+
+Full 79th (2001-2002) pipeline run `79-260314.3` completed with all gates active:
+
+- PCA axis-swap warning fired for Senate (PC2 d=5.21 > PC1 d=0.29)
+- 1D IRT flagged as axis_uncertain (Senate d=1.19 < 1.5)
+- Tier 2 quality gate passed 2D Dim 1 via party-d=6.05 (old PCA correlation gate would have rejected)
+- Hierarchical min-sep guard improved Senate gap from 0.22σ (pre-R4) to 0.48σ
+- 2D IRT dimension swap detected and corrected
+- Canonical routing: Senate source `hierarchical_2d_dim1` (d=4.36) — the party-pooled 2D model
+
+The 79th is the worst case in the dataset (all pathologies simultaneously). Pipeline now produces correct canonical ideology estimates for this session.

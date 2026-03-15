@@ -322,19 +322,37 @@ The pipeline's current defenses (horseshoe detection, sign checks, sort constrai
 
 ## Resolution (2026-03-15)
 
-All seven recommendations have been implemented in commits v2026.03.15.4 through v2026.03.15.10:
+All seven recommendations have been implemented in commits v2026.03.15.4 through v2026.03.15.16:
 
 | # | Fix | Commit |
 |---|-----|--------|
 | R1 | Party-aware PCA init (`detect_ideology_pc`) | v2026.03.15.4 |
-| R6 | PCA report axis-swap warning banner | v2026.03.15.5 |
+| R6 | PCA report axis-swap warning banner | v2026.03.15.5, v2026.03.15.13 |
 | R4 | Hierarchical minimum separation guard | v2026.03.15.6 |
 | R2 | 1D IRT party separation quality gate | v2026.03.15.7 |
 | R3 | Tier 2 quality gate — party-d replaces PCA correlation | v2026.03.15.8 |
 | R7 | 2D IRT dimension swap detection and correction | v2026.03.15.9 |
 | R5 | Dynamic IRT canonical reference + per-period party-d | v2026.03.15.10 |
+| — | Figure init-source labels on 2D scatter + forest plots | v2026.03.15.16 |
+| — | H2D report builder API fixes | v2026.03.15.14, v2026.03.15.15 |
 
 Architecture decision: ADR-0118 (party separation quality gates across pipeline).
+
+### Validation: 79th (2001-2002) Pipeline Run
+
+Full pipeline completed successfully on the worst-case session (run `79-260314.3`). Every quality gate fired correctly:
+
+| Gate | Result |
+|------|--------|
+| R6: PCA axis-swap warning | Senate PC2 d=5.21 > PC1 d=0.29 — **warning fired** |
+| R1: PCA init PC swap | Senate init used PC2 (party r stronger than PC1) |
+| R2: 1D IRT party-d gate | Senate d=1.19 — **axis_uncertain flagged** |
+| R3: Tier 2 party-d gate | Senate 2D Dim 1 d=6.05 — **Tier 2 passed** (old PCA gate would have rejected) |
+| R4: Hierarchical min-sep | Senate gap=1.308, ratio=0.48σ (improved from 0.22σ pre-R4) |
+| R7: 2D dimension swap | Detected and corrected in 2D IRT |
+| Canonical routing | Senate source: **`hierarchical_2d_dim1`** (d=4.36) — best available estimate |
+
+The 79th Senate canonical ideal points now use the party-pooled 2D model (Phase 07b) instead of the wrong-axis 1D IRT. This is the exact failure mode the deep dive identified.
 
 ### Key References
 

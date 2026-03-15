@@ -2,9 +2,9 @@
 
 **Source:** `docs/pca-ideology-axis-instability.md`
 **Date:** 2026-03-15
-**Status:** COMPLETED (2026-03-15, v2026.03.15.4 through v2026.03.15.11)
+**Status:** COMPLETED + VALIDATED (2026-03-15, v2026.03.15.4 through v2026.03.15.16)
 
-All 7 recommendations (R1-R7) implemented and deployed. See ADR-0118 for the full decision record.
+All 7 recommendations (R1-R7) implemented, deployed, and validated on the 79th (2001-2002) pipeline — the worst-case session. Three additional runtime fixes (v13-v15) and figure init labeling (v16) shipped during validation. See ADR-0118 for the full decision record and validation results.
 
 This plan implements the seven recommendations (R1-R7) from the PCA axis instability deep dive. The fixes are ordered by dependency — later tasks consume outputs from earlier ones.
 
