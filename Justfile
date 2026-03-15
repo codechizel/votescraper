@@ -183,7 +183,7 @@ cross-session *args:
 dynamic-irt *args:
     uv run python analysis/27_dynamic_irt/dynamic_irt.py {{args}}
 
-# Run single-biennium pipeline (phases 01-25)
+# Run single-biennium pipeline (phases 01-25 + 07b)
 pipeline session="2025-26" *args:
     #!/usr/bin/env bash
     set -euo pipefail

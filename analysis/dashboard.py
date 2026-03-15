@@ -30,6 +30,7 @@ PHASE_ORDER = [
     ("05_irt", "Bayesian IRT (1D)"),
     ("06_irt_2d", "2D Bayesian IRT"),
     ("07_hierarchical", "Hierarchical Bayesian IRT"),
+    ("07b_hierarchical_2d", "Hierarchical 2D IRT"),
     ("08_ppc", "Posterior Predictive Checks"),
     ("09_clustering", "Voting Bloc Detection"),
     ("10_lca", "Latent Class Analysis"),

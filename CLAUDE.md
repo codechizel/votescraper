@@ -28,7 +28,7 @@ just test                                    # → uv run pytest tests/ -v (~296
 just test-scraper                            # → pytest -m scraper (~643 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just test-web                                # → Django tests only (-m web, requires PostgreSQL)
-just pipeline 2025-26                        # → single-biennium pipeline (phases 01-25)
+just pipeline 2025-26                        # → single-biennium pipeline (phases 01-25 + 07b)
 just cross-pipeline                          # → cross-biennium pipeline (phases 26-27)
 just scrape 2025 --auto-load                 # → scrape + load CSVs into PostgreSQL
 just extract report.html --section 15        # → tallgrass-extract (bespoke report extraction)
@@ -101,7 +101,7 @@ Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `
 | Rule file | Loads when editing | Content |
 |-----------|-------------------|---------|
 | `scraper-architecture.md` | `src/**/*.py` | Session coverage, retry strategy, ODT parsing, concurrency |
-| `analysis-framework.md` | `analysis/**/*.py` | 27-phase pipeline, report system, experiment framework, MCMC concurrency |
+| `analysis-framework.md` | `analysis/**/*.py` | 28-phase pipeline, report system, experiment framework, MCMC concurrency |
 | `analytic-workflow.md` | `analysis/**/*.py` | Methodology rules, validation, audience guidance |
 | `testing.md` | `tests/**/*.py` | Test inventory, markers, conventions |
 | `html-pitfalls.md` | `src/tallgrass/scraper.py`, `odt_parser.py`, `bills.py` | 10 hard-won HTML parsing lessons, session URL logic |

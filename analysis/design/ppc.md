@@ -8,7 +8,7 @@
 
 3. **Graceful degradation** — Runs on whatever models are available (1, 2, or 3). Missing models produce warnings, not errors. `az.compare()` requires 2+ models.
 
-4. **Joint hierarchical excluded** — Known convergence issues, different legislator ordering. Phase 08 only compares flat 1D, 2D experimental, and per-chamber hierarchical.
+4. **Joint hierarchical excluded** — Known convergence issues, different legislator ordering. Phase 08 compares flat 1D, 2D experimental, per-chamber hierarchical, and hierarchical 2D (Phase 07b, when available).
 
 ## Parameters & Constants
 

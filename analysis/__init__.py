@@ -1,31 +1,32 @@
 """Analysis pipeline for Tallgrass.
 
-Single-biennium pipeline (01-25):
-  01_eda           — Exploratory Data Analysis
-  02_pca           — Principal Component Analysis
-  03_mca           — Multiple Correspondence Analysis
-  04_umap          — UMAP Visualization
-  05_irt           — Bayesian IRT (1D)
-  06_irt_2d        — 2D Bayesian IRT
-  07_hierarchical  — Hierarchical Bayesian IRT
-  08_ppc           — Posterior Predictive Checks + LOO-CV
-  09_clustering    — Voting Bloc Detection
-  10_lca           — Latent Class Analysis
-  11_network       — Legislator Network
-  12_bipartite     — Bipartite Network
-  13_indices       — Legislative Indices
-  14_beta_binomial — Bayesian Party Loyalty
-  15_prediction    — Vote Prediction
-  16_wnominate     — W-NOMINATE + OC Validation
+Single-biennium pipeline (01-25 + 07b):
+  01_eda              — Exploratory Data Analysis
+  02_pca              — Principal Component Analysis
+  03_mca              — Multiple Correspondence Analysis
+  20_bill_text        — Bill Text NLP
+  05_irt              — Bayesian IRT (1D)
+  06_irt_2d           — 2D Bayesian IRT
+  07_hierarchical     — Hierarchical Bayesian IRT
+  07b_hierarchical_2d — Hierarchical 2D IRT (party-pooled M2PL)
+  08_ppc              — Posterior Predictive Checks + LOO-CV
+  04_umap             — UMAP Visualization
+  09_clustering       — Voting Bloc Detection
+  10_lca              — Latent Class Analysis
+  11_network          — Legislator Network
+  12_bipartite        — Bipartite Network
+  13_indices          — Legislative Indices
+  14_beta_binomial    — Bayesian Party Loyalty
+  15_prediction       — Vote Prediction
+  16_wnominate        — W-NOMINATE + OC Validation
   17_external_validation — Shor-McCarty Validation
-  18_dime          — DIME/CFscore Validation
-  19_tsa           — Time Series Analysis
-  20_bill_text     — Bill Text NLP
-  21_tbip          — Text-Based Ideal Points
-  22_issue_irt     — Issue-Specific Ideal Points
+  18_dime             — DIME/CFscore Validation
+  19_tsa              — Time Series Analysis
+  21_tbip             — Text-Based Ideal Points
+  22_issue_irt        — Issue-Specific Ideal Points
   23_model_legislation — Model Legislation Detection
-  24_synthesis     — Narrative Synthesis
-  25_profiles      — Legislator Profiles
+  24_synthesis        — Narrative Synthesis
+  25_profiles         — Legislator Profiles
 
 Cross-biennium pipeline (26-27):
   26_cross_session — Cross-Biennium Validation

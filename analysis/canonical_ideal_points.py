@@ -1,20 +1,20 @@
-"""Canonical ideal point routing — auto-select 1D IRT or 2D Dim 1 per chamber.
+"""Canonical ideal point routing — auto-select best IRT source per chamber.
 
 For horseshoe-affected chambers (supermajority, where 1D IRT conflates ideology
-with establishment-loyalty), the 2D IRT Dim 1 is the canonical ideology score,
-following the DW-NOMINATE standard. For balanced chambers, 1D IRT remains
-canonical.
+with establishment-loyalty), the preferred source is Hierarchical 2D Dim 1
+(Phase 07b), falling back to flat 2D Dim 1 (Phase 06), then 1D IRT (Phase 05).
+For balanced chambers, 1D IRT remains canonical.
 
-This module runs after Phase 06 (2D IRT) and writes a canonical output that
-downstream phases (synthesis, profiles, cross-session) consume instead of
-reading Phase 05 directly.
+This module runs after Phase 06 (2D IRT) or Phase 07b (Hierarchical 2D IRT)
+and writes a canonical output that downstream phases (synthesis, profiles,
+cross-session) consume instead of reading Phase 05 directly.
 
 See docs/canonical-ideal-points.md for the full rationale and ADR-0109.
-Tiered quality gate: ADR-0110.
+Tiered quality gate: ADR-0110. H2D routing: ADR-0117.
 
-Usage (called from irt_2d.py at end of Phase 06):
+Usage (called from irt_2d.py or hierarchical_2d.py):
     from analysis.canonical_ideal_points import write_canonical_ideal_points
-    write_canonical_ideal_points(chamber, irt_1d_dir, irt_2d_dir, output_dir)
+    write_canonical_ideal_points(irt_1d_dir, irt_2d_dir, output_dir, h2d_dir=h2d_dir)
 """
 
 from pathlib import Path

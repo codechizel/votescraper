@@ -7,7 +7,7 @@ paths:
 
 ## Two Pipelines
 
-**Single-biennium** (`just pipeline 2025-26`): phases 01-25 in order. Phases 06, 08, 16-23 gracefully skip when prerequisites are missing (no R, no bill texts, biennium out of range for SM/DIME).
+**Single-biennium** (`just pipeline 2025-26`): phases 01-25 + 07b in order. Phases 06, 07b, 08, 16-23 gracefully skip when prerequisites are missing (no R, no bill texts, biennium out of range for SM/DIME).
 
 EDA → PCA → MCA → Bill Text → IRT → 2D IRT → Hierarchical IRT → Hierarchical 2D IRT → PPC → UMAP → Clustering → LCA → Network → Bipartite → Indices → Beta-Binomial → Prediction → W-NOMINATE → External Validation → DIME → TSA → TBIP → Issue IRT → Model Legislation → Synthesis → Profiles
 

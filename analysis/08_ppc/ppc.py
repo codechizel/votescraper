@@ -1,7 +1,7 @@
 """Kansas Legislature — Posterior Predictive Checks + LOO-CV Model Comparison (Phase 08)
 
 Standalone validation phase that loads InferenceData from upstream IRT phases
-(flat 1D, 2D experimental, hierarchical) and produces a unified PPC battery
+(flat 1D, 2D experimental, hierarchical, hierarchical 2D) and produces a unified PPC battery
 plus LOO-CV model comparison.
 
 Usage:
@@ -134,6 +134,7 @@ observations where importance sampling is unreliable.
 - Flat IRT: `results/<session>/<run_id>/05_irt/data/idata_{chamber}.nc`
 - 2D IRT: `results/<session>/<run_id>/06_irt_2d/data/idata_{chamber}.nc`
 - Hierarchical IRT: `results/<session>/<run_id>/07_hierarchical/data/idata_{chamber}.nc`
+- Hierarchical 2D IRT: `results/<session>/<run_id>/07b_hierarchical_2d/data/idata_{chamber}.nc`
 
 ## Outputs
 
