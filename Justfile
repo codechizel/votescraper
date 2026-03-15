@@ -190,11 +190,12 @@ pipeline session="2025-26" *args:
     just eda        --session {{session}} --run-id "$RUN_ID" {{args}}
     just pca        --session {{session}} --run-id "$RUN_ID" {{args}}
     just mca        --session {{session}} --run-id "$RUN_ID" {{args}}
-    just umap       --session {{session}} --run-id "$RUN_ID" {{args}}
+    just text-analysis --session {{session}} --run-id "$RUN_ID" {{args}}
     just irt        --session {{session}} --run-id "$RUN_ID" {{args}}
     just irt-2d     --session {{session}} --run-id "$RUN_ID" {{args}}
     just hierarchical --session {{session}} --run-id "$RUN_ID" {{args}}
     just ppc        --session {{session}} --run-id "$RUN_ID" {{args}}
+    just umap       --session {{session}} --run-id "$RUN_ID" {{args}}
     just clustering --session {{session}} --run-id "$RUN_ID" {{args}}
     just lca        --session {{session}} --run-id "$RUN_ID" {{args}}
     just network    --session {{session}} --run-id "$RUN_ID" {{args}}
@@ -206,7 +207,6 @@ pipeline session="2025-26" *args:
     just external-validation --session {{session}} --run-id "$RUN_ID" {{args}}
     just dime       --session {{session}} --run-id "$RUN_ID" {{args}}
     just tsa        --session {{session}} --run-id "$RUN_ID" {{args}}
-    just text-analysis --session {{session}} --run-id "$RUN_ID" {{args}}
     just tbip       --session {{session}} --run-id "$RUN_ID" {{args}}
     just issue-irt  --session {{session}} --run-id "$RUN_ID" {{args}}
     just model-legislation --session {{session}} --run-id "$RUN_ID" {{args}}
