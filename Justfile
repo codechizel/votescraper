@@ -99,6 +99,10 @@ irt-2d *args:
 hierarchical *args:
     uv run python analysis/07_hierarchical/hierarchical.py {{args}}
 
+# Run hierarchical 2D IRT (party-pooled multidimensional)
+hierarchical-2d *args:
+    uv run python analysis/07b_hierarchical_2d/hierarchical_2d.py {{args}}
+
 # Run posterior predictive checks + LOO-CV model comparison
 ppc *args:
     uv run python analysis/08_ppc/ppc.py {{args}}
@@ -194,6 +198,7 @@ pipeline session="2025-26" *args:
     just irt        --session {{session}} --run-id "$RUN_ID" {{args}}
     just irt-2d     --session {{session}} --run-id "$RUN_ID" {{args}}
     just hierarchical --session {{session}} --run-id "$RUN_ID" {{args}}
+    just hierarchical-2d --session {{session}} --run-id "$RUN_ID" {{args}}
     just ppc        --session {{session}} --run-id "$RUN_ID" {{args}}
     just umap       --session {{session}} --run-id "$RUN_ID" {{args}}
     just clustering --session {{session}} --run-id "$RUN_ID" {{args}}

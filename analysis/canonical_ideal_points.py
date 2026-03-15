@@ -160,9 +160,7 @@ def load_pca_scores(pca_dir: Path, chamber: str) -> pl.DataFrame | None:
     return df.select("legislator_slug", pl.col(pc1_col).alias("PC1"))
 
 
-def _compute_rank_correlation(
-    ip_2d: pl.DataFrame, pca_scores: pl.DataFrame
-) -> float | None:
+def _compute_rank_correlation(ip_2d: pl.DataFrame, pca_scores: pl.DataFrame) -> float | None:
     """Compute Spearman rank correlation between 2D Dim 1 and PCA PC1.
 
     Returns |ρ| (absolute value) or None if insufficient overlap.
@@ -173,9 +171,7 @@ def _compute_rank_correlation(
     if merged.height < 5:
         return None
 
-    rho, _ = spearmanr(
-        merged["xi_mean"].to_numpy(), merged["PC1"].to_numpy()
-    )
+    rho, _ = spearmanr(merged["xi_mean"].to_numpy(), merged["PC1"].to_numpy())
     return abs(float(rho))
 
 
@@ -197,8 +193,14 @@ def assess_2d_convergence_tier(
     """
     import json
 
-    result: dict = {"tier": 3, "usable": False, "xi_rhat": 999.0, "xi_ess": 0.0,
-                    "rank_corr": None, "reason": ""}
+    result: dict = {
+        "tier": 3,
+        "usable": False,
+        "xi_rhat": 999.0,
+        "xi_ess": 0.0,
+        "rank_corr": None,
+        "reason": "",
+    }
 
     summary_path = irt_2d_dir / "data" / "convergence_summary.json"
     if not summary_path.exists():
@@ -257,17 +259,14 @@ def assess_2d_convergence_tier(
             )
         else:
             result["reason"] = (
-                f"PCA scores not found for {chamber} "
-                f"(R-hat={xi_rhat:.4f}, ESS={xi_ess:.0f})"
+                f"PCA scores not found for {chamber} (R-hat={xi_rhat:.4f}, ESS={xi_ess:.0f})"
             )
 
     else:
         result["reason"] = f"R-hat too high ({xi_rhat:.4f} ≥ {TIER2_RHAT_THRESHOLD})"
 
     # Tier 3: fall back
-    print(
-        f"  Tier 3 (convergence failed): {chamber} — {result['reason']}"
-    )
+    print(f"  Tier 3 (convergence failed): {chamber} — {result['reason']}")
     return result
 
 
@@ -281,11 +280,43 @@ def check_2d_convergence_quality(irt_2d_dir: Path, chamber: str) -> bool:
     return tier_result["usable"]
 
 
+def load_h2d_dim1_ideal_points(h2d_dir: Path, chamber: str) -> pl.DataFrame | None:
+    """Load Hierarchical 2D IRT Dim 1 ideal points from Phase 07b data directory.
+
+    Maps H2D column names to the standard schema:
+    xi_dim1_mean → xi_mean, xi_dim1_hdi_3% → xi_hdi_2.5, xi_dim1_hdi_97% → xi_hdi_97.5
+    """
+    path = h2d_dir / "data" / f"ideal_points_h2d_{chamber.lower()}.parquet"
+    if not path.exists():
+        return None
+
+    df = pl.read_parquet(path)
+
+    # Compute xi_sd from HDI (approximate: HDI width / 3.92 for 95% interval)
+    df = df.with_columns(
+        ((pl.col("xi_dim1_hdi_97%") - pl.col("xi_dim1_hdi_3%")) / 3.92).alias("xi_sd")
+    )
+
+    # Map to standard column names
+    result = df.select(
+        "legislator_slug",
+        "full_name",
+        "party",
+        pl.col("xi_dim1_mean").alias("xi_mean"),
+        "xi_sd",
+        pl.col("xi_dim1_hdi_3%").alias("xi_hdi_2.5"),
+        pl.col("xi_dim1_hdi_97%").alias("xi_hdi_97.5"),
+    )
+
+    return result
+
+
 def route_canonical_ideal_points(
     irt_1d_dir: Path,
     irt_2d_dir: Path,
     chamber: str,
     pca_dir: Path | None = None,
+    h2d_dir: Path | None = None,
 ) -> tuple[pl.DataFrame, str, dict]:
     """Determine the canonical ideal points for a chamber.
 
@@ -294,10 +325,11 @@ def route_canonical_ideal_points(
         irt_2d_dir: Phase 06 run directory.
         chamber: "House" or "Senate".
         pca_dir: Phase 02 run directory (for Tier 2 rank correlation check).
+        h2d_dir: Phase 07b run directory (optional, preferred over flat 2D when converged).
 
     Returns (ideal_points_df, source_label, routing_metadata).
 
-    source_label is "2d_dim1" or "1d_irt".
+    source_label is "hierarchical_2d_dim1", "2d_dim1", or "1d_irt".
     """
     ip_1d = load_1d_ideal_points(irt_1d_dir, chamber)
     ip_2d = load_2d_dim1_ideal_points(irt_2d_dir, chamber)
@@ -319,10 +351,52 @@ def route_canonical_ideal_points(
     if horseshoe["detected"]:
         print(f"  Horseshoe DETECTED in {chamber}: {horseshoe['reason']}")
 
-        # Check 2D availability and convergence tier
+        # Try Hierarchical 2D first (preferred: combines party pooling + 2D structure)
+        if h2d_dir is not None:
+            ip_h2d = load_h2d_dim1_ideal_points(h2d_dir, chamber)
+            if ip_h2d is not None:
+                h2d_tier = assess_2d_convergence_tier(
+                    h2d_dir,
+                    chamber,
+                    ip_2d=ip_h2d,
+                    pca_dir=pca_dir,
+                )
+                metadata["h2d_convergence_tier"] = h2d_tier
+
+                if h2d_tier["usable"]:
+                    tier_label = (
+                        "converged" if h2d_tier["tier"] == 1 else "point estimates credible"
+                    )
+                    print(f"  → Canonical source: Hierarchical 2D Dim 1 ({tier_label})")
+                    metadata["reason"] = f"horseshoe_detected: {horseshoe['reason']}"
+
+                    # Add district and chamber columns from 1D if available
+                    extra_cols = []
+                    for col in ("district", "chamber"):
+                        if col in ip_1d.columns and col not in ip_h2d.columns:
+                            extra_cols.append(col)
+                    if extra_cols:
+                        ip_h2d = ip_h2d.join(
+                            ip_1d.select("legislator_slug", *extra_cols),
+                            on="legislator_slug",
+                            how="left",
+                        )
+
+                    return (
+                        ip_h2d.with_columns(pl.lit("hierarchical_2d_dim1").alias("source")),
+                        "hierarchical_2d_dim1",
+                        metadata,
+                    )
+                else:
+                    print("  H2D convergence insufficient — trying flat 2D")
+
+        # Fall back to flat 2D
         if ip_2d is not None:
             tier_result = assess_2d_convergence_tier(
-                irt_2d_dir, chamber, ip_2d=ip_2d, pca_dir=pca_dir,
+                irt_2d_dir,
+                chamber,
+                ip_2d=ip_2d,
+                pca_dir=pca_dir,
             )
             metadata["convergence_tier"] = tier_result
 
@@ -369,6 +443,7 @@ def write_canonical_ideal_points(
     output_dir: Path,
     chambers: list[str] | None = None,
     pca_dir: Path | None = None,
+    h2d_dir: Path | None = None,
 ) -> dict[str, str]:
     """Write canonical ideal points for all chambers.
 
@@ -378,8 +453,12 @@ def write_canonical_ideal_points(
         output_dir: Where to write canonical output (typically {run_dir}/canonical_irt/)
         chambers: List of chambers to process. Defaults to ["House", "Senate"].
         pca_dir: Phase 02 run directory (for Tier 2 rank correlation check). Optional.
+        h2d_dir: Phase 07b run directory (contains data/ideal_points_h2d_{chamber}.parquet).
+            Optional. When available and converged, preferred over flat 2D for horseshoe
+            chambers.
 
-    Returns dict mapping chamber → source_label ("1d_irt" or "2d_dim1").
+    Returns dict mapping chamber → source_label ("1d_irt", "2d_dim1",
+    or "hierarchical_2d_dim1").
     """
     import json
 
@@ -393,7 +472,11 @@ def write_canonical_ideal_points(
     for chamber in chambers:
         try:
             ip, source, metadata = route_canonical_ideal_points(
-                irt_1d_dir, irt_2d_dir, chamber, pca_dir=pca_dir,
+                irt_1d_dir,
+                irt_2d_dir,
+                chamber,
+                pca_dir=pca_dir,
+                h2d_dir=h2d_dir,
             )
             ip.write_parquet(output_dir / f"canonical_ideal_points_{chamber.lower()}.parquet")
             sources[chamber] = source

@@ -175,7 +175,12 @@ observations where importance sampling is unreliable.
 # ── Constants ───────────────────────────────────────────────────────────────
 
 PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
-MODEL_COLORS = {"Flat 1D": "#1f77b4", "2D IRT": "#ff7f0e", "Hierarchical": "#2ca02c"}
+MODEL_COLORS = {
+    "Flat 1D": "#1f77b4",
+    "2D IRT": "#ff7f0e",
+    "Hierarchical": "#2ca02c",
+    "Hierarchical 2D": "#d62728",
+}
 DEFAULT_N_REPS = 500
 DEFAULT_Q3_DRAWS = 100
 CHAMBERS = ["House", "Senate"]
@@ -195,6 +200,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--irt-2d-dir", default=None, help="Override 2D IRT results directory")
     parser.add_argument(
         "--hierarchical-dir", default=None, help="Override hierarchical IRT results directory"
+    )
+    parser.add_argument(
+        "--hierarchical-2d-dir", default=None, help="Override hierarchical 2D IRT results directory"
     )
     parser.add_argument("--skip-loo", action="store_true", help="Skip LOO-CV computation")
     parser.add_argument("--skip-q3", action="store_true", help="Skip Q3 local dependence")
@@ -451,21 +459,24 @@ def process_chamber(
         print(f"\n  ── {model_name} ──")
 
         # Prepare data dict for this model
-        # For hierarchical: idata may have different legislators (no Independents)
-        if model_type == "hierarchical":
-            # Filter matrix to match hierarchical model's legislator set
+        # For hierarchical/hierarchical_2d: idata may have different legislators (no Independents)
+        if model_type in ("hierarchical", "hierarchical_2d"):
+            # Filter matrix to match model's legislator set
             if "legislator" in idata.posterior.coords:
-                hier_slugs = list(idata.posterior.coords["legislator"].values)
-                matrix_filtered = matrix.filter(pl.col("legislator_slug").is_in(hier_slugs))
+                model_slugs = list(idata.posterior.coords["legislator"].values)
+                matrix_filtered = matrix.filter(pl.col("legislator_slug").is_in(model_slugs))
             else:
                 matrix_filtered = matrix
             data = prepare_irt_data(matrix_filtered, chamber)
         else:
             data = prepare_irt_data(matrix, chamber)
 
+        # For PPC computations, hierarchical_2d uses the same 2D likelihood
+        ppc_model_type = "2d" if model_type == "hierarchical_2d" else model_type
+
         # PPC battery
         print(f"    Running PPC battery ({n_reps} replications)...")
-        ppc = run_ppc_battery(idata, data, n_reps=n_reps, model_type=model_type)
+        ppc = run_ppc_battery(idata, data, n_reps=n_reps, model_type=ppc_model_type)
         ppc_results[model_name] = ppc
 
         print(f"    Observed Yea rate: {ppc['observed_yea_rate']:.3f}")
@@ -480,7 +491,7 @@ def process_chamber(
 
         # Item-level PPC
         print("    Running item-level checks...")
-        item = compute_item_ppc(idata, data, n_reps=n_reps, model_type=model_type)
+        item = compute_item_ppc(idata, data, n_reps=n_reps, model_type=ppc_model_type)
         item_results[model_name] = item
         print(
             f"    Misfitting items: {item['n_misfitting']}/{item['n_votes']} "
@@ -489,7 +500,7 @@ def process_chamber(
 
         # Person-level PPC
         print("    Running person-level checks...")
-        person = compute_person_ppc(idata, data, n_reps=n_reps, model_type=model_type)
+        person = compute_person_ppc(idata, data, n_reps=n_reps, model_type=ppc_model_type)
         person_results[model_name] = person
         print(
             f"    Misfitting persons: {person['n_misfitting']}/{person['n_legislators']} "
@@ -498,14 +509,14 @@ def process_chamber(
 
         # Vote margins
         print("    Running vote margin checks...")
-        margins = compute_vote_margin_ppc(idata, data, n_reps=n_reps, model_type=model_type)
+        margins = compute_vote_margin_ppc(idata, data, n_reps=n_reps, model_type=ppc_model_type)
         margin_results[model_name] = margins
 
         # Q3 (skip for 2D — it's the reference for dimensionality)
         if not skip_q3:
             print(f"    Computing Yen's Q3 ({DEFAULT_Q3_DRAWS} draws)...")
             q3 = compute_yens_q3(
-                idata, data, n_draws_sample=DEFAULT_Q3_DRAWS, model_type=model_type
+                idata, data, n_draws_sample=DEFAULT_Q3_DRAWS, model_type=ppc_model_type
             )
             q3_results[model_name] = q3
             print(
@@ -517,9 +528,9 @@ def process_chamber(
         # Log-likelihood for LOO
         if not skip_loo:
             print("    Computing log-likelihood...")
-            if model_type == "2d":
+            if ppc_model_type == "2d":
                 log_lik = compute_log_likelihood_2d(idata, data)
-            elif model_type == "hierarchical":
+            elif ppc_model_type == "hierarchical":
                 log_lik = compute_log_likelihood_hierarchical(idata, data)
             else:
                 log_lik = compute_log_likelihood_1d(idata, data)
@@ -700,11 +711,18 @@ def main() -> None:
             args.run_id,
             override=Path(args.hierarchical_dir) if args.hierarchical_dir else None,
         )
+        h2d_dir = resolve_upstream_dir(
+            "07b_hierarchical_2d",
+            results_root,
+            args.run_id,
+            override=Path(args.hierarchical_2d_dir) if args.hierarchical_2d_dir else None,
+        )
 
         print(f"  EDA dir: {eda_dir}")
         print(f"  IRT dir: {irt_dir}")
         print(f"  IRT 2D dir: {irt_2d_dir}")
         print(f"  Hierarchical dir: {hier_dir}")
+        print(f"  Hierarchical 2D dir: {h2d_dir}")
 
         # ── Load EDA vote matrices ──
         print_header("LOADING DATA")
@@ -752,6 +770,11 @@ def main() -> None:
             idata_hier = _load_idata_safe(hier_dir / "data" / f"idata_{ch}.nc", "Hierarchical")
             if idata_hier is not None:
                 available["Hierarchical"] = (idata_hier, "hierarchical")
+
+            # Hierarchical 2D IRT (uses 2D likelihood but filters like hierarchical)
+            idata_h2d = _load_idata_safe(h2d_dir / "data" / f"idata_{ch}.nc", "Hierarchical 2D")
+            if idata_h2d is not None:
+                available["Hierarchical 2D"] = (idata_h2d, "hierarchical_2d")
 
             result = process_chamber(
                 chamber,

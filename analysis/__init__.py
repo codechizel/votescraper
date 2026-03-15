@@ -62,6 +62,8 @@ _MODULE_MAP: dict[str, str] = {
     "hierarchical_report": "07_hierarchical",
     "model_spec": "07_hierarchical",
     "irt_linking": "07_hierarchical",
+    "hierarchical_2d": "07b_hierarchical_2d",
+    "hierarchical_2d_report": "07b_hierarchical_2d",
     "ppc": "08_ppc",
     "ppc_data": "08_ppc",
     "ppc_report": "08_ppc",
