@@ -1538,25 +1538,73 @@ def main() -> None:
                     print(f"    Initialized {np.count_nonzero(init_vals)} of {len(init_vals)}")
 
             # ── Step 6b: Load static IRT for informative prior + sign correction ──
-            print("\n  Loading static IRT data...")
+            # Prefer canonical scores (horseshoe-corrected) over raw Phase 05 output
+            # for sign correction. Falls back to Phase 05 when canonical unavailable.
+            # See docs/pca-ideology-axis-instability.md (R5).
+            print("\n  Loading static IRT data (prefer canonical)...")
             all_static_irt: dict[int, pl.DataFrame] = {}
             for t, session_str in enumerate(session_list):
                 try:
                     ks_t = KSSession.from_session_string(session_str)
-                    irt_dir = resolve_upstream_dir("05_irt", ks_t.results_dir, args.run_id)
-                    irt_path = irt_dir / "data" / f"ideal_points_{chamber}.parquet"
-                    if irt_path.exists():
-                        static_df = pl.read_parquet(irt_path)
-                        if "full_name" in static_df.columns:
-                            static_df = static_df.with_columns(
-                                pl.col("full_name")
-                                .map_elements(normalize_name, return_dtype=pl.Utf8)
-                                .alias("name_norm")
+                    # Try canonical first (horseshoe-corrected)
+                    loaded = False
+                    for phase_dir in ("07b_hierarchical_2d", "06_irt_2d"):
+                        try:
+                            upstream = resolve_upstream_dir(
+                                phase_dir, ks_t.results_dir, args.run_id
                             )
-                        all_static_irt[t] = static_df
+                            canonical_path = (
+                                upstream
+                                / "canonical_irt"
+                                / f"canonical_ideal_points_{chamber}.parquet"
+                            )
+                            if canonical_path.exists():
+                                static_df = pl.read_parquet(canonical_path)
+                                if "full_name" not in static_df.columns:
+                                    # Canonical may lack full_name — join from Phase 05
+                                    irt_dir = resolve_upstream_dir(
+                                        "05_irt", ks_t.results_dir, args.run_id
+                                    )
+                                    irt_path = irt_dir / "data" / f"ideal_points_{chamber}.parquet"
+                                    if irt_path.exists():
+                                        irt_df = pl.read_parquet(irt_path)
+                                        if "full_name" in irt_df.columns:
+                                            static_df = static_df.join(
+                                                irt_df.select("legislator_slug", "full_name"),
+                                                on="legislator_slug",
+                                                how="left",
+                                            )
+                                if "full_name" in static_df.columns:
+                                    static_df = static_df.with_columns(
+                                        pl.col("full_name")
+                                        .map_elements(normalize_name, return_dtype=pl.Utf8)
+                                        .alias("name_norm")
+                                    )
+                                all_static_irt[t] = static_df
+                                loaded = True
+                                break
+                        except FileNotFoundError, OSError:
+                            pass
+                    # Fall back to raw Phase 05
+                    if not loaded:
+                        irt_dir = resolve_upstream_dir("05_irt", ks_t.results_dir, args.run_id)
+                        irt_path = irt_dir / "data" / f"ideal_points_{chamber}.parquet"
+                        if irt_path.exists():
+                            static_df = pl.read_parquet(irt_path)
+                            if "full_name" in static_df.columns:
+                                static_df = static_df.with_columns(
+                                    pl.col("full_name")
+                                    .map_elements(normalize_name, return_dtype=pl.Utf8)
+                                    .alias("name_norm")
+                                )
+                            all_static_irt[t] = static_df
                 except FileNotFoundError, OSError:
                     pass
-            print(f"    Loaded static IRT for {len(all_static_irt)} bienniums")
+            n_canonical = sum(1 for df in all_static_irt.values() if "source" in df.columns)
+            print(
+                f"    Loaded static IRT for {len(all_static_irt)} bienniums "
+                f"({n_canonical} canonical)"
+            )
 
             # Build informative xi_init prior from static IRT (ADR-0070, ADR-0074)
             # Accumulator pattern: average across all bienniums where a legislator
@@ -1632,6 +1680,40 @@ def main() -> None:
             # ── Step 10: Sign correction (uses static IRT from Step 6b) ──
             print("\n  Checking for per-period sign flips...")
             idata, sign_corrections = fix_period_sign_flips(idata, stacked, all_static_irt, roster)
+
+            # Per-period party separation check (R5)
+            # Flag periods where the axis may not capture ideology
+            xi_post = idata.posterior["xi"].values  # (chain, draw, time, leg)
+            n_time = xi_post.shape[2]
+            labels = BIENNIUM_LABELS[:n_time]
+            axis_uncertain_periods: list[str] = []
+            for t in range(n_time):
+                xi_mean_t = xi_post[:, :, t, :].mean(axis=(0, 1))
+                # Get party for each legislator
+                leg_names_t = stacked["leg_names"]
+                r_vals = []
+                d_vals = []
+                for gidx, nn in enumerate(leg_names_t):
+                    if t not in stacked["leg_periods"][gidx]:
+                        continue
+                    party = roster.filter(pl.col("name_norm") == nn)
+                    if party.height > 0 and "party" in party.columns:
+                        p = party["party"][0]
+                        if p == "Republican":
+                            r_vals.append(float(xi_mean_t[gidx]))
+                        elif p == "Democrat":
+                            d_vals.append(float(xi_mean_t[gidx]))
+                if len(r_vals) > 1 and len(d_vals) > 1:
+                    pooled = np.sqrt((np.std(r_vals) ** 2 + np.std(d_vals) ** 2) / 2)
+                    party_d = abs(np.mean(r_vals) - np.mean(d_vals)) / pooled if pooled > 0 else 0.0
+                    if party_d < 1.5:
+                        axis_uncertain_periods.append(labels[t])
+                        print(
+                            f"    WARNING: {labels[t]} party separation "
+                            f"d={party_d:.2f} < 1.5 — axis uncertain"
+                        )
+            if axis_uncertain_periods:
+                print(f"  Axis-uncertain periods: {', '.join(axis_uncertain_periods)}")
 
             # Save InferenceData (after correction)
             idata.to_netcdf(ctx.data_dir / f"dynamic_irt_{chamber}.nc")
