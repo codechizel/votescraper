@@ -89,6 +89,7 @@ What are the trade-offs?
 | [0110](0110-tiered-convergence-quality-gate.md) | Tiered convergence quality gate for canonical routing (3 tiers, rank correlation) |
 | [0111](0111-canonical-init-strategy-hierarchical.md) | Canonical init strategy for hierarchical IRT (`--init-strategy canonical`) |
 | [0112](0112-2d-irt-supermajority-tuning.md) | 2D IRT tuning for supermajority chambers (adaptive N_TUNE, beta init, contested-only) |
+| [0117](0117-hierarchical-2d-irt.md) | Hierarchical 2D IRT with PLT identification and party pooling (Phase 07b) |
 
 ### Classical Analysis
 
@@ -175,6 +176,7 @@ What are the trade-offs?
 | [0107](0107-shared-init-strategy.md) | Shared MCMC initialization strategy (`--init-strategy`, Django-ready) |
 | [0113](0113-legislature-number-session-resolution.md) | Legislature number session resolution (fix "79" → "79th_2001-2002") |
 | [0114](0114-horseshoe-aware-report-system.md) | Horseshoe-aware report system (warnings, data-driven captions, 27-issue audit) |
+| [0116](0116-pipeline-reordering.md) | Pipeline reordering (text-analysis to position 4, UMAP to position 9) |
 
 ## Chronological Index
 
@@ -295,6 +297,8 @@ What are the trade-offs?
 | [0113](0113-legislature-number-session-resolution.md) | Legislature number session resolution (fix "79" → "79th_2001-2002") | Accepted | 2026-03-11 |
 | [0114](0114-horseshoe-aware-report-system.md) | Horseshoe-aware report system (warnings in 8 phases, data-driven captions, 27-issue audit) | Accepted | 2026-03-12 |
 | [0115](0115-pca-multidimensional-interpretation.md) | PCA multidimensional interpretation (scatter matrices, loading heatmaps, horseshoe diagnostic, auto-narrative) | Accepted | 2026-03-12 |
+| [0116](0116-pipeline-reordering.md) | Pipeline reordering (text-analysis to position 4, UMAP to position 9) | Accepted | 2026-03-14 |
+| [0117](0117-hierarchical-2d-irt.md) | Hierarchical 2D IRT with PLT identification and party pooling (Phase 07b) | Accepted | 2026-03-14 |
 
 ## Creating a New ADR
 
