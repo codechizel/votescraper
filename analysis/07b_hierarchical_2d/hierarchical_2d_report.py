@@ -121,7 +121,7 @@ def build_hierarchical_2d_report(
                 title=f"{chamber} — Group Parameters",
                 html=make_interactive_table(
                     group_params,
-                    table_id=f"group_params_{ch}",
+                    title=f"Group Parameters — {chamber}",
                 ),
                 caption=(
                     "Per-party per-dimension group parameters: mu (party mean) and "
@@ -149,7 +149,7 @@ def build_hierarchical_2d_report(
                 title=f"{chamber} — Ideal Points",
                 html=make_interactive_table(
                     ideal_points.select(available).sort("xi_dim1_mean"),
-                    table_id=f"ideal_points_h2d_{ch}",
+                    title=f"Ideal Points — {chamber}",
                 ),
                 caption="All legislators ranked by Dim 1 (ideology).",
             )
