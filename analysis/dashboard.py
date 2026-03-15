@@ -21,17 +21,19 @@ from jinja2 import Environment
 
 _CT = ZoneInfo("America/Chicago")
 
-# Phase display order and labels
+# Phase display order and labels — matches pipeline execution order (Justfile),
+# not directory number order. See ADR-0116 for reordering rationale.
 PHASE_ORDER = [
     ("01_eda", "Exploratory Data Analysis"),
     ("02_pca", "Principal Component Analysis"),
     ("03_mca", "Multiple Correspondence Analysis"),
-    ("04_umap", "UMAP Visualization"),
+    ("20_bill_text", "Bill Text NLP"),
     ("05_irt", "Bayesian IRT (1D)"),
     ("06_irt_2d", "2D Bayesian IRT"),
     ("07_hierarchical", "Hierarchical Bayesian IRT"),
     ("07b_hierarchical_2d", "Hierarchical 2D IRT"),
     ("08_ppc", "Posterior Predictive Checks"),
+    ("04_umap", "UMAP Visualization"),
     ("09_clustering", "Voting Bloc Detection"),
     ("10_lca", "Latent Class Analysis"),
     ("11_network", "Legislator Network"),
@@ -43,7 +45,6 @@ PHASE_ORDER = [
     ("17_external_validation", "Shor-McCarty Validation"),
     ("18_dime", "DIME/CFscore Validation"),
     ("19_tsa", "Time Series Analysis"),
-    ("20_bill_text", "Bill Text NLP"),
     ("21_tbip", "Text-Based Ideal Points"),
     ("22_issue_irt", "Issue-Specific Ideal Points"),
     ("23_model_legislation", "Model Legislation Detection"),
