@@ -125,7 +125,13 @@ def _add_axis_swap_warning(
             "See <code>docs/pca-ideology-axis-instability.md</code> for details."
             "</div>"
         )
-        report.add(TextSection(f"{chamber} — Axis Swap Warning", html))
+        report.add(
+            TextSection(
+                id=f"axis-swap-warning-{chamber.lower()}",
+                title=f"{chamber} — Axis Swap Warning",
+                html=html,
+            )
+        )
 
 
 def _add_pca_summary(
