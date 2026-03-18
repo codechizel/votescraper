@@ -16,7 +16,7 @@ Our EDA draws — whether explicitly or by convergent design — on the same can
 
 | Reference | What It Prescribes | Our Compliance |
 |-----------|-------------------|----------------|
-| [Poole & Rosenthal (NOMINATE)](https://legacy.voteview.com/pdf/nominate.pdf) | Drop lopsided votes where minority < 2.5% | `MINORITY_THRESHOLD = 0.025` |
+| [Poole & Rosenthal (NOMINATE)](https://legacy.voteview.com/pdf/nominate.pdf) | Drop lopsided votes where minority < 2.5% | `CONTESTED_THRESHOLD = 0.025` (defined in `analysis/tuning.py`) |
 | [Clinton, Jackman & Rivers 2004](https://www.cs.princeton.edu/courses/archive/fall09/cos597A/papers/ClintonJackmanRivers2004.pdf) | Binary encoding (Yea=1, Nay=0, else=missing); absences excluded from likelihood; PCA for dimensionality before IRT | Yea=1/Nay=0/null; chamber-separated filtering; PCA is Phase 2 |
 | [Imai et al. "Fast Estimation"](https://imai.fas.harvard.edu/research/files/fastideal.pdf) | Min-vote threshold; report sensitivity to filter changes | `MIN_VOTES = 20`; design doc notes 10% sensitivity |
 | [Desposato 2005](https://pages.ucsd.edu/~sdesposato/cohesionbjps.pdf) | Rice index inflated for small parties; correction via resampling | Rice computed, correction implemented via `compute_desposato_rice_correction()` |
@@ -113,7 +113,7 @@ None found. Every function is called from `main()` or from another function that
 
 ### 3.4 Hardcoded Values
 
-All thresholds are named constants at the top of the file (`MINORITY_THRESHOLD`, `MIN_VOTES`, `MIN_SHARED_VOTES`, `HOUSE_SEATS`, `SENATE_SEATS`, `VOTE_CATEGORIES`). No magic numbers embedded in logic. This is already clean.
+All thresholds are named constants at the top of the file (`CONTESTED_THRESHOLD`, `MIN_VOTES`, `MIN_SHARED_VOTES`, `HOUSE_SEATS`, `SENATE_SEATS`, `VOTE_CATEGORIES`). No magic numbers embedded in logic. This is already clean.
 
 ---
 
@@ -255,7 +255,7 @@ Our design doc acknowledges this (Assumption #3). The literature is unambiguous 
 
 ### 7.5 Small-Chamber Threshold Effects
 
-For the 40-member Kansas Senate, `MINORITY_THRESHOLD = 0.025` means a single dissenting senator triggers inclusion (1/40 = 2.5%). This is at the boundary of the threshold. Some state-legislature studies use 5% for small chambers. Our design doc notes the 10% sensitivity analysis, which is the right approach.
+For the 40-member Kansas Senate, `CONTESTED_THRESHOLD = 0.025` means a single dissenting senator triggers inclusion (1/40 = 2.5%). This is at the boundary of the contested threshold. Some state-legislature studies use 5% for small chambers. Our design doc notes the 10% sensitivity analysis, which is the right approach.
 
 ---
 

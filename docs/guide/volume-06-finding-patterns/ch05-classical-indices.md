@@ -16,7 +16,7 @@ Classical political science indices provide **interpretable, comparable, well-es
 
 ### The Oldest Measure
 
-**Stuart A. Rice** introduced the Rice Index in 1925 while a graduate student at Columbia University. His paper, "The Behavior of Legislative Groups: A Method of Measurement" in *Political Science Quarterly*, proposed the first systematic metric for how cohesively a party votes.
+**Stuart A. Rice** introduced the Rice Index in 1925, based on his doctoral work at Columbia University (PhD 1924). His paper, "The Behavior of Legislative Groups: A Method of Measurement" in *Political Science Quarterly*, proposed the first systematic metric for how cohesively a party votes.
 
 The formula is disarmingly simple:
 

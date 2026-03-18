@@ -79,8 +79,8 @@ Each phase has a design doc in `analysis/design/` — **read before interpreting
 The **vote matrix** (legislators x roll calls, binary) is the foundation. Build from `votes.csv`: pivot `legislator_slug` x `vote_id`, Yea=1, Nay=0, absent=NaN.
 
 **Critical preprocessing:**
-- Filter near-unanimous votes (minority < 2.5%)
-- Filter legislators with < 20 votes
+- Filter near-unanimous votes (`CONTESTED_THRESHOLD`, default 2.5% — defined in `analysis/tuning.py`)
+- Filter legislators with < `MIN_VOTES` (default 20 — defined in `analysis/tuning.py`)
 - Analyze chambers separately
 
 ## Independent Party Handling

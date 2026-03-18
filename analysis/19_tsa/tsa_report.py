@@ -32,15 +32,41 @@ except ModuleNotFoundError:
         make_gt,
     )
 
-# Constants duplicated from tsa.py to avoid circular import
-WINDOW_SIZE = 75
-STEP_SIZE = 15
-MIN_WINDOW_VOTES = 10
-MIN_WINDOW_LEGISLATORS = 20
-PELT_MIN_SIZE = 5
-WEEKLY_AGG_DAYS = 7
-TOP_MOVERS_N = 10
-MIN_TOTAL_VOTES = 20
+# Import constants from tsa.py (single source of truth).
+# Circular-import safe: falls back to direct sibling import, then literals.
+try:
+    from analysis.tsa import (
+        MIN_TOTAL_VOTES,
+        MIN_WINDOW_LEGISLATORS,
+        MIN_WINDOW_VOTES,
+        PELT_MIN_SIZE,
+        STEP_SIZE,
+        TOP_MOVERS_N,
+        WEEKLY_AGG_DAYS,
+        WINDOW_SIZE,
+    )
+except ModuleNotFoundError, ImportError:
+    try:
+        from tsa import (  # type: ignore[no-redef]
+            MIN_TOTAL_VOTES,
+            MIN_WINDOW_LEGISLATORS,
+            MIN_WINDOW_VOTES,
+            PELT_MIN_SIZE,
+            STEP_SIZE,
+            TOP_MOVERS_N,
+            WEEKLY_AGG_DAYS,
+            WINDOW_SIZE,
+        )
+    except ModuleNotFoundError, ImportError:
+        # Last resort: inline values (must match tsa.py)
+        WINDOW_SIZE = 75  # type: ignore[assignment]
+        STEP_SIZE = 15  # type: ignore[assignment]
+        MIN_WINDOW_VOTES = 10  # type: ignore[assignment]
+        MIN_WINDOW_LEGISLATORS = 20  # type: ignore[assignment]
+        PELT_MIN_SIZE = 5  # type: ignore[assignment]
+        WEEKLY_AGG_DAYS = 7  # type: ignore[assignment]
+        TOP_MOVERS_N = 10  # type: ignore[assignment]
+        MIN_TOTAL_VOTES = 20  # type: ignore[assignment]
 
 
 def build_tsa_report(

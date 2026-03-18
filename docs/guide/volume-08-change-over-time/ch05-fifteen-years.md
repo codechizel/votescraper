@@ -47,7 +47,7 @@ The 84th Legislature (2011-2012) has the weakest data in the study period. Appro
 
 ### The Context
 
-By 2017, the Brownback tax experiment had produced persistent state budget shortfalls. School funding litigation (Gannon v. State) put the legislature under court order to increase education spending. Brownback resigned in January 2018 to become Ambassador at Large for International Religious Freedom, and Lt. Governor Jeff Colyer completed the term. In November 2018, Democrat Laura Kelly won the gubernatorial election — the first Democratic governor since Kathleen Sebelius.
+By 2017, the Brownback tax experiment had produced persistent state budget shortfalls. School funding litigation (Gannon v. State) put the legislature under court order to increase education spending. Brownback resigned in January 2018 to become Ambassador at Large for International Religious Freedom, and Lt. Governor Jeff Colyer completed the term. In November 2018, Democrat Laura Kelly won the gubernatorial election — the first Democrat elected governor since Kathleen Sebelius (Mark Parkinson, also a Democrat, had served as governor from 2009-2011 after succeeding Sebelius but never ran in a gubernatorial election).
 
 ### What the Data Shows
 

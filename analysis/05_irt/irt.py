@@ -60,6 +60,27 @@ try:
 except ModuleNotFoundError:
     from init_strategy import load_2d_scores, resolve_init_source  # type: ignore[no-redef]
 
+try:
+    from analysis.tuning import (
+        CONTESTED_THRESHOLD,
+        HIGH_DISC_THRESHOLD,
+        LOW_DISC_THRESHOLD,
+        MIN_VOTES,
+        PARTY_COLORS,
+        SENSITIVITY_THRESHOLD,
+        SUPERMAJORITY_THRESHOLD,
+    )
+except ModuleNotFoundError:
+    from tuning import (  # type: ignore[no-redef]
+        CONTESTED_THRESHOLD,
+        HIGH_DISC_THRESHOLD,
+        LOW_DISC_THRESHOLD,
+        MIN_VOTES,
+        PARTY_COLORS,
+        SENSITIVITY_THRESHOLD,
+        SUPERMAJORITY_THRESHOLD,
+    )
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 # Written to results/<session>/irt/README.md by RunContext on each run.
 
@@ -204,16 +225,13 @@ DEFAULT_N_CHAINS = 2
 TARGET_ACCEPT = 0.9
 RANDOM_SEED = 42
 
-MINORITY_THRESHOLD = 0.025  # Default: 2.5% (matches EDA)
-SENSITIVITY_THRESHOLD = 0.10  # Sensitivity: 10% (per workflow rules)
-MIN_VOTES = 20  # Minimum substantive votes per legislator
 HOLDOUT_FRACTION = 0.20  # Random 20% of observed cells
 HOLDOUT_SEED = 42
 MIN_PARTICIPATION_FOR_ANCHOR = 0.50  # Anchors must have >= 50% participation
 CONTESTED_VOTE_THRESHOLD = 0.10  # Both parties must have ≥10% on each side
 MIN_CONTESTED_FOR_AGREEMENT = 10  # Need ≥10 contested votes for agreement-based anchors
 MIN_CONTESTED_VOTES_PER_LEG = 5  # Legislator needs ≥5 contested votes for valid agreement
-SUPERMAJORITY_THRESHOLD = 0.70  # One party holds ≥70% of seats → supermajority
+
 
 # Robustness flag thresholds
 MIN_CONTESTED_FOR_REFIT = 50  # Need ≥50 contested votes for meaningful contested-only refit
@@ -222,8 +240,6 @@ PROMOTE_2D_RANK_SHIFT = 10  # Flag legislators whose rank shifts >10 between 1D 
 MIN_PC2_VOTES_FOR_REFIT = 50  # Need ≥50 PC2-dominant votes for meaningful remediation
 PC2_PRIOR_SIGMA = 1.0  # Width of the PC2 informative prior (experiment: sigma=1.0 best)
 DIM1_PRIOR_SIGMA_DEFAULT = 1.0  # Width of the Dim 1 informative prior (ADR-0108)
-
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 
 
 # ── Robustness Flags ─────────────────────────────────────────────────────────
@@ -2253,9 +2269,7 @@ def extract_bill_parameters(
 
 # ── Phase 6: Plots ──────────────────────────────────────────────────────────
 
-# Discrimination thresholds for paradox detection
-HIGH_DISC_THRESHOLD = 1.5
-LOW_DISC_THRESHOLD = 0.5
+
 PARADOX_YEA_GAP = 0.20
 PARADOX_MIN_BILLS = 3
 MAX_HIGHLIGHTS = 5
@@ -3706,7 +3720,7 @@ def run_sensitivity(
             print("    Result: SENSITIVE (r <= 0.95) — investigate threshold dependence")
 
         findings[chamber] = {
-            "default_threshold": MINORITY_THRESHOLD,
+            "default_threshold": CONTESTED_THRESHOLD,
             "sensitivity_threshold": SENSITIVITY_THRESHOLD,
             "default_n_legislators": default_ideal.height,
             "sensitivity_n_legislators": n_legs,
@@ -3741,7 +3755,7 @@ def _plot_sensitivity_scatter(
     ]
     ax.plot(lims, lims, "r--", alpha=0.5, label="Identity line")
 
-    ax.set_xlabel(f"Ideal Point (default: {MINORITY_THRESHOLD * 100:.1f}% threshold)")
+    ax.set_xlabel(f"Ideal Point (default: {CONTESTED_THRESHOLD * 100:.1f}% threshold)")
     ax.set_ylabel(f"Ideal Point (sensitivity: {SENSITIVITY_THRESHOLD * 100:.0f}% threshold)")
     ax.set_title(f"{chamber} — IRT Sensitivity (r = {correlation:.4f})")
     ax.legend()
@@ -4662,7 +4676,7 @@ def main() -> None:
                 "seed": RANDOM_SEED,
             },
             "filters": {
-                "minority_threshold_default": MINORITY_THRESHOLD,
+                "minority_threshold_default": CONTESTED_THRESHOLD,
                 "minority_threshold_sensitivity": SENSITIVITY_THRESHOLD,
                 "min_votes": MIN_VOTES,
                 "min_participation_for_anchor": MIN_PARTICIPATION_FOR_ANCHOR,

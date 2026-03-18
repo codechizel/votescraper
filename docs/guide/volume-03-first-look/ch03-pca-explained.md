@@ -178,7 +178,7 @@ PCA's predictions are far better than guessing — confirming it's capturing gen
 
 ### Sensitivity Analysis
 
-The pipeline re-runs PCA with a stricter filter (10% minority threshold instead of 2.5%), which drops more near-unanimous votes. If the PC1 scores are robust, they should barely change. The correlation between default and sensitivity PC1 scores is typically above 0.95 — the results are stable across filtering choices.
+The pipeline re-runs PCA with a stricter filter (10% contested threshold instead of 2.5%), which drops more near-unanimous votes. If the PC1 scores are robust, they should barely change. The correlation between default and sensitivity PC1 scores is typically above 0.95 — the results are stable across filtering choices.
 
 ### Reconstruction Error
 

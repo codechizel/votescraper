@@ -924,6 +924,10 @@ def build_joint_model(
     return idata, combined_data, sampling_time
 
 
+# Joint cross-chamber models share bill parameters but estimate separate ideal points
+# per chamber. Shared items don't guarantee consistent sign across chambers — one
+# chamber's posterior may be reflected. Fix by correlating each chamber's group means
+# with per-chamber hierarchical xi (known correct) and flipping if anti-correlated.
 def fix_joint_sign_convention(
     idata: az.InferenceData,
     combined_data: dict,

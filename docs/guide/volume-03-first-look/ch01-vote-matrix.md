@@ -82,7 +82,7 @@ For the 91st Legislature (2025–2026), here's what filtering looks like. The Ho
 
 The filtered vote matrix — about 120 legislators by 500 roll calls in the House, or 40 legislators by 270 roll calls in the Senate — is what every downstream analysis phase works with.
 
-**Codebase:** `analysis/01_eda/eda.py` (`filter_vote_matrix()`, constants `MINORITY_THRESHOLD = 0.025`, `MIN_VOTES = 20`)
+**Codebase:** `analysis/01_eda/eda.py` (`filter_vote_matrix()`, constants `CONTESTED_THRESHOLD = 0.025` from `analysis/tuning.py`, `MIN_VOTES = 20`)
 
 ## The Base Rate Problem
 
@@ -158,7 +158,7 @@ just eda 2025-26
 
 ## Key Takeaway
 
-The vote matrix is the foundation of the entire analysis pipeline. Building it means encoding votes as 1 (Yea), 0 (Nay), or missing, then filtering out near-unanimous votes (below 2.5% minority) and low-participation legislators (fewer than 20 votes). The 82% Yea base rate means raw agreement percentages are misleading — a problem the next chapter solves with Cohen's Kappa.
+The vote matrix is the foundation of the entire analysis pipeline. Building it means encoding votes as 1 (Yea), 0 (Nay), or missing, then filtering out near-unanimous votes (below the 2.5% contested threshold) and low-participation legislators (fewer than 20 votes). The 82% Yea base rate means raw agreement percentages are misleading — a problem the next chapter solves with Cohen's Kappa.
 
 ---
 

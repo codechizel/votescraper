@@ -2,7 +2,7 @@
 
 What's been done, what's next, and what's on the horizon for the Tallgrass analytics pipeline.
 
-**Last updated:** 2026-03-15 (PCA axis instability deep dive, pipeline reorder, Hierarchical 2D IRT)
+**Last updated:** 2026-03-18 (pipeline tuning centralization, codebase audit TQ1-TQ12)
 
 ---
 
@@ -781,6 +781,60 @@ Audit record: [`docs/79th-report-audit.md`](79th-report-audit.md).
 **Score: 37 completed, 0 planned, 6 rejected = 43 total**
 
 Note: Methods 29-32 are additions beyond the original 28 (Dynamic Ideal Points, DIME/CFscores, Standalone PPC, TSA Hardening). Methods 33-37 are the bill text NLP pipeline. All 5 completed 2026-03-02/03.
+
+---
+
+## Pipeline Tuning & Code Quality (2026-03-18)
+
+Comprehensive codebase audit identified tuning variable candidates, bugs, dead code, and refactoring opportunities. Tuning variables are centralized in `analysis/tuning.py` — single source of truth for the entire pipeline, future Django dashboard integration.
+
+### ~~TQ1. Centralize contested threshold~~ — Done
+
+**Completed 2026-03-18.** Created `analysis/tuning.py` with `CONTESTED_THRESHOLD` (was `MINORITY_THRESHOLD`), `SENSITIVITY_THRESHOLD`, `MIN_VOTES`. Updated 9 phase files + 6 report files. Renamed to `CONTESTED_THRESHOLD` for clarity.
+
+### ~~TQ2. Centralize `PARTY_COLORS`~~ — Done
+
+**Completed 2026-03-18.** Moved `PARTY_COLORS` to `analysis/tuning.py`. Updated 28 files (26 original + 2 stragglers: `viz_helpers.py`, `cross_session.py`). Three files (PPC, TBIP data, Issue IRT data) had unused definitions removed; TBIP and Issue IRT data modules re-export from tuning for downstream consumers.
+
+### ~~TQ3. Centralize `SUPERMAJORITY_THRESHOLD`~~ — Done
+
+**Completed 2026-03-18.** Moved to `analysis/tuning.py`. Updated phases 05, 06, 07b.
+
+### ~~TQ4. Centralize discrimination thresholds~~ — Done
+
+**Completed 2026-03-18.** `HIGH_DISC_THRESHOLD` and `LOW_DISC_THRESHOLD` moved to `analysis/tuning.py`. Updated phases 05, 11, 25.
+
+### ~~TQ5. Centralize external validation correlation thresholds~~ — Done
+
+**Completed 2026-03-18.** `STRONG_CORRELATION`, `GOOD_CORRELATION`, `CONCERN_CORRELATION` moved to `analysis/tuning.py`. Updated phases 16, 17, 18. Phases 21-22 intentionally kept separate (lower thresholds for text-based methods).
+
+### ~~TQ6. Fix Phase 20 wrong phase number~~ — Done
+
+**Completed 2026-03-18.** `print_header("Phase 18 Complete")` → `"Phase 20 Complete"` in `bill_text.py`.
+
+### ~~TQ7. Fix UMAP report known-wrong calculation~~ — Done
+
+**Completed 2026-03-18.** Replaced broken `len(pairs)*2 - len(pairs)` with `len(STABILITY_SEEDS)` in `umap_report.py`.
+
+### ~~TQ8. Remove dead `died_count` variable~~ — Done
+
+**Completed 2026-03-18.** Removed from `bill_lifecycle.py`.
+
+### ~~TQ9. Remove dead `HIER_TARGET_ACCEPT`~~ — Kept (API Compatibility)
+
+`HIER_TARGET_ACCEPT = 0.95` is accepted as a parameter then ignored by nutpie. Same pattern in IRT (Phase 05) and experiment_runner. Kept for metadata logging and API compatibility across all MCMC-sampling functions. Not dead code — intentional documentation parameter.
+
+### ~~TQ10. Deduplicate Phase 13 constants~~ — Done
+
+**Completed 2026-03-18.** `indices_report.py` now imports 8 constants from `indices.py` instead of defining them locally. Three-tier import chain handles circular import edge case.
+
+### ~~TQ11. Deduplicate Phase 19 constants~~ — Done
+
+**Completed 2026-03-18.** `tsa_report.py` now imports 8 constants from `tsa.py` instead of defining them locally. Same three-tier import pattern.
+
+### ~~TQ12. Add comments to complex code sections~~ — Done
+
+**Completed 2026-03-18.** Added explanatory comments to 6 areas: rolling PCA window rationale, R index conversion, dimension swap detection, joint sign correction, text source preference ordering, ordinal ranking normalization.
 
 ---
 

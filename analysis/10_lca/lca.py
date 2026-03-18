@@ -73,6 +73,8 @@ try:
 except ImportError:
     from phase_utils import load_legislators, print_header, save_fig
 
+from analysis.tuning import CONTESTED_THRESHOLD, MIN_VOTES, PARTY_COLORS
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
 K_MAX = 8
@@ -87,12 +89,6 @@ MAX_ITER = 1000
 RANDOM_SEED = 42
 """Reproducibility seed for all stochastic operations."""
 
-MIN_VOTES = 20
-"""Minimum votes per legislator (same as EDA/IRT)."""
-
-MINORITY_THRESHOLD = 0.025
-"""Filter near-unanimous votes (minority < 2.5%, same as EDA)."""
-
 MIN_CLASS_FRACTION = 0.05
 """Flag classes smaller than 5% of sample as potentially spurious."""
 
@@ -101,12 +97,6 @@ SALSA_THRESHOLD = 0.80
 
 TOP_DISCRIMINATING_BILLS = 30
 """Number of most-discriminating bills to show in profile heatmap."""
-
-PARTY_COLORS = {
-    "Republican": "#E81B23",
-    "Democrat": "#0015BC",
-    "Independent": "#999999",
-}
 
 CLASS_CMAP = "Set2"
 """Colormap for latent class assignments."""
@@ -1340,7 +1330,7 @@ def main() -> None:
                 "MAX_ITER": MAX_ITER,
                 "RANDOM_SEED": RANDOM_SEED,
                 "MIN_VOTES": MIN_VOTES,
-                "MINORITY_THRESHOLD": MINORITY_THRESHOLD,
+                "CONTESTED_THRESHOLD": CONTESTED_THRESHOLD,
                 "MIN_CLASS_FRACTION": MIN_CLASS_FRACTION,
                 "SALSA_THRESHOLD": SALSA_THRESHOLD,
             },

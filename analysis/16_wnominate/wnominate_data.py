@@ -9,6 +9,14 @@ import numpy as np
 import polars as pl
 from scipy import stats as sp_stats
 
+from analysis.tuning import (  # noqa: F401 (re-exported to wnominate.py)
+    CONCERN_CORRELATION,
+    GOOD_CORRELATION,
+    MIN_VOTES,
+    PARTY_COLORS,
+    STRONG_CORRELATION,
+)
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
 ROLLCALL_YEA = 1
@@ -17,14 +25,7 @@ ROLLCALL_MISSING = 9
 
 WNOMINATE_DIMS = 2
 MIN_LEGISLATORS = 10
-MIN_VOTES = 20
 LOP_THRESHOLD = 0.025
-
-STRONG_CORRELATION = 0.90
-GOOD_CORRELATION = 0.85
-CONCERN_CORRELATION = 0.70
-
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 
 
 # ── Vote Matrix Conversion ──────────────────────────────────────────────────

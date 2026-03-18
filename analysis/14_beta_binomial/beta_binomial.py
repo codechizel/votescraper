@@ -48,6 +48,11 @@ try:
 except ImportError:
     from phase_utils import print_header, save_fig  # type: ignore[no-redef]
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ImportError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 BETA_BINOMIAL_PRIMER = """\
@@ -127,7 +132,6 @@ All outputs land in `results/<session>/beta_binomial/<date>/`:
 
 MIN_PARTY_VOTES = 3
 CI_LEVEL = 0.95
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 FALLBACK_ALPHA = 1.0
 FALLBACK_BETA = 1.0
 

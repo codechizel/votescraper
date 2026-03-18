@@ -980,22 +980,22 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
     # Import the constants from eda.py
     try:
         from analysis.eda import (
+            CONTESTED_THRESHOLD,
             HOUSE_SEATS,
             ITEM_TOTAL_CORRELATION_THRESHOLD,
             MIN_SHARED_VOTES,
             MIN_VOTES,
-            MINORITY_THRESHOLD,
             RICE_BOOTSTRAP_ITERATIONS,
             SENATE_SEATS,
             STRATEGIC_ABSENCE_RATIO,
         )
     except ModuleNotFoundError:
         from eda import (  # type: ignore[no-redef]
+            CONTESTED_THRESHOLD,
             HOUSE_SEATS,
             ITEM_TOTAL_CORRELATION_THRESHOLD,
             MIN_SHARED_VOTES,
             MIN_VOTES,
-            MINORITY_THRESHOLD,
             RICE_BOOTSTRAP_ITERATIONS,
             SENATE_SEATS,
             STRATEGIC_ABSENCE_RATIO,
@@ -1004,7 +1004,7 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
     df = pl.DataFrame(
         {
             "Parameter": [
-                "Minority Threshold",
+                "Contested Threshold",
                 "Min Substantive Votes",
                 "Min Shared Votes (Agreement)",
                 "House Seats",
@@ -1014,7 +1014,7 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
                 "Item-Total Correlation Threshold",
             ],
             "Value": [
-                f"{MINORITY_THRESHOLD:.3f} ({MINORITY_THRESHOLD * 100:.1f}%)",
+                f"{CONTESTED_THRESHOLD:.3f} ({CONTESTED_THRESHOLD * 100:.1f}%)",
                 str(MIN_VOTES),
                 str(MIN_SHARED_VOTES),
                 str(HOUSE_SEATS),

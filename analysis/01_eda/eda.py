@@ -45,6 +45,11 @@ except ModuleNotFoundError:
     from phase_utils import print_header, save_fig
 
 try:
+    from analysis.tuning import CONTESTED_THRESHOLD, MIN_VOTES, PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import CONTESTED_THRESHOLD, MIN_VOTES, PARTY_COLORS
+
+try:
     from analysis.eda_report import build_eda_report
 except ModuleNotFoundError:
     from eda_report import build_eda_report  # type: ignore[no-redef]
@@ -156,10 +161,7 @@ All outputs land in `results/<session>/eda/<date>/`:
 # These are explicit, named constants per the analytic-workflow rules.
 # Changing these values constitutes a sensitivity analysis — document why.
 
-MINORITY_THRESHOLD = 0.025  # Drop votes where minority < 2.5% (VoteView standard)
-MIN_VOTES = 20  # Drop legislators with fewer than 20 substantive votes
 VOTE_CATEGORIES = ["Yea", "Nay", "Present and Passing", "Absent and Not Voting", "Not Voting"]
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 
 # Kansas Legislature constitutional seat counts. These are fixed and serve as
 # a data integrity guardrail: if we see more legislators than seats, we have
@@ -568,7 +570,7 @@ def _check_near_duplicate_rollcalls(votes: pl.DataFrame, findings: dict) -> None
                 contested_mask.append(False)
                 continue
             minority_frac = min(valid.mean(), 1 - valid.mean())
-            contested_mask.append(minority_frac >= MINORITY_THRESHOLD)
+            contested_mask.append(minority_frac >= CONTESTED_THRESHOLD)
 
         contested_indices = [i for i, keep in enumerate(contested_mask) if keep]
         contested_vote_ids = [vote_ids[i] for i in contested_indices]
@@ -1233,7 +1235,7 @@ def filter_vote_matrix(
     matrix: pl.DataFrame,
     rollcalls: pl.DataFrame,
     chamber: str | None = None,
-    minority_threshold: float = MINORITY_THRESHOLD,
+    minority_threshold: float = CONTESTED_THRESHOLD,
     min_votes: int = MIN_VOTES,
 ) -> tuple[pl.DataFrame, dict]:
     """Filter a vote matrix for contested votes and active legislators.
@@ -1658,7 +1660,9 @@ def plot_agreement_heatmap(
 
     # Map each slug to its party color for the annotation sidebar
     slug_to_party = dict(
-        legislators.select("legislator_slug", "party").filter(pl.col("legislator_slug").is_in(slugs)).iter_rows()
+        legislators.select("legislator_slug", "party")
+        .filter(pl.col("legislator_slug").is_in(slugs))
+        .iter_rows()
     )
     parties = [slug_to_party.get(s, "Unknown") for s in slugs]
     row_colors = [PARTY_COLORS.get(p, "#999999") for p in parties]
@@ -1671,7 +1675,9 @@ def plot_agreement_heatmap(
 
     # Resolve slugs to human-readable names for axis labels
     slug_to_name = dict(
-        legislators.select("legislator_slug", "full_name").filter(pl.col("legislator_slug").is_in(slugs)).iter_rows()
+        legislators.select("legislator_slug", "full_name")
+        .filter(pl.col("legislator_slug").is_in(slugs))
+        .iter_rows()
     )
     labels = [slug_to_name.get(s, s) for s in slugs]
     df = pd.DataFrame(agreement_clean, index=labels, columns=labels)
@@ -2044,7 +2050,9 @@ def main() -> None:
         party_unity = compute_party_unity_scores(votes, rollcalls, legislators)
         if not party_unity.is_empty():
             party_unity.write_parquet(ctx.data_dir / "party_unity_scores.parquet")
-            ctx.export_csv(party_unity, "party_unity_scores.csv", "Party unity scores per legislator")
+            ctx.export_csv(
+                party_unity, "party_unity_scores.csv", "Party unity scores per legislator"
+            )
             print("  Saved: party_unity_scores.parquet")
 
         # ── 3c. Eigenvalue preview ──
@@ -2151,7 +2159,10 @@ def main() -> None:
                 geojson_path = download_kansas_districts(chamber_label.lower())
                 if geojson_path is not None:
                     map_html = create_district_maps(
-                        geojson_path, legislators, None, chamber_label.lower(),
+                        geojson_path,
+                        legislators,
+                        None,
+                        chamber_label.lower(),
                     )
                     if map_html is not None:
                         district_maps[chamber_label] = map_html

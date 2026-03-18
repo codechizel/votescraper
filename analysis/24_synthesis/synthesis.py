@@ -61,6 +61,11 @@ except ModuleNotFoundError:
         build_synthesis_report,
     )
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 SYNTHESIS_PRIMER = """\
@@ -110,7 +115,6 @@ statistical training.
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 PARTY_COLORS_LIGHT = {"Republican": "#F5A0A5", "Democrat": "#8090E0", "Independent": "#CCCCCC"}
 
 
@@ -589,9 +593,11 @@ def _compute_sponsor_summary(rollcalls: pl.DataFrame) -> pl.DataFrame | None:
         return None
 
     # Explode semicolon-joined slugs into individual rows
-    exploded = with_slugs.with_columns(
-        pl.col("sponsor_slugs").str.split("; ").alias("_slugs")
-    ).explode("_slugs").rename({"_slugs": "legislator_slug"})
+    exploded = (
+        with_slugs.with_columns(pl.col("sponsor_slugs").str.split("; ").alias("_slugs"))
+        .explode("_slugs")
+        .rename({"_slugs": "legislator_slug"})
+    )
 
     # Compute per-legislator: count and passage rate
     has_passed = "passed" in exploded.columns
@@ -604,9 +610,7 @@ def _compute_sponsor_summary(rollcalls: pl.DataFrame) -> pl.DataFrame | None:
     summary = exploded.group_by("legislator_slug").agg(agg_exprs)
 
     if not has_passed:
-        summary = summary.with_columns(
-            pl.lit(None).cast(pl.Float64).alias("sponsor_passage_rate")
-        )
+        summary = summary.with_columns(pl.lit(None).cast(pl.Float64).alias("sponsor_passage_rate"))
 
     return summary.cast({"n_bills_sponsored": pl.UInt32})
 

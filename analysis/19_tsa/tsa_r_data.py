@@ -134,6 +134,7 @@ def parse_bai_perron_result(
         bp_idx = int(bp) - 1
         lo_raw = ci_lower[i] if i < len(ci_lower) else None
         hi_raw = ci_upper[i] if i < len(ci_upper) else None
+        # R uses 1-based indexing; convert to 0-based Python indices
         lo_idx = int(lo_raw) - 1 if lo_raw is not None and str(lo_raw) != "NA" else bp_idx
         hi_idx = int(hi_raw) - 1 if hi_raw is not None and str(hi_raw) != "NA" else bp_idx
 

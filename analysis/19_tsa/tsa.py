@@ -69,6 +69,11 @@ except ModuleNotFoundError:
         prepare_rice_signal_csv,
     )
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 TSA_PRIMER = """\
@@ -134,6 +139,8 @@ Two independent analyses per chamber:
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
+# 75 votes ≈ 1 month of roll calls; 15-vote step = 75% overlap for smooth
+# drift curves. Smaller windows increase noise; larger ones smooth over real transitions.
 WINDOW_SIZE = 75
 STEP_SIZE = 15
 MIN_WINDOW_VOTES = 10
@@ -144,12 +151,6 @@ WEEKLY_AGG_DAYS = 7
 SENSITIVITY_PENALTIES: list[float] = np.linspace(1, 50, 25).tolist()
 TOP_MOVERS_N = 10
 MIN_TOTAL_VOTES = 20
-
-PARTY_COLORS = {
-    "Republican": "#E81B23",
-    "Democrat": "#0015BC",
-    "Independent": "#999999",
-}
 
 # R enrichment constants
 CROPS_PEN_MIN = 1.0

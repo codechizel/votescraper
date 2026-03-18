@@ -88,6 +88,11 @@ except ImportError:
         save_fig,
     )
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ImportError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -101,7 +106,6 @@ XGB_LEARNING_RATE = 0.1
 TOP_SHAP_FEATURES = 15
 TOP_SURPRISING_N = 20
 MIN_VOTES_RELIABLE = 10  # minimum holdout votes for reliable per-legislator accuracy
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 HARDEST_N = 8
 
 # Plain-English feature names for SHAP and feature importance plots (nontechnical audience)

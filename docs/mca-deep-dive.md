@@ -63,7 +63,7 @@ The defining geometric property of MCA:
 
 d²_χ²(i, j) = Σ_k (p_ik − p_jk)² / p_k
 
-Chi-square distance weights differences by the inverse of the marginal frequency. Rare categories contribute more to distance than common ones. For legislative data, this means a Yea vote on a nearly unanimous bill contributes less to distinguishing legislators than a Yea vote on a closely contested bill — exactly the right behavior, and equivalent to what our 2.5% minority filter achieves with a hard threshold, but continuous rather than binary.
+Chi-square distance weights differences by the inverse of the marginal frequency. Rare categories contribute more to distance than common ones. For legislative data, this means a Yea vote on a nearly unanimous bill contributes less to distinguishing legislators than a Yea vote on a closely contested bill — exactly the right behavior, and equivalent to what our 2.5% contested threshold filter achieves with a hard threshold, but continuous rather than binary.
 
 ---
 
@@ -84,7 +84,7 @@ For our current binary vote matrix (Yea=1, Nay=0, Absent=NaN with row-mean imput
 
 This directly addresses a question PCA cannot answer: *are absences random, partisan, or their own phenomenon?*
 
-**2. Chi-square weighting.** MCA naturally downweights near-unanimous votes without requiring a hard minority threshold. A vote with 95% Yea contributes less to the analysis than a vote with 55% Yea. This is more principled than PCA's approach of either filtering (our 2.5% threshold) or treating all votes equally.
+**2. Chi-square weighting.** MCA naturally downweights near-unanimous votes without requiring a hard contested threshold. A vote with 95% Yea contributes less to the analysis than a vote with 55% Yea. This is more principled than PCA's approach of either filtering (our 2.5% threshold) or treating all votes equally.
 
 **3. Category-level coordinates.** MCA provides coordinates for each category of each variable. You can see where "Yea on HB2001" sits relative to "Nay on HB2001" and relative to "Yea on SB150." PCA loadings give per-variable information but not per-category. This enables the **biplot** — the defining MCA visualization — where legislators and vote categories appear in the same space.
 
@@ -208,7 +208,7 @@ For legislative data: 2-3 dimensions are almost always sufficient. Dimension 1 =
 
 ### Filtering
 
-Apply the same contested-vote filter as PCA (minority < 2.5%) even though MCA's chi-square weighting partially handles this. Rationale: near-unanimous votes still add columns to the indicator matrix and increase the trivial-eigenvalue noise floor. Filtering them reduces *J* and improves corrected inertia estimates.
+Apply the same contested-vote filter as PCA (contested threshold < 2.5%) even though MCA's chi-square weighting partially handles this. Rationale: near-unanimous votes still add columns to the indicator matrix and increase the trivial-eigenvalue noise floor. Filtering them reduces *J* and improves corrected inertia estimates.
 
 ---
 
@@ -318,7 +318,7 @@ Save parquet files + plots + HTML report
 
 2. **Sensitivity analysis.** Re-run with:
    - Binary encoding (Yea/Nay only) — should reproduce PCA exactly (up to scale)
-   - Different minority thresholds (2.5% vs 10%)
+   - Different contested thresholds (2.5% vs 10%)
    - Absent as passive vs. active
 
 3. **Holdout validation.** Mask 20% of votes, project masked observations into the fitted MCA space, measure reconstruction quality.
@@ -349,7 +349,7 @@ Save parquet files + plots + HTML report
 
 ```python
 DEFAULT_N_COMPONENTS = 5
-MINORITY_THRESHOLD = 0.025
+CONTESTED_THRESHOLD = 0.025
 MIN_VOTES = 20
 CORRECTION = "greenacre"                    # Greenacre > Benzécri (more conservative)
 PASSIVE_CATEGORIES = {"Present and Passing", "Not Voting"}

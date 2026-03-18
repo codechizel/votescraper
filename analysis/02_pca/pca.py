@@ -52,6 +52,11 @@ try:
 except ModuleNotFoundError:
     from pca_report import build_pca_report  # type: ignore[no-redef]
 
+try:
+    from analysis.tuning import CONTESTED_THRESHOLD, MIN_VOTES, PARTY_COLORS, SENSITIVITY_THRESHOLD
+except ModuleNotFoundError:
+    from tuning import CONTESTED_THRESHOLD, MIN_VOTES, PARTY_COLORS, SENSITIVITY_THRESHOLD
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 # Written to results/<session>/pca/README.md by RunContext on each run.
 
@@ -157,12 +162,8 @@ All outputs land in `results/<session>/pca/<date>/`:
 # Explicit, named constants per the analytic-workflow rules.
 
 DEFAULT_N_COMPONENTS = 5
-MINORITY_THRESHOLD = 0.025  # Default: 2.5% (matches EDA)
-SENSITIVITY_THRESHOLD = 0.10  # Sensitivity: 10% (per workflow rules)
-MIN_VOTES = 20  # Minimum substantive votes per legislator
 HOLDOUT_FRACTION = 0.20  # Random 20% of non-null cells
 HOLDOUT_SEED = 42
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 PARALLEL_ANALYSIS_N_ITER = 100  # Horn's parallel analysis: random data iterations
 RECONSTRUCTION_ERROR_THRESHOLD_SD = 2.0  # Flag legislators with RMSE > mean + 2σ
 
@@ -1034,7 +1035,7 @@ def run_sensitivity(
             print("    Result: SENSITIVE (r <= 0.95) — investigate threshold dependence")
 
         findings[chamber] = {
-            "default_threshold": MINORITY_THRESHOLD,
+            "default_threshold": CONTESTED_THRESHOLD,
             "sensitivity_threshold": SENSITIVITY_THRESHOLD,
             "default_n_legislators": default_scores.height,
             "sensitivity_n_legislators": sens_matrix.height,
@@ -1077,7 +1078,7 @@ def _plot_sensitivity_scatter(
     ]
     ax.plot(lims, lims, "r--", alpha=0.5, label="Identity line")
 
-    ax.set_xlabel(f"PC1 (default: {MINORITY_THRESHOLD * 100:.1f}% threshold)")
+    ax.set_xlabel(f"PC1 (default: {CONTESTED_THRESHOLD * 100:.1f}% threshold)")
     ax.set_ylabel(f"PC1 (sensitivity: {SENSITIVITY_THRESHOLD * 100:.0f}% threshold)")
     ax.set_title(f"{chamber} — PC1 Sensitivity (r = {correlation:.4f})")
     ax.legend()
@@ -1346,7 +1347,7 @@ def main() -> None:
             "eda_source": str(eda_dir),
             "n_components": args.n_components,
             "impute_method": "row_mean",
-            "minority_threshold_default": MINORITY_THRESHOLD,
+            "minority_threshold_default": CONTESTED_THRESHOLD,
             "minority_threshold_sensitivity": SENSITIVITY_THRESHOLD,
             "min_votes": MIN_VOTES,
             "holdout_fraction": HOLDOUT_FRACTION,

@@ -21,10 +21,13 @@ try:
 except ModuleNotFoundError:
     from synthesis_detect import detect_all  # type: ignore[no-redef]
 
+try:
+    from analysis.tuning import HIGH_DISC_THRESHOLD, LOW_DISC_THRESHOLD
+except ModuleNotFoundError:
+    from tuning import HIGH_DISC_THRESHOLD, LOW_DISC_THRESHOLD  # type: ignore[no-redef]
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
-HIGH_DISC_THRESHOLD = 1.5  # |beta_mean| > this → highly discriminating bill
-LOW_DISC_THRESHOLD = 0.5  # |beta_mean| < this → low-discrimination bill
 MIN_BILLS_PER_TIER = 3  # need at least this many bills per tier for breakdown
 MAX_PROFILE_TARGETS = 8  # cap on number of legislators to profile
 

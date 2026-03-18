@@ -85,6 +85,11 @@ except ModuleNotFoundError:
         load_all_upstream,
     )
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 PROFILES_PRIMER = """\
@@ -140,7 +145,6 @@ all matches. Use `--slugs` for exact legislator slug lookup. Both can be combine
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 PARTY_COLORS_LIGHT = {"Republican": "#F5A0A5", "Democrat": "#8090E0", "Independent": "#CCCCCC"}
 
 

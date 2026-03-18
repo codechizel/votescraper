@@ -402,7 +402,9 @@ def main() -> None:
     # Check Phase 20 (bill text) output exists
     bt_dir = resolve_upstream_dir("20_bill_text", results_root, args.run_id)
     if not (bt_dir / "data").exists():
-        print("[Phase 21] Skipping: bill text analysis not yet run (run `just text-analysis` first)")
+        print(
+            "[Phase 21] Skipping: bill text analysis not yet run (run `just text-analysis` first)"
+        )
         return
 
     # Determine which models to validate

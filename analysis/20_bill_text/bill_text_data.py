@@ -61,8 +61,9 @@ def load_bill_texts(data_dir: Path, *, use_csv: bool = False) -> pl.DataFrame:
 
     df = db_load_bill_texts(data_dir, use_csv=use_csv)
 
-    # Prefer supp_note over introduced for each bill
-    # Sort so supp_note comes first (alphabetically "s" > "i"), then deduplicate
+    # Sort descending by document_type so 'supp_note' sorts before 'introduced' (s > i).
+    # Supplemental notes are preferred: plain-language summaries vs raw legalese.
+    # Keep first occurrence per bill_number.
     df = (
         df.sort(["bill_number", "document_type"], descending=[False, True])
         .unique(subset=["bill_number"], keep="first")

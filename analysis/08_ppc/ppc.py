@@ -175,7 +175,6 @@ observations where importance sampling is unreliable.
 
 # ── Constants ───────────────────────────────────────────────────────────────
 
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 MODEL_COLORS = {
     "Flat 1D": "#1f77b4",
     "2D IRT": "#ff7f0e",

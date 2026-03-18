@@ -87,6 +87,11 @@ try:
 except ModuleNotFoundError:
     from hierarchical_2d_report import build_hierarchical_2d_report  # type: ignore[no-redef]
 
+try:
+    from analysis.tuning import SUPERMAJORITY_THRESHOLD
+except ModuleNotFoundError:
+    from tuning import SUPERMAJORITY_THRESHOLD  # type: ignore[no-redef]
+
 # ── Primer ──────────────────────────────────────────────────────────────────
 
 H2D_PRIMER = """\
@@ -159,7 +164,6 @@ Likelihood (M2PL):
 N_SAMPLES = 2000
 N_TUNE = 2000
 N_TUNE_SUPERMAJORITY = 4000  # ADR-0112
-SUPERMAJORITY_THRESHOLD = 0.70  # ADR-0112
 N_CHAINS = 4
 
 # Relaxed convergence thresholds (same as Phase 06)

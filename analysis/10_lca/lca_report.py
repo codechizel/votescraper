@@ -636,11 +636,11 @@ def _generate_lca_key_findings(results: dict[str, dict]) -> list[str]:
 def _add_analysis_parameters(report: ReportBuilder) -> None:
     """Table: Analysis constants and parameters."""
     from analysis.lca import (
+        CONTESTED_THRESHOLD,
         K_MAX,
         MAX_ITER,
         MIN_CLASS_FRACTION,
         MIN_VOTES,
-        MINORITY_THRESHOLD,
         N_INIT,
         RANDOM_SEED,
         SALSA_THRESHOLD,
@@ -653,8 +653,8 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
         {"Parameter": "RANDOM_SEED", "Value": str(RANDOM_SEED), "Description": "Seed"},
         {"Parameter": "MIN_VOTES", "Value": str(MIN_VOTES), "Description": "Min votes"},
         {
-            "Parameter": "MINORITY_THRESHOLD",
-            "Value": str(MINORITY_THRESHOLD),
+            "Parameter": "CONTESTED_THRESHOLD",
+            "Value": str(CONTESTED_THRESHOLD),
             "Description": "Near-unanimous filter",
         },
         {

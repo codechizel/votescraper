@@ -401,8 +401,7 @@ def _add_outlier_table(
         df,
         title=f"Topic Outliers ({tax_label})",
         subtitle=(
-            f"Top {OUTLIER_TOP_N} deviators per topic — "
-            "legislators furthest from overall position"
+            f"Top {OUTLIER_TOP_N} deviators per topic — legislators furthest from overall position"
         ),
         number_formats={
             "Topic xi": ".3f",

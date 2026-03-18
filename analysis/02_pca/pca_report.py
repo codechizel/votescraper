@@ -951,20 +951,20 @@ def _add_analysis_parameters(report: ReportBuilder, n_components: int) -> None:
     """Table: Analysis parameters used in this run."""
     try:
         from analysis.pca import (
+            CONTESTED_THRESHOLD,
             HOLDOUT_FRACTION,
             HOLDOUT_SEED,
             MIN_VOTES,
-            MINORITY_THRESHOLD,
             PARALLEL_ANALYSIS_N_ITER,
             RECONSTRUCTION_ERROR_THRESHOLD_SD,
             SENSITIVITY_THRESHOLD,
         )
     except ModuleNotFoundError:
         from pca import (  # type: ignore[no-redef]
+            CONTESTED_THRESHOLD,
             HOLDOUT_FRACTION,
             HOLDOUT_SEED,
             MIN_VOTES,
-            MINORITY_THRESHOLD,
             PARALLEL_ANALYSIS_N_ITER,
             RECONSTRUCTION_ERROR_THRESHOLD_SD,
             SENSITIVITY_THRESHOLD,
@@ -975,8 +975,8 @@ def _add_analysis_parameters(report: ReportBuilder, n_components: int) -> None:
             "Parameter": [
                 "N Components",
                 "Imputation Method",
-                "Minority Threshold (Default)",
-                "Minority Threshold (Sensitivity)",
+                "Contested Threshold (Default)",
+                "Contested Threshold (Sensitivity)",
                 "Min Substantive Votes",
                 "Holdout Fraction",
                 "Holdout Random Seed",
@@ -986,7 +986,7 @@ def _add_analysis_parameters(report: ReportBuilder, n_components: int) -> None:
             "Value": [
                 str(n_components),
                 "Row mean (legislator Yea rate)",
-                f"{MINORITY_THRESHOLD:.3f} ({MINORITY_THRESHOLD * 100:.1f}%)",
+                f"{CONTESTED_THRESHOLD:.3f} ({CONTESTED_THRESHOLD * 100:.1f}%)",
                 f"{SENSITIVITY_THRESHOLD:.2f} ({SENSITIVITY_THRESHOLD * 100:.0f}%)",
                 str(MIN_VOTES),
                 f"{HOLDOUT_FRACTION:.2f} ({HOLDOUT_FRACTION * 100:.0f}%)",

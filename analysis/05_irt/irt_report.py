@@ -1756,22 +1756,22 @@ def _add_analysis_parameters(
     """Table: Analysis parameters used in this run."""
     try:
         from analysis.irt import (
+            CONTESTED_THRESHOLD,
             HOLDOUT_FRACTION,
             HOLDOUT_SEED,
             MIN_PARTICIPATION_FOR_ANCHOR,
             MIN_VOTES,
-            MINORITY_THRESHOLD,
             RANDOM_SEED,
             SENSITIVITY_THRESHOLD,
             TARGET_ACCEPT,
         )
     except ModuleNotFoundError:
         from irt import (  # type: ignore[no-redef]
+            CONTESTED_THRESHOLD,
             HOLDOUT_FRACTION,
             HOLDOUT_SEED,
             MIN_PARTICIPATION_FOR_ANCHOR,
             MIN_VOTES,
-            MINORITY_THRESHOLD,
             RANDOM_SEED,
             SENSITIVITY_THRESHOLD,
             TARGET_ACCEPT,
@@ -1789,8 +1789,8 @@ def _add_analysis_parameters(
                 "Chains",
                 "Target Accept Rate",
                 "Random Seed",
-                "Minority Threshold (Default)",
-                "Minority Threshold (Sensitivity)",
+                "Contested Threshold (Default)",
+                "Contested Threshold (Sensitivity)",
                 "Min Substantive Votes",
                 "Min Participation for Anchor",
                 "Holdout Fraction",
@@ -1806,7 +1806,7 @@ def _add_analysis_parameters(
                 str(n_chains),
                 str(TARGET_ACCEPT),
                 str(RANDOM_SEED),
-                f"{MINORITY_THRESHOLD:.3f} ({MINORITY_THRESHOLD * 100:.1f}%)",
+                f"{CONTESTED_THRESHOLD:.3f} ({CONTESTED_THRESHOLD * 100:.1f}%)",
                 f"{SENSITIVITY_THRESHOLD:.2f} ({SENSITIVITY_THRESHOLD * 100:.0f}%)",
                 str(MIN_VOTES),
                 f"{MIN_PARTICIPATION_FOR_ANCHOR:.0%}",

@@ -128,9 +128,9 @@ The per-topic models are smaller and noisier than the full model. With only 15-4
 |-----------|---------------------|--------------------------|
 | **R-hat threshold** | < 1.01 | < 1.05 |
 | **ESS threshold** | > 400 | > 200 |
-| **Chains** | 4 | 2 |
+| **Chains** | 2 | 2 |
 | **Samples per chain** | 2000 | 1000 |
-| **Tuning steps** | 2000 | 1000 |
+| **Tuning steps** | 1000 | 1000 |
 
 The relaxation is principled: smaller datasets produce noisier posteriors, and demanding tight convergence on 15 bills would cause most topics to fail. The thresholds are still meaningful — R-hat < 1.05 means the chains agree to within 5%, and ESS > 200 ensures stable mean and credible interval estimates.
 

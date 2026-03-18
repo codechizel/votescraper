@@ -22,7 +22,7 @@ from analysis.lca import (
     K_MAX,
     MIN_CLASS_FRACTION,
     MIN_VOTES,
-    MINORITY_THRESHOLD,
+    CONTESTED_THRESHOLD,
     N_INIT,
     RANDOM_SEED,
     SALSA_THRESHOLD,
@@ -405,7 +405,7 @@ class TestConstants:
         assert MIN_VOTES == 20
 
     def test_minority_threshold(self) -> None:
-        assert MINORITY_THRESHOLD == 0.025
+        assert CONTESTED_THRESHOLD == 0.025
 
     def test_salsa_threshold(self) -> None:
         assert SALSA_THRESHOLD == 0.80
@@ -424,9 +424,9 @@ class TestConstantsConsistency:
     """Verify shared constants match between lca.py and clustering.py."""
 
     def test_minority_threshold_matches_clustering(self) -> None:
-        from analysis.clustering import MINORITY_THRESHOLD as CLUSTERING_MINORITY
+        from analysis.clustering import CONTESTED_THRESHOLD as CLUSTERING_MINORITY
 
-        assert MINORITY_THRESHOLD == CLUSTERING_MINORITY
+        assert CONTESTED_THRESHOLD == CLUSTERING_MINORITY
 
     def test_random_seed_matches_clustering(self) -> None:
         from analysis.clustering import RANDOM_SEED as CLUSTERING_SEED

@@ -63,6 +63,11 @@ try:
 except ImportError:
     from phase_utils import load_metadata, print_header, save_fig
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ImportError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
 BICM_SIGNIFICANCE = 0.01
@@ -89,12 +94,6 @@ BACKBONE_COMPARISON_THRESHOLD = 0.40
 
 RANDOM_SEED = 42
 """Reproducibility seed for all stochastic operations."""
-
-PARTY_COLORS = {
-    "Republican": "#E81B23",
-    "Democrat": "#0015BC",
-    "Independent": "#999999",
-}
 
 COMMUNITY_CMAP = "Set2"
 """Colormap for bill community assignments."""
@@ -264,9 +263,7 @@ def save_filtering_manifest(manifest: dict, out_dir: Path) -> None:
 # ── Phase 1: Load Data ──────────────────────────────────────────────────────
 
 
-def _load_pair(
-    base_dir: Path, pattern: str
-) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+def _load_pair(base_dir: Path, pattern: str) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
     """Load house/senate parquet pair. Returns None per chamber if unavailable."""
     results: list[pl.DataFrame | None] = []
     for ch in ("house", "senate"):

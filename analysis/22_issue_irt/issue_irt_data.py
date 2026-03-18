@@ -18,6 +18,8 @@ import numpy as np
 import polars as pl
 from scipy import stats as sp_stats
 
+from analysis.tuning import PARTY_COLORS  # noqa: F401 (re-exported to issue_irt.py)
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
 MIN_BILLS_PER_TOPIC = 10
@@ -42,8 +44,6 @@ OUTLIER_TOP_N = 10
 STRONG_CORRELATION = 0.80
 GOOD_CORRELATION = 0.60
 MODERATE_CORRELATION = 0.40
-
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 
 
 # ── Topic Loading ────────────────────────────────────────────────────────────

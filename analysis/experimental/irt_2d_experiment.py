@@ -58,6 +58,11 @@ except ModuleNotFoundError:
         select_anchors,
     )
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
 N_SAMPLES = 2000
@@ -71,7 +76,6 @@ RHAT_THRESHOLD = 1.05
 ESS_THRESHOLD = 200
 MAX_DIVERGENCES = 50
 
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 CT_TZ = ZoneInfo("America/Chicago")
 
 # Legislators of interest for the Tyson paradox

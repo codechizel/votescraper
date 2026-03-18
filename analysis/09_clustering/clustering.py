@@ -59,6 +59,11 @@ try:
 except ImportError:
     from phase_utils import load_metadata, print_header, save_fig
 
+try:
+    from analysis.tuning import CONTESTED_THRESHOLD, MIN_VOTES, PARTY_COLORS, SENSITIVITY_THRESHOLD
+except ImportError:
+    from tuning import CONTESTED_THRESHOLD, MIN_VOTES, PARTY_COLORS, SENSITIVITY_THRESHOLD
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 CLUSTERING_PRIMER = """\
@@ -206,11 +211,7 @@ GMM_COVARIANCE = "full"
 GMM_N_INIT = 20
 HDBSCAN_MIN_CLUSTER_SIZE = 5
 HDBSCAN_MIN_SAMPLES = 3
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 CLUSTER_CMAP = "Set2"
-MINORITY_THRESHOLD = 0.025
-SENSITIVITY_THRESHOLD = 0.10
-MIN_VOTES = 20
 CONTESTED_PARTY_THRESHOLD = 0.10
 WITHIN_PARTY_MIN_SIZE = 15
 # Plot sizing constants
@@ -2675,7 +2676,7 @@ def main() -> None:
                 "SILHOUETTE_GOOD": SILHOUETTE_GOOD,
                 "GMM_COVARIANCE": GMM_COVARIANCE,
                 "GMM_N_INIT": GMM_N_INIT,
-                "MINORITY_THRESHOLD": MINORITY_THRESHOLD,
+                "CONTESTED_THRESHOLD": CONTESTED_THRESHOLD,
                 "SENSITIVITY_THRESHOLD": SENSITIVITY_THRESHOLD,
                 "MIN_VOTES": MIN_VOTES,
                 "CONTESTED_PARTY_THRESHOLD": CONTESTED_PARTY_THRESHOLD,

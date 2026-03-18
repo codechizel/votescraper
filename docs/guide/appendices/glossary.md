@@ -26,7 +26,7 @@ Terms are listed alphabetically. Each definition includes the volume and chapter
 
 **Anchor** — A legislator or constraint used to fix the sign convention in *IRT* models. Without anchors, the model can't distinguish "liberal" from "conservative." Vol. 4, Ch. 3.
 
-**Anchor-agreement** — An *identification strategy* that selects anchors based on the two legislators with the highest contested-vote agreement in opposing parties. Used in *supermajority* chambers. Vol. 4, Ch. 3.
+**Anchor-agreement** — An *identification strategy* that selects anchors based on the two legislators with the lowest cross-party contested-vote agreement (the most partisan legislators in each party). Used in *supermajority* chambers. Vol. 4, Ch. 3.
 
 **Anchor-pca** — An *identification strategy* that selects anchors from the extremes of *PC1*. The default for balanced chambers. Vol. 4, Ch. 3.
 

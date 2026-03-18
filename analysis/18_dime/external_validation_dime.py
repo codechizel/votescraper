@@ -46,6 +46,11 @@ except ModuleNotFoundError:
     from phase_utils import print_header, save_fig  # type: ignore[no-redef]
 
 try:
+    from analysis.tuning import PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
+try:
     from analysis.external_validation_dime_report import build_dime_report
 except ModuleNotFoundError:
     from external_validation_dime_report import (
@@ -154,8 +159,6 @@ All outputs land in `results/<session>/<run_id>/18_dime/`:
 """
 
 # ── Constants ────────────────────────────────────────────────────────────────
-
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

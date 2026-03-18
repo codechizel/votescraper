@@ -42,7 +42,7 @@
 
 | Constant | Value | Justification | Code location |
 |----------|-------|---------------|---------------|
-| `MINORITY_THRESHOLD` | 0.025 | Inherited from EDA. IRT reads pre-filtered matrices. | `irt.py:187` |
+| `CONTESTED_THRESHOLD` | 0.025 | Inherited from EDA (defined in `analysis/tuning.py`). IRT reads pre-filtered matrices. | `irt.py:187` |
 | `SENSITIVITY_THRESHOLD` | 0.10 | Full MCMC re-run at 10% threshold. | `irt.py:188` |
 | `MIN_VOTES` | 20 | Inherited from EDA. | `irt.py:189` |
 | `HOLDOUT_FRACTION` | 0.20 | In-sample prediction on 20% of observed cells. | `irt.py:190` |

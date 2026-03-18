@@ -8,7 +8,7 @@
 
 3. **Bernoulli likelihood is correct for binary votes:** Unlike GMM (Phase 5) which assumes Gaussian data, LCA's Bernoulli mixture is the statistically correct generative model for Yea/Nay votes. This is why LCA exists as a separate phase.
 
-4. **Same upstream filtering as EDA:** Uses the filtered vote matrix from Phase 1 (minority < 2.5%, MIN_VOTES >= 20). Same data that feeds clustering, ensuring comparability.
+4. **Same upstream filtering as EDA:** Uses the filtered vote matrix from Phase 1 (contested threshold < 2.5%, MIN_VOTES >= 20). Same data that feeds clustering, ensuring comparability.
 
 ## Parameters & Constants
 
@@ -19,7 +19,7 @@
 | MAX_ITER | 1000 | Convergence limit. Models that don't converge are flagged but still reported. |
 | RANDOM_SEED | 42 | Project-wide reproducibility seed. |
 | MIN_VOTES | 20 | Matches EDA/IRT threshold. |
-| MINORITY_THRESHOLD | 0.025 | Matches EDA threshold (inherited from upstream vote matrix). |
+| CONTESTED_THRESHOLD | 0.025 | Matches EDA threshold (defined in `analysis/tuning.py`; inherited from upstream vote matrix). |
 | MIN_CLASS_FRACTION | 0.05 | Classes < 5% are flagged as potentially spurious. |
 | SALSA_THRESHOLD | 0.80 | Spearman r above this = quantitative grading, not qualitative distinction. Based on convention for "strong" correlation. |
 | TOP_DISCRIMINATING_BILLS | 30 | Bills shown in profile heatmap. Enough to see patterns without visual overload. |

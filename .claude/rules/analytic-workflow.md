@@ -13,7 +13,7 @@ paths:
 ## Filtering and Reproducibility
 - All filtering decisions must be **explicit constants**, not magic numbers.
 - Save a **filtering manifest** with every output: which votes dropped, which legislators excluded, why.
-- Default filters: minority < 2.5%, legislators with < 20 votes.
+- Default filters: contested threshold < 2.5%, min votes < 20 (both centralized in `analysis/tuning.py`).
 - **Sensitivity analyses are mandatory**: at least two filter settings per core model.
 
 ## Validation

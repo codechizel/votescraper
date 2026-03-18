@@ -11,7 +11,7 @@
 
 2. **Complete data required.** PCA cannot handle nulls. Every cell in the input matrix must have a value, which requires imputation. The imputation method is itself a design choice (see below).
 
-3. **Equal weighting of roll calls.** After standardization (StandardScaler), every contested roll call contributes equally to PCA. A bill that barely cleared the 2.5% minority threshold has the same influence as a major party-line vote.
+3. **Equal weighting of roll calls.** After standardization (StandardScaler), every contested roll call contributes equally to PCA. A bill that barely cleared the 2.5% contested threshold has the same influence as a major party-line vote.
 
 4. **Orthogonal dimensions.** PCA forces principal components to be uncorrelated. If the true ideological structure has correlated dimensions (e.g., fiscal conservatism partially predicts social conservatism), PCA distorts this by forcing orthogonality.
 
@@ -20,7 +20,7 @@
 | Constant | Value | Justification |
 |----------|-------|---------------|
 | `DEFAULT_N_COMPONENTS` | 5 | Extracts 5 PCs per chamber. All significant PCs (per parallel analysis) are now interpreted in the report (ADR-0115). |
-| `MINORITY_THRESHOLD` | 0.025 | Inherited from EDA. PCA does not re-filter the default matrices. |
+| `CONTESTED_THRESHOLD` | 0.025 | Inherited from EDA (defined in `analysis/tuning.py`). PCA does not re-filter the default matrices. |
 | `SENSITIVITY_THRESHOLD` | 0.10 | Per workflow rules: re-run at 10% for sensitivity analysis. |
 | `MIN_VOTES` | 20 | Inherited from EDA. |
 | `HOLDOUT_FRACTION` | 0.20 | Random 20% of non-null cells masked for holdout validation. |
@@ -75,7 +75,7 @@
 
 ### Sensitivity: duplicated filter logic
 
-**Decision:** The sensitivity analysis re-filters the full vote matrix at 10% minority threshold using ~40 lines of duplicated filter logic (not imported from `eda.py`).
+**Decision:** The sensitivity analysis re-filters the full vote matrix at 10% contested threshold using ~40 lines of duplicated filter logic (not imported from `eda.py`).
 
 **Why:** Keeps PCA self-contained. Changes to EDA's filtering won't silently alter PCA's sensitivity analysis.
 

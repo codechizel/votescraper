@@ -18,6 +18,7 @@ import polars as pl
 from scipy import stats as sp_stats
 
 from analysis.run_context import strip_leadership_suffix
+from analysis.tuning import CONCERN_CORRELATION, GOOD_CORRELATION, STRONG_CORRELATION
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -33,9 +34,6 @@ OVERLAPPING_BIENNIUMS: dict[str, tuple[int, int]] = {
 }
 
 MIN_MATCHED = 10
-STRONG_CORRELATION = 0.90
-GOOD_CORRELATION = 0.85
-CONCERN_CORRELATION = 0.70
 OUTLIER_TOP_N = 5
 
 # ── Name Normalization ───────────────────────────────────────────────────────

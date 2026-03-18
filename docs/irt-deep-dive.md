@@ -210,7 +210,7 @@ This is safe but should log a warning. If this fallback triggers, the shrinkage 
 **Data preparation and transformations** — thorough coverage:
 - `prepare_irt_data()`: wide-to-long conversion, null handling, index preservation
 - `select_anchors()`: PCA-based selection with 50% participation guard
-- `filter_vote_matrix_for_sensitivity()`: minority threshold filtering
+- `filter_vote_matrix_for_sensitivity()`: contested threshold filtering
 - `build_joint_vote_matrix()`: cross-chamber bill matching, bridging legislator detection
 - `unmerge_bridging_legislators()`: expansion of merged legislators
 

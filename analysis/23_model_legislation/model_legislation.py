@@ -339,8 +339,7 @@ def main(argv: list[str] | None = None) -> None:
 
         if args.csv or not db_available():
             print(
-                "[Phase 23] Skipping: no bill texts or ALEC corpus "
-                "(run `just text` + `just alec`)"
+                "[Phase 23] Skipping: no bill texts or ALEC corpus (run `just text` + `just alec`)"
             )
             return
 
@@ -396,9 +395,7 @@ def main(argv: list[str] | None = None) -> None:
         # ── Step 2: Load and embed ALEC corpus ───────────────────────────
         print("\n[Step 2] Loading ALEC corpus...")
         try:
-            alec_texts, alec_ids, alec_metadata = load_alec_corpus(
-                args.alec_dir, use_csv=args.csv
-            )
+            alec_texts, alec_ids, alec_metadata = load_alec_corpus(args.alec_dir, use_csv=args.csv)
             n_alec = len(alec_texts)
             print(f"  Loaded {n_alec} ALEC model bills")
 

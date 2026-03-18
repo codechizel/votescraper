@@ -44,6 +44,11 @@ except ModuleNotFoundError:
     from phase_utils import print_header, save_fig  # type: ignore[no-redef]
 
 try:
+    from analysis.tuning import PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
+try:
     from analysis.external_validation_report import build_external_validation_report
 except ModuleNotFoundError:
     from external_validation_report import (
@@ -152,8 +157,6 @@ All outputs land in `results/<session>/external_validation/<date>/`:
 """
 
 # ── Constants ────────────────────────────────────────────────────────────────
-
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

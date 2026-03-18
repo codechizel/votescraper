@@ -47,6 +47,11 @@ try:
 except ImportError:
     from phase_utils import print_header, save_fig  # type: ignore[no-redef]
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ImportError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 INDICES_PRIMER = """\
@@ -178,8 +183,6 @@ CO_DEFECTION_MIN = 3
 ENP_MULTIPARTY_THRESHOLD = 2.5
 ROLLING_WINDOW = 15
 TOP_DEFECTORS_N = 20
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1466,8 +1469,12 @@ def compute_bipartisanship_index(
         return pl.DataFrame()
 
     rows = []
-    leg_names = dict(zip(legislators["legislator_slug"].to_list(), legislators["full_name"].to_list()))
-    leg_districts = dict(zip(legislators["legislator_slug"].to_list(), legislators["district"].to_list()))
+    leg_names = dict(
+        zip(legislators["legislator_slug"].to_list(), legislators["full_name"].to_list())
+    )
+    leg_districts = dict(
+        zip(legislators["legislator_slug"].to_list(), legislators["district"].to_list())
+    )
     for slug, d in leg_data.items():
         n = d["party_votes_present"]
         if n == 0:
@@ -2092,7 +2099,11 @@ def main() -> None:
             )
             if unity_df.height > 0:
                 unity_df.write_parquet(ctx.data_dir / f"party_unity_{chamber.lower()}.parquet")
-                ctx.export_csv(unity_df, f"party_unity_{chamber.lower()}.csv", f"Party unity rankings for {chamber}")
+                ctx.export_csv(
+                    unity_df,
+                    f"party_unity_{chamber.lower()}.csv",
+                    f"Party unity rankings for {chamber}",
+                )
                 plot_party_unity_ranking(unity_df, chamber, ctx.plots_dir)
 
             co_defection = None
@@ -2100,7 +2111,11 @@ def main() -> None:
                 maverick_df.write_parquet(
                     ctx.data_dir / f"maverick_scores_{chamber.lower()}.parquet"
                 )
-                ctx.export_csv(maverick_df, f"maverick_scores_{chamber.lower()}.csv", f"Maverick scores for {chamber} legislators")
+                ctx.export_csv(
+                    maverick_df,
+                    f"maverick_scores_{chamber.lower()}.csv",
+                    f"Maverick scores for {chamber} legislators",
+                )
                 plot_maverick_landscape(maverick_df, chamber, ctx.plots_dir)
 
                 co_defection = compute_co_defection_matrix(
@@ -2123,7 +2138,11 @@ def main() -> None:
             )
             if bpi_df.height > 0:
                 bpi_df.write_parquet(ctx.data_dir / f"bipartisanship_{chamber.lower()}.parquet")
-                ctx.export_csv(bpi_df, f"bipartisanship_{chamber.lower()}.csv", f"Bipartisanship index for {chamber} legislators")
+                ctx.export_csv(
+                    bpi_df,
+                    f"bipartisanship_{chamber.lower()}.csv",
+                    f"Bipartisanship index for {chamber} legislators",
+                )
                 print(f"  {bpi_df.height} legislators scored")
                 top_bpi = bpi_df.head(3)
                 for row in top_bpi.iter_rows(named=True):

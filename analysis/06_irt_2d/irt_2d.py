@@ -82,6 +82,15 @@ except ModuleNotFoundError:
         resolve_init_source,
     )
 
+try:
+    from analysis.tuning import CONTESTED_THRESHOLD, PARTY_COLORS, SUPERMAJORITY_THRESHOLD
+except ModuleNotFoundError:
+    from tuning import (  # type: ignore[no-redef]
+        CONTESTED_THRESHOLD,
+        PARTY_COLORS,
+        SUPERMAJORITY_THRESHOLD,
+    )
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 
 IRT_2D_PRIMER = """\
@@ -170,7 +179,8 @@ Post-hoc Dim 1 sign check: Republican mean must be positive.
 N_SAMPLES = 2000
 N_TUNE = 2000
 N_TUNE_SUPERMAJORITY = 4000  # ADR-0112: doubled for >70% majority
-SUPERMAJORITY_THRESHOLD = 0.70  # ADR-0112: auto-detect majority party fraction
+
+
 N_CHAINS = 4
 RANDOM_SEED = 42
 
@@ -178,8 +188,6 @@ RANDOM_SEED = 42
 RHAT_THRESHOLD = 1.05
 ESS_THRESHOLD = 200
 MAX_DIVERGENCES = 50
-
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 
 # Legislators of interest for the Tyson paradox
 TYSON_SLUGS = {"sen_tyson_caryn"}
@@ -585,6 +593,9 @@ def apply_dim1_sign_check(ideal_2d: pl.DataFrame) -> pl.DataFrame:
 # ── Dimension swap detection ──────────────────────────────────────────────────
 
 
+# PLT identification constraints don't guarantee which dimension captures ideology.
+# If Dim 2 correlates more strongly with PCA PC1 (ideology) than Dim 1, the dimensions
+# are swapped — common when within-party variance (Dim 1) exceeds the between-party axis.
 def _party_d(df: pl.DataFrame, col: str) -> float:
     """Cohen's d between R and D on a given column."""
     r = df.filter(pl.col("party") == "Republican")[col]
@@ -1190,7 +1201,7 @@ def main() -> None:
                     if col.len() > 0:
                         frac = float(col.mean())
                         minority_fracs.append((vc, min(frac, 1 - frac)))
-                contested = [vc for vc, mf in minority_fracs if mf > 0.025]
+                contested = [vc for vc, mf in minority_fracs if mf > CONTESTED_THRESHOLD]
                 matrix = matrix.select(["legislator_slug"] + contested)
                 print(f"  Contested-only filter: {n_votes_before} → {len(contested)} votes")
 

@@ -53,6 +53,11 @@ try:
 except ModuleNotFoundError:
     from mca_report import build_mca_report  # type: ignore[no-redef]
 
+try:
+    from analysis.tuning import CONTESTED_THRESHOLD, MIN_VOTES, PARTY_COLORS, SENSITIVITY_THRESHOLD
+except ModuleNotFoundError:
+    from tuning import CONTESTED_THRESHOLD, MIN_VOTES, PARTY_COLORS, SENSITIVITY_THRESHOLD
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 # Written to results/<session>/mca/README.md by RunContext on each run.
 
@@ -137,12 +142,8 @@ Also reads PCA output from `results/<session>/pca/latest/` for validation.
 # Explicit, named constants per the analytic-workflow rules.
 
 DEFAULT_N_COMPONENTS = 5
-MINORITY_THRESHOLD = 0.025  # Default: 2.5% (matches EDA/PCA)
-SENSITIVITY_THRESHOLD = 0.10  # Sensitivity: 10% (per workflow rules)
-MIN_VOTES = 20  # Minimum substantive votes per legislator
 CORRECTION = "greenacre"  # Greenacre > Benzécri (more conservative)
 RANDOM_STATE = 42
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 CATEGORY_COLORS = {"Yea": "#2ca02c", "Nay": "#d62728", "Absent": "#7f7f7f"}
 TOP_CONTRIBUTIONS_N = 20  # Number of top-contributing categories to label in biplot
 HORSESHOE_R2_THRESHOLD = 0.80  # Polynomial R² above this flags horseshoe artifact
@@ -206,7 +207,7 @@ def build_categorical_vote_matrix(
     votes: pl.DataFrame,
     rollcalls: pl.DataFrame,
     chamber: str,
-    minority_threshold: float = MINORITY_THRESHOLD,
+    minority_threshold: float = CONTESTED_THRESHOLD,
     min_votes: int = MIN_VOTES,
 ) -> tuple[pl.DataFrame, dict]:
     """Build a categorical vote matrix (Yea/Nay/Absent) for one chamber.
@@ -983,7 +984,7 @@ def run_sensitivity(
             print("    Result: SENSITIVE (r <= 0.95) — investigate threshold dependence")
 
         findings[chamber] = {
-            "default_threshold": MINORITY_THRESHOLD,
+            "default_threshold": CONTESTED_THRESHOLD,
             "sensitivity_threshold": SENSITIVITY_THRESHOLD,
             "default_n_legislators": default_scores.height,
             "sensitivity_n_legislators": sens_matrix.height,
@@ -1065,7 +1066,7 @@ def main() -> None:
                 votes,
                 rollcalls,
                 label,
-                minority_threshold=MINORITY_THRESHOLD,
+                minority_threshold=CONTESTED_THRESHOLD,
                 min_votes=MIN_VOTES,
             )
             print(f"\n  {label} filtering: {filter_stats}")
@@ -1150,7 +1151,7 @@ def main() -> None:
         manifest: dict = {
             "n_components": args.n_components,
             "correction": correction,
-            "minority_threshold": MINORITY_THRESHOLD,
+            "minority_threshold": CONTESTED_THRESHOLD,
             "sensitivity_threshold": SENSITIVITY_THRESHOLD,
             "min_votes": MIN_VOTES,
             "passive_categories": sorted(PASSIVE_CATEGORIES),

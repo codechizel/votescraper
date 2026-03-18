@@ -91,6 +91,11 @@ except ModuleNotFoundError:
     from phase_utils import print_header, save_fig  # type: ignore[no-redef]
 
 try:
+    from analysis.tuning import PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
+try:
     from analysis.synthesis_data import (
         _read_parquet_safe,
         build_legislator_df,
@@ -118,11 +123,6 @@ except ModuleNotFoundError:
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-PARTY_COLORS: dict[str, str] = {
-    "Republican": "#E81B23",
-    "Democrat": "#0015BC",
-    "Independent": "#999999",
-}
 TOP_MOVERS_N: int = 15
 ANNOTATE_N: int = 5
 XGBOOST_PARAMS: dict = {

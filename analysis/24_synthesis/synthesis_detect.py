@@ -291,7 +291,9 @@ def detect_metric_paradox(
     if n < PARADOX_MIN_PARTY_SIZE:
         return None
 
-    # Compute percentile ranks within majority party
+    # Ordinal rank / n gives a percentile-like position. The gap between IRT percentile
+    # and loyalty percentile identifies paradoxes: ideologically extreme but surprisingly
+    # loyal, or moderate but surprisingly rebellious.
     ranked = party_df.with_columns(
         (pl.col("xi_mean").rank("ordinal") / n).alias("xi_pct"),
         (pl.col("loyalty_rate").rank("ordinal") / n).alias("loyalty_pct"),

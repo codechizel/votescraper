@@ -20,6 +20,8 @@ import polars as pl
 from scipy import stats as sp_stats
 from sklearn.decomposition import PCA
 
+from analysis.tuning import PARTY_COLORS  # noqa: F401 (re-exported to tbip.py)
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
 MIN_MATCHED = 10
@@ -36,7 +38,6 @@ STRONG_CORRELATION = 0.80
 GOOD_CORRELATION = 0.65
 MODERATE_CORRELATION = 0.50
 
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 
 # ── Vote-Embedding Profiles ─────────────────────────────────────────────────
 

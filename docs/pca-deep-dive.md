@@ -26,7 +26,7 @@ Our pipeline uses PCA for exactly the right purpose: a cheap, fast pre-IRT sanit
 
 | Reference | What It Prescribes | Our Compliance |
 |-----------|-------------------|----------------|
-| Poole & Rosenthal (NOMINATE) | Drop lopsided votes where minority < 2.5% | `MINORITY_THRESHOLD = 0.025` |
+| Poole & Rosenthal (NOMINATE) | Drop lopsided votes where minority < 2.5% | `CONTESTED_THRESHOLD = 0.025` (defined in `analysis/tuning.py`) |
 | Clinton, Jackman & Rivers 2004 | Binary encoding (Yea=1, Nay=0, else=missing); PCA for dimensionality before IRT | Yea=1/Nay=0/null; PCA is Phase 2 |
 | Armstrong et al. 2018 | PCA avoids nonidentifiability in 2+ dimensions; use for ideal point estimation | We use PCA for 1D primarily, with PC2 as diagnostic |
 | Wolfram (Dimensionality of Politics) | Yea=+1, Nay=-1, Absent=0 encoding; Gini of scree for dimensionality measurement | We use Yea=1/Nay=0/null (better — see Section 3.1) |
@@ -327,7 +327,7 @@ Several constants are duplicated between `pca.py` and `eda.py`:
 
 | Constant | PCA | EDA | Same? |
 |----------|-----|-----|-------|
-| `MINORITY_THRESHOLD` | 0.025 | 0.025 | Yes |
+| `CONTESTED_THRESHOLD` | 0.025 | 0.025 | Yes |
 | `MIN_VOTES` | 20 | 20 | Yes |
 | `PARTY_COLORS` | 3 colors | 3 colors | Yes |
 

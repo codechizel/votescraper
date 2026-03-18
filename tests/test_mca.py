@@ -20,7 +20,7 @@ from analysis.mca import (
     CATEGORY_COLORS,
     HORSESHOE_R2_THRESHOLD,
     MIN_VOTES,
-    MINORITY_THRESHOLD,
+    CONTESTED_THRESHOLD,
     PARTY_COLORS,
     build_categorical_vote_matrix,
     detect_horseshoe,
@@ -478,7 +478,7 @@ class TestConstants:
 
     def test_minority_threshold_matches_pca(self):
         """MCA minority threshold should match PCA for consistency."""
-        assert MINORITY_THRESHOLD == 0.025
+        assert CONTESTED_THRESHOLD == 0.025
 
     def test_min_votes_matches_pca(self):
         """MCA min votes should match PCA for consistency."""

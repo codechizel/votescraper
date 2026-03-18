@@ -54,6 +54,11 @@ try:
 except ImportError:
     from phase_utils import load_metadata, print_header, save_fig
 
+try:
+    from analysis.tuning import HIGH_DISC_THRESHOLD, PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import HIGH_DISC_THRESHOLD, PARTY_COLORS  # type: ignore[no-redef]
+
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -62,11 +67,9 @@ KAPPA_THRESHOLD_SENSITIVITY = [0.30, 0.40, 0.50, 0.60]
 CROSS_PARTY_BRIDGE_THRESHOLD = 0.30
 LEIDEN_RESOLUTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0]
 CPM_GAMMAS = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50]
-HIGH_DISC_THRESHOLD = 1.5
 TOP_BRIDGE_N = 15
 TOP_LABEL_N = 10
 RANDOM_SEED = 42
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 
 # Plain-English labels for centrality measures and IRT columns (nontechnical audience)
 PLAIN_LABELS: dict[str, str] = {
@@ -305,9 +308,7 @@ def _build_network_from_vote_subset(
 # ── Phase 1: Load Data ──────────────────────────────────────────────────────
 
 
-def _load_pair(
-    base_dir: Path, pattern: str
-) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+def _load_pair(base_dir: Path, pattern: str) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
     """Load house/senate parquet pair. Returns None per chamber if unavailable."""
     results: list[pl.DataFrame | None] = []
     for ch in ("house", "senate"):

@@ -14,14 +14,19 @@ One row per legislator per roll call. The fundamental input to all analyses.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `slug` | string | Legislator identifier (e.g., `rep_smith_john_1`). Prefix: `rep_` = House, `sen_` = Senate |
-| `full_name` | string | Display name (e.g., "John Smith") |
-| `vote` | string | Vote cast: `Yea`, `Nay`, `Present and Passing`, `Absent and Not Voting`, or `Not Voting` |
+| `session` | string | Session identifier (e.g., `91st (2025-2026)` or `2024 Special`) |
+| `bill_number` | string | Bill identifier (e.g., `HB 2032`) |
+| `bill_title` | string | Full bill title |
 | `vote_id` | string | Roll call identifier. Format: `je_YYYYMMDDHHMMSS` (e.g., `je_20250320203513`). KanFocus: `kf_{num}_{year}_{chamber}` |
-| `party` | string | `Republican`, `Democrat`, or `Independent` (empty string filled to "Independent" at load) |
-| `chamber` | string | `Senate` or `House of Representatives` |
-| `district` | string | District number |
-| `session` | string | Session identifier (e.g., `2025-2026` or `2024s` for special sessions) |
+| `vote_datetime` | string | ISO timestamp of the vote |
+| `vote_date` | string | Date of the vote (MM/DD/YYYY) |
+| `chamber` | string | `Senate` or `House` |
+| `motion` | string | Motion text (e.g., `Final Action - Passed as amended`) |
+| `legislator_name` | string | Legislator display name |
+| `legislator_slug` | string | Legislator identifier (e.g., `rep_smith_john_1`). Prefix: `rep_` = House, `sen_` = Senate |
+| `vote` | string | Vote cast: `Yea`, `Nay`, `Present and Passing`, `Absent and Not Voting`, or `Not Voting` |
+
+*Note: Party and district are in `legislators.csv`, not in this file. Join on `legislator_slug`.*
 
 ### rollcalls.csv
 
@@ -31,13 +36,15 @@ One row per roll call. Bill-level metadata for each vote.
 |--------|------|-------------|
 | `vote_id` | string | Matches `votes.csv` (join key) |
 | `bill_number` | string | e.g., `HB 2032`, `SB 123`, `SCR 1601` |
-| `motion` | string | What was voted on: `Final Passage`, `Emergency Final Passage`, `Amendment`, `Veto`, etc. |
+| `motion` | string | What was voted on: `Final Action - Passed`, `Emergency Final Action`, `Veto Override`, etc. |
+| `vote_type` | string | Classified vote type: `Final Action`, `Emergency Final Action`, `Concurrence`, etc. |
+| `result` | string | Vote result description |
 | `short_title` | string | Bill's abbreviated title (may be null for older sessions) |
-| `yea` | int | Total Yea votes |
-| `nay` | int | Total Nay votes |
+| `yea_count` | int | Total Yea votes |
+| `nay_count` | int | Total Nay votes |
 | `passed` | bool/null | `True` if passed/adopted, `False` if failed/rejected, null if indeterminate |
 | `sponsor_slugs` | string | Semicolon-joined slugs of bill sponsors (e.g., `"sen_tyson_caryn_1; sen_alley_larry_1"`). Empty for committee sponsors or pre-89th sessions |
-| `chamber` | string | `Senate` or `House of Representatives` |
+| `chamber` | string | `Senate` or `House` |
 
 ### legislators.csv
 
@@ -47,7 +54,7 @@ One row per legislator. The roster for the biennium.
 |--------|------|-------------|
 | `name` | string | Short name (last name or abbreviated) |
 | `full_name` | string | Full display name |
-| `slug` | string | Unique identifier (`rep_` or `sen_` prefix) |
+| `legislator_slug` | string | Unique identifier (`rep_` or `sen_` prefix) |
 | `chamber` | string | `Senate` or `House of Representatives` |
 | `party` | string | `Republican`, `Democrat`, or `Independent` |
 | `district` | string | District number |
@@ -236,7 +243,7 @@ Parquet files in `results/{session}/{run_id}/05_irt/data/`:
 
 | Identifier | Format | Example | Used For |
 |-----------|--------|---------|----------|
-| `slug` / `legislator_slug` | `{chamber}_{last}_{first}_{n}` | `rep_smith_john_1` | Primary legislator ID |
+| `legislator_slug` | `{chamber}_{last}_{first}_{n}` | `rep_smith_john_1` | Primary legislator ID |
 | `vote_id` | `je_YYYYMMDDHHMMSS` | `je_20250320203513` | Primary roll call ID |
 | `ocd_id` | `ocd-person/{uuid}` | `ocd-person/a1b2c3d4-...` | Cross-biennium legislator matching |
 | `run_id` | `{legislature}-{YYMMDD}.{N}` | `91-260318.1` | Pipeline run identifier |

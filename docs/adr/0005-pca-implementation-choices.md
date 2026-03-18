@@ -23,7 +23,7 @@ PCA is the mandatory second analysis phase (after EDA) per the analytic workflow
 
 2. **StandardScaler (center and scale).** Without scaling, roll calls with high variance (close votes) would dominate PCA. Centering removes the mean Yea rate; scaling ensures each roll call contributes equally regardless of its margin. This matches the standard approach in Poole & Rosenthal's work.
 
-3. **Sensitivity at 10% minority threshold.** The workflow rules specifically mention 2.5% vs 10% as the required comparison. Pearson correlation between PC1 scores from both settings quantifies robustness. Threshold: r > 0.95 = robust.
+3. **Sensitivity at 10% contested threshold.** The workflow rules specifically mention 2.5% vs 10% as the required comparison. Pearson correlation between PC1 scores from both settings quantifies robustness. Threshold: r > 0.95 = robust.
 
 4. **Duplicate filter logic.** The ~40-line filter function is duplicated in `pca.py` rather than imported from `eda.py`. This keeps phases self-contained — PCA can run independently without importing the EDA module, and changes to EDA's filtering won't silently alter PCA's sensitivity analysis.
 

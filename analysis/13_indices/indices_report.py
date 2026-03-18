@@ -38,16 +38,41 @@ except ModuleNotFoundError:
         make_interactive_table,
     )
 
-# Constants duplicated from indices.py to avoid circular import
-# (indices.py imports indices_report at module level).
-PARTY_VOTE_THRESHOLD = 0.50
-RICE_FRACTURE_THRESHOLD = 0.50
-MIN_PARTY_VOTERS = 2
-MAVERICK_WEIGHT_FLOOR = 0.01
-CO_DEFECTION_MIN = 3
-ENP_MULTIPARTY_THRESHOLD = 2.5
-ROLLING_WINDOW = 15
-TOP_DEFECTORS_N = 20
+# Import constants from indices.py (single source of truth).
+# Circular-import safe: falls back to direct sibling import, then literals.
+try:
+    from analysis.indices import (
+        CO_DEFECTION_MIN,
+        ENP_MULTIPARTY_THRESHOLD,
+        MAVERICK_WEIGHT_FLOOR,
+        MIN_PARTY_VOTERS,
+        PARTY_VOTE_THRESHOLD,
+        RICE_FRACTURE_THRESHOLD,
+        ROLLING_WINDOW,
+        TOP_DEFECTORS_N,
+    )
+except ModuleNotFoundError, ImportError:
+    try:
+        from indices import (  # type: ignore[no-redef]
+            CO_DEFECTION_MIN,
+            ENP_MULTIPARTY_THRESHOLD,
+            MAVERICK_WEIGHT_FLOOR,
+            MIN_PARTY_VOTERS,
+            PARTY_VOTE_THRESHOLD,
+            RICE_FRACTURE_THRESHOLD,
+            ROLLING_WINDOW,
+            TOP_DEFECTORS_N,
+        )
+    except ModuleNotFoundError, ImportError:
+        # Last resort: inline values (must match indices.py)
+        PARTY_VOTE_THRESHOLD = 0.50  # type: ignore[assignment]
+        RICE_FRACTURE_THRESHOLD = 0.50  # type: ignore[assignment]
+        MIN_PARTY_VOTERS = 2  # type: ignore[assignment]
+        MAVERICK_WEIGHT_FLOOR = 0.01  # type: ignore[assignment]
+        CO_DEFECTION_MIN = 3  # type: ignore[assignment]
+        ENP_MULTIPARTY_THRESHOLD = 2.5  # type: ignore[assignment]
+        ROLLING_WINDOW = 15  # type: ignore[assignment]
+        TOP_DEFECTORS_N = 20  # type: ignore[assignment]
 
 
 def build_indices_report(

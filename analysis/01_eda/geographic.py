@@ -37,11 +37,10 @@ SENATE_SHAPEFILE = f"tl_2024_{KANSAS_FIPS}_sldu.zip"
 HOUSE_GEOJSON = EXTERNAL_DATA_DIR / "kansas_house_districts.geojson"
 SENATE_GEOJSON = EXTERNAL_DATA_DIR / "kansas_senate_districts.geojson"
 
-PARTY_COLORS = {
-    "Republican": "#E81B23",
-    "Democrat": "#0015BC",
-    "Independent": "#999999",
-}
+try:
+    from analysis.tuning import PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
 
 
 # ── GeoJSON Download ─────────────────────────────────────────────────────────

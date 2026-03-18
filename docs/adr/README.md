@@ -178,6 +178,7 @@ What are the trade-offs?
 | [0113](0113-legislature-number-session-resolution.md) | Legislature number session resolution (fix "79" → "79th_2001-2002") |
 | [0114](0114-horseshoe-aware-report-system.md) | Horseshoe-aware report system (warnings, data-driven captions, 27-issue audit) |
 | [0116](0116-pipeline-reordering.md) | Pipeline reordering (text-analysis to position 4, UMAP to position 9) |
+| [0119](0119-pipeline-tuning-centralization.md) | Pipeline tuning centralization (`analysis/tuning.py`, 10 params, Django-ready) |
 
 ## Chronological Index
 
@@ -301,6 +302,7 @@ What are the trade-offs?
 | [0116](0116-pipeline-reordering.md) | Pipeline reordering (text-analysis to position 4, UMAP to position 9) | Accepted | 2026-03-14 |
 | [0117](0117-hierarchical-2d-irt.md) | Hierarchical 2D IRT with PLT identification and party pooling (Phase 07b) | Accepted | 2026-03-14 |
 | [0118](0118-party-separation-quality-gates.md) | Party separation quality gates across pipeline (7 fixes for PCA axis instability) | Accepted | 2026-03-15 |
+| [0119](0119-pipeline-tuning-centralization.md) | Pipeline tuning centralization (`analysis/tuning.py`, 10 parameters, MINORITY→CONTESTED rename) | Accepted | 2026-03-18 |
 
 ## Creating a New ADR
 

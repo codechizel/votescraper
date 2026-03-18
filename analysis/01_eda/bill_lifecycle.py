@@ -112,7 +112,6 @@ def compute_bill_transitions(actions_df: pl.DataFrame) -> pl.DataFrame:
 
     # Count transitions: iterate stage lists, deduplicate consecutive stages
     transition_counts: dict[tuple[str, str], int] = {}
-    died_count = 0
     terminal_stages = {"Floor Vote", "Cross-Chamber", "Governor", "Signed into Law", "Vetoed"}
 
     for row in bill_stages.iter_rows(named=True):
@@ -136,7 +135,6 @@ def compute_bill_transitions(actions_df: pl.DataFrame) -> pl.DataFrame:
         if last_stage not in terminal_stages:
             pair = (last_stage, "Died")
             transition_counts[pair] = transition_counts.get(pair, 0) + 1
-            died_count += 1
 
     if not transition_counts:
         return pl.DataFrame({"source": [], "target": [], "value": []}).cast(

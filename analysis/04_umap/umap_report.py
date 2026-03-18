@@ -364,13 +364,17 @@ def _add_stability_table(
     stability_findings: dict[str, dict],
 ) -> None:
     """Table: Multi-seed Procrustes stability summary."""
+    try:
+        from analysis.umap_viz import STABILITY_SEEDS
+    except ModuleNotFoundError:
+        from umap_viz import STABILITY_SEEDS  # type: ignore[no-redef]
+
     rows = []
     for chamber, stab in stability_findings.items():
         rows.append(
             {
                 "chamber": chamber,
-                "n_seeds": len(stab["pairs"]) * 2
-                - len(stab["pairs"]),  # not quite right, use the constant
+                "n_seeds": len(STABILITY_SEEDS),
                 "mean_similarity": stab["mean_similarity"],
                 "min_similarity": stab["min_similarity"],
             }

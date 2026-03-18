@@ -82,6 +82,11 @@ except ModuleNotFoundError:
         make_gt,
     )
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 # ── Constants ────────────────────────────────────────────────────────────────
 
 N_SAMPLES = 2000
@@ -96,7 +101,6 @@ MAX_DIVERGENCES = 50
 
 DIM1_PRIOR_SIGMA_DEFAULT = 1.0
 
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 CHAMBER_MARKERS = {"House": "o", "Senate": "s"}
 CT_TZ = ZoneInfo("America/Chicago")
 

@@ -92,6 +92,11 @@ except ImportError:
         save_fig,
     )
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ImportError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -128,29 +133,36 @@ VECTORIZER_MAX_DF = 0.85
 'kansas' without needing them in the stopword list (and without blocking
 useful bigrams like 'state board')."""
 
-LEGISLATIVE_STOPWORDS: frozenset[str] = frozenset({
-    # Mandatory legal language (every bill)
-    "shall",
-    # Preprocessing artifact (normalized K.S.A. references)
-    "statuteref",
-    # Structural markers
-    "section", "subsection", "paragraph",
-    # Amendatory boilerplate
-    "amendments", "amendment", "amended", "amend",
-    # Archaic legal connectors
-    "thereto", "thereof", "therein",
-    "herein", "hereby", "hereof",
-    "pursuant", "provision", "provisions",
-})
+LEGISLATIVE_STOPWORDS: frozenset[str] = frozenset(
+    {
+        # Mandatory legal language (every bill)
+        "shall",
+        # Preprocessing artifact (normalized K.S.A. references)
+        "statuteref",
+        # Structural markers
+        "section",
+        "subsection",
+        "paragraph",
+        # Amendatory boilerplate
+        "amendments",
+        "amendment",
+        "amended",
+        "amend",
+        # Archaic legal connectors
+        "thereto",
+        "thereof",
+        "therein",
+        "herein",
+        "hereby",
+        "hereof",
+        "pursuant",
+        "provision",
+        "provisions",
+    }
+)
 """Legislative boilerplate terms filtered from c-TF-IDF topic labels.
 These appear in virtually every Kansas bill regardless of policy area.
 Combined with scikit-learn's English stopwords in the BERTopic vectorizer."""
-
-PARTY_COLORS = {
-    "Republican": "#E81B23",
-    "Democrat": "#0015BC",
-    "Independent": "#999999",
-}
 
 # ── Primer ───────────────────────────────────────────────────────────────────
 
@@ -858,8 +870,7 @@ def main() -> None:
 
         if args.csv or not db_available():
             print(
-                f"[Phase 20] Skipping: bill texts not found "
-                f"(run `just text {args.session}` first)"
+                f"[Phase 20] Skipping: bill texts not found (run `just text {args.session}` first)"
             )
             return
 
@@ -1113,7 +1124,7 @@ def main() -> None:
             ctx.run_dir,
         )
 
-        print_header("Phase 18 Complete")
+        print_header("Phase 20 Complete")
 
 
 if __name__ == "__main__":

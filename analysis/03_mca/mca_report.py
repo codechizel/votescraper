@@ -540,9 +540,9 @@ def _add_analysis_parameters(
     try:
         from analysis.mca import (
             ABSENT_LABEL,
+            CONTESTED_THRESHOLD,
             HORSESHOE_R2_THRESHOLD,
             MIN_VOTES,
-            MINORITY_THRESHOLD,
             PCA_VALIDATION_MIN_R,
             SENSITIVITY_THRESHOLD,
             TOP_CONTRIBUTIONS_N,
@@ -550,9 +550,9 @@ def _add_analysis_parameters(
     except ModuleNotFoundError:
         from mca import (  # type: ignore[no-redef]
             ABSENT_LABEL,
+            CONTESTED_THRESHOLD,
             HORSESHOE_R2_THRESHOLD,
             MIN_VOTES,
-            MINORITY_THRESHOLD,
             PCA_VALIDATION_MIN_R,
             SENSITIVITY_THRESHOLD,
             TOP_CONTRIBUTIONS_N,
@@ -563,8 +563,8 @@ def _add_analysis_parameters(
             "Parameter": [
                 "N Components",
                 "Inertia Correction",
-                "Minority Threshold (Default)",
-                "Minority Threshold (Sensitivity)",
+                "Contested Threshold (Default)",
+                "Contested Threshold (Sensitivity)",
                 "Min Substantive Votes",
                 "Absent Label",
                 "Horseshoe R² Threshold",
@@ -574,7 +574,7 @@ def _add_analysis_parameters(
             "Value": [
                 str(n_components),
                 correction,
-                f"{MINORITY_THRESHOLD:.3f} ({MINORITY_THRESHOLD * 100:.1f}%)",
+                f"{CONTESTED_THRESHOLD:.3f} ({CONTESTED_THRESHOLD * 100:.1f}%)",
                 f"{SENSITIVITY_THRESHOLD:.2f} ({SENSITIVITY_THRESHOLD * 100:.0f}%)",
                 str(MIN_VOTES),
                 ABSENT_LABEL,

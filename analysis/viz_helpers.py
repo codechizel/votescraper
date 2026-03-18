@@ -8,13 +8,12 @@ import math
 
 import plotly.graph_objects as go
 
-# ── Color constants ──────────────────────────────────────────────────────────
+try:
+    from analysis.tuning import PARTY_COLORS  # noqa: F401 (re-exported to eda_report.py)
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]  # noqa: F401
 
-PARTY_COLORS: dict[str, str] = {
-    "Republican": "#E81B23",
-    "Democrat": "#0015BC",
-    "Independent": "#808080",
-}
+# ── Color constants ──────────────────────────────────────────────────────────
 
 VOTE_COLORS: dict[str, str] = {
     "Yea": "#2ecc71",

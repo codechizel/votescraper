@@ -70,7 +70,7 @@ This is a living document — add entries as each analysis phase surfaces new fi
 ### Sensitivity Analysis: Highly Robust
 
 - **Phase:** IRT
-- **Observation:** Ideal points are extremely stable across minority thresholds. Pearson r between 2.5% and 10% runs: House r=0.9982, Senate r=0.9930.
+- **Observation:** Ideal points are extremely stable across contested thresholds. Pearson r between 2.5% and 10% runs: House r=0.9982, Senate r=0.9930.
 - **Interpretation:** The 1D ideological structure is not driven by borderline-contested votes. Removing them barely changes legislator positions. This validates the 2.5% default threshold.
 
 ### PCA-IRT Agreement

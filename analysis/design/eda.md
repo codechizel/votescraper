@@ -19,7 +19,7 @@
 
 | Constant | Value | Justification | Code location |
 |----------|-------|---------------|---------------|
-| `MINORITY_THRESHOLD` | 0.025 (2.5%) | VoteView standard. Votes where the minority side is < 2.5% carry no ideological signal. | `eda.py:153` |
+| `CONTESTED_THRESHOLD` | 0.025 (2.5%) | VoteView standard (defined in `analysis/tuning.py`). Votes where the minority side is < 2.5% carry no ideological signal. | `eda.py:153` |
 | `MIN_VOTES` | 20 | Legislators with < 20 substantive votes produce unreliable ideal-point estimates. Threshold chosen to retain mid-session replacements with partial records while excluding empty-seat placeholders. | `eda.py:154` |
 | `VOTE_CATEGORIES` | 5 categories | Yea, Nay, Present and Passing, Absent and Not Voting, Not Voting. Exactly these five; anything else triggers an integrity warning. | `eda.py:155-157` |
 | `MIN_SHARED_VOTES` | 10 | Minimum shared votes between two legislators to compute pairwise agreement. Below this, agreement is too noisy to be meaningful. | `eda.py:168` |
@@ -44,7 +44,7 @@
 ### Filtering order: unanimous votes first, then low-participation legislators
 
 **Decision:** Two sequential filters applied per chamber:
-1. Drop votes where minority side < `MINORITY_THRESHOLD` (2.5%)
+1. Drop votes where minority side < `CONTESTED_THRESHOLD` (2.5%)
 2. Drop legislators with < `MIN_VOTES` (20) substantive votes on the remaining contested bills
 
 **Alternatives considered:**
@@ -96,7 +96,7 @@ The `numpy_matrix_to_polars()` helper was extracted from `main()` to module leve
 ### For PCA (Phase 2)
 - PCA reads `vote_matrix_{house,senate}_filtered.parquet` — the filtered matrices this phase produces.
 - **Nulls remain in the filtered matrices.** PCA must impute them (row-mean is the PCA default). The null fraction is typically 15-30% per chamber.
-- The 2.5% minority threshold has already removed near-unanimous votes. PCA should not re-filter, but the sensitivity analysis re-filters at 10% from the full matrix.
+- The 2.5% contested threshold has already removed near-unanimous votes. PCA should not re-filter, but the sensitivity analysis re-filters at 10% from the full matrix.
 
 ### For IRT (Phase 3)
 - IRT also reads the filtered matrices but handles nulls natively (absences absent from the likelihood — no imputation needed).

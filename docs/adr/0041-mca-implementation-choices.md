@@ -40,7 +40,7 @@ Several implementation choices needed to be resolved:
 - The biplot maps legislators AND vote categories into the same space — directly interpretable ("this legislator sits near the Yea categories of these bills").
 - Contributions (CTR) identify which specific vote-category combinations define each dimension — more granular than PCA loadings.
 - PCA validation provides a built-in cross-method check: if MCA and PCA agree (r > 0.90), PCA's linear assumptions are validated for this dataset.
-- Sensitivity analysis (2.5% vs 10% minority threshold) tests robustness with minimal additional compute.
+- Sensitivity analysis (2.5% vs 10% contested threshold) tests robustness with minimal additional compute.
 
 **Trade-offs:**
 - prince requires pandas at the conversion boundary, violating the Polars-everywhere preference. Mitigated by isolating the conversion to a single function.

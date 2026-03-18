@@ -29,8 +29,8 @@
 | `GMM_N_INIT` | 20 | Multiple random restarts for GMM stability | `clustering.py:200` |
 | `HDBSCAN_MIN_CLUSTER_SIZE` | 5 | Minimum cluster size for HDBSCAN density-based clustering | `clustering.py:201` |
 | `HDBSCAN_MIN_SAMPLES` | 3 | Core distance samples for HDBSCAN noise detection | `clustering.py:202` |
-| `MINORITY_THRESHOLD` | 0.025 | Inherited from EDA; for sensitivity re-filtering | `clustering.py:205` |
-| `SENSITIVITY_THRESHOLD` | 0.10 | Alternative minority threshold for sensitivity analysis | `clustering.py:206` |
+| `CONTESTED_THRESHOLD` | 0.025 | Inherited from EDA (defined in `analysis/tuning.py`); for sensitivity re-filtering | `clustering.py:205` |
+| `SENSITIVITY_THRESHOLD` | 0.10 | Alternative contested threshold for sensitivity analysis | `clustering.py:206` |
 | `MIN_VOTES` | 20 | Inherited from EDA; minimum substantive votes per legislator | `clustering.py:207` |
 | `CONTESTED_PARTY_THRESHOLD` | 0.10 | A vote is "contested" for a party if >= 10% of the party dissents | `clustering.py:208` |
 

@@ -54,6 +54,11 @@ try:
 except ModuleNotFoundError:
     from umap_report import build_umap_report  # type: ignore[no-redef]
 
+try:
+    from analysis.tuning import PARTY_COLORS
+except ModuleNotFoundError:
+    from tuning import PARTY_COLORS  # type: ignore[no-redef]
+
 # ── Primer ───────────────────────────────────────────────────────────────────
 # Written to results/<session>/umap/README.md by RunContext on each run.
 
@@ -186,7 +191,6 @@ DEFAULT_METRIC = "cosine"
 RANDOM_STATE = 42
 SENSITIVITY_N_NEIGHBORS = [5, 15, 30, 50]
 STABILITY_SEEDS = [42, 123, 456, 789, 1337]
-PARTY_COLORS = {"Republican": "#E81B23", "Democrat": "#0015BC", "Independent": "#999999"}
 HIGH_IMPUTATION_PCT = 50.0
 
 
