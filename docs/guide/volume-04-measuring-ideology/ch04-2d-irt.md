@@ -87,7 +87,9 @@ For the model to produce interpretable results — where Dimension 1 reliably me
 
 ## PLT Identification: Pinning the Rotation
 
-Tallgrass uses a technique called **Positive Lower Triangular (PLT) identification** to fix the rotation. The idea is to place constraints on the discrimination matrix (the collection of all β₁ and β₂ values) that uniquely determine the rotation.
+Tallgrass uses a technique called **Positive Lower Triangular (PLT) identification** to fix the rotation. Think of it like pinning a map to a wall: once you declare "north is up," all other directions are fixed. PLT declares that one specific bill has zero discrimination on Dimension 2, which pins the rotation and tells the model which axis is which.
+
+The idea is to place constraints on the discrimination matrix (the collection of all β₁ and β₂ values) that uniquely determine the rotation.
 
 ### The Intuition
 

@@ -80,6 +80,8 @@ Where:
 - **n** is the number of observations
 - The penalty **p · log(n)** grows with both model complexity and sample size
 
+BIC balances two competing goals: fitting the data well (the log-likelihood term) and keeping the model simple (the penalty term). More classes always fit better, but the penalty grows with each added class. BIC picks the sweet spot where adding another class isn't worth the complexity cost.
+
 **Plain English:** "How much better does this model fit, after subtracting a penalty for how complicated it is?"
 
 Lower BIC is better. You plot BIC against K, and the minimum tells you the optimal number of classes.

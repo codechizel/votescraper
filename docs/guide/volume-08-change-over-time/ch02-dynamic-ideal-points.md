@@ -40,7 +40,7 @@ Let's walk through each piece:
 - **xi[t]**: The legislator's ideal point in biennium *t* (e.g., the 88th Legislature)
 - **xi[t-1]**: Their ideal point in the previous biennium (the 87th Legislature)
 - **tau**: The **evolution variance** — a single number that controls how big the steps can be. Small tau means ideology changes slowly; large tau means it can shift dramatically.
-- **innovation**: A random draw from a standard normal distribution (mean 0, standard deviation 1). This is the "coin flip" — the direction and relative size of the step.
+- **innovation**: A random draw from a standard normal distribution (mean 0, standard deviation 1). This is the "coin flip" — the direction and relative size of the step. In time series statistics, the random adjustment at each step is called an "innovation" — not because it's creative, but because it's the new, unpredictable part of the change. Think of it as the surprise component: after accounting for where a legislator was last session, the innovation is how much they unexpectedly shifted.
 
 **A worked example:** Suppose Representative Jones has xi = +1.0 (moderately conservative) in the 87th Legislature. Tau for Republicans is 0.2. The model draws innovation = -0.5 (a half-step toward the center). Jones's expected ideal point in the 88th Legislature is:
 

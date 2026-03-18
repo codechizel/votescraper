@@ -53,6 +53,7 @@ Where:
 Let's say Representative Adams votes Yea 85% of the time, and Representative Baker votes Yea 78% of the time.
 
 1. **What's the chance they both vote Yea on the same bill?**
+   When two events are independent (neither legislator knows what the other will do), the probability of both happening equals the product of their individual probabilities — like rolling two dice, where each die doesn't affect the other.
    - P(both Yea) = 0.85 × 0.78 = 0.663
 
 2. **What's the chance they both vote Nay?**

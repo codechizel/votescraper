@@ -58,7 +58,7 @@ This choice matters more than it might seem. **Ward's method** (Joe Ward Jr., 19
 
 ### The Cophenetic Test
 
-How do you know if the tree is a good representation of the original distances? The **cophenetic correlation** (Sokal and Rohlf, 1962) measures this. It compares the original pairwise distances to the heights at which pairs merge in the dendrogram. A cophenetic correlation above 0.70 means the tree is a faithful representation. The Kansas Legislature typically scores 0.75–0.85.
+How do you know if the tree is a good representation of the original distances? The **cophenetic correlation** (Sokal and Rohlf, 1962) measures this. The cophenetic correlation compares the original distances between legislators (how differently they voted) with the heights at which they merge in the tree. A high value (above 0.70) means the tree faithfully represents the original data — legislators who voted similarly merge early, and those who voted differently merge late. The Kansas Legislature typically scores 0.75–0.85.
 
 **Codebase:** `analysis/09_clustering/clustering.py` (`run_hierarchical()`, `LINKAGE_METHOD = "average"`, `COPHENETIC_THRESHOLD = 0.70`)
 

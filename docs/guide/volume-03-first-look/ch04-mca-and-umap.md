@@ -141,7 +141,7 @@ Think of UMAP as a seating chart, not a ruler. It tells you who's sitting near w
 
 Because UMAP involves randomness (the initial layout is random), Tallgrass runs multiple checks to ensure the results are stable:
 
-**Multi-seed stability:** UMAP is run 5 times with different random seeds (42, 123, 456, 789, 1337). The results are compared using **Procrustes analysis** — a technique from shape analysis that finds the best rotation, reflection, and scaling to overlay two point clouds. If the similarity is high (above 0.7 on a 0-to-1 scale), the structure is stable across random starts.
+**Multi-seed stability:** UMAP is run 5 times with different random seeds (42, 123, 456, 789, 1337). The results are compared using **Procrustes analysis** — a method from shape analysis, named after the Greek myth, that finds the best rotation and scaling to overlay two point clouds. If two UMAP runs produce similar shapes but one is rotated 45 degrees, Procrustes rotates them to match before measuring how well they agree. If the similarity is high (above 0.7 on a 0-to-1 scale), the structure is stable across random starts.
 
 Why Procrustes instead of simple correlation? Because UMAP axes are rotation-invariant — one run might put Republicans on the right, another might put them on the left. Procrustes handles this by allowing rotation before comparing.
 

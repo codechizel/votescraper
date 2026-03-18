@@ -125,7 +125,9 @@ Imagine hiking through a canyon that narrows into a bottleneck. In the wide part
 
 ### The Solution: Change Coordinates
 
-Non-centered parameterization sidesteps the funnel by changing variables. Instead of sampling the ideal point directly, we sample a **standardized offset** (always between roughly −3 and +3, regardless of σ_within) and multiply by σ_within afterward:
+Non-centered parameterization sidesteps the funnel by changing variables. The trick: instead of estimating each legislator's ideal point directly, the model estimates a standardized offset (how many standard deviations from the party mean) and then converts it to the actual scale. This eliminates the funnel geometry that traps the sampler.
+
+Instead of sampling the ideal point directly, we sample a **standardized offset** (always between roughly −3 and +3, regardless of σ_within) and multiply by σ_within afterward:
 
 ```
 offset_i  ~  Normal(0, 1)                             ← always the same scale

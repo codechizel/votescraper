@@ -36,7 +36,7 @@ The key advantage of XGBoost over logistic regression is that it can learn **non
 
 ## The Features: What the Model Knows
 
-What information does the model get to work with? Think of it as the briefing packet for our panel of advisors. For each legislator-bill pair, the model sees 14 core features plus a handful of one-hot encoded vote types:
+What information does the model get to work with? Think of it as the briefing packet for our panel of advisors. For each legislator-bill pair, the model sees 14 core features plus a handful of one-hot encoded vote types. (**Important caveat:** we exclude any feature that would "leak" the answer — information that's only available after the vote has already happened. More on this below.)
 
 ### Legislator Features
 
@@ -123,6 +123,8 @@ XGBoost is sometimes called a "black box" — it makes accurate predictions but 
 SHAP comes from **cooperative game theory** — specifically from the work of **Lloyd Shapley** (1953), who won the Nobel Prize in Economics for his contributions. In a cooperative game, the question is: how much does each player contribute to the team's total payoff? Shapley's insight was to compute each player's contribution by considering every possible team they could join, averaging their marginal contribution across all those teams.
 
 SHAP applies this to machine learning: each "player" is a feature, the "team" is the full model, and the "payoff" is the prediction. For a specific prediction, SHAP tells you how much each feature pushed the prediction toward Yea or toward Nay.
+
+In simpler terms: SHAP asks "if I remove this feature, how much does the prediction change?" It does this for every possible combination of features, then averages the results. The output is a number for each feature on each vote: positive means "this feature pushed the prediction toward Yea," negative means "toward Nay."
 
 ### The Feature Ranking
 

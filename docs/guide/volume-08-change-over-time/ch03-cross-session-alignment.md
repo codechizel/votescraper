@@ -18,7 +18,7 @@ The analogy: two thermometers that measure temperature in different units. One r
 
 ### The Formula
 
-The alignment is an **affine transformation** — a fancy term for "stretch and shift":
+The alignment is an **affine transformation**. In plain English, an affine transformation is a combination of stretching (or compressing) and shifting — like converting temperatures from Celsius to Fahrenheit. The formula `new_score = A × old_score + B` stretches by factor A and shifts by amount B, putting both sessions on the same scale. Here's what that looks like:
 
 ```
 xi_aligned = A × xi_original + B

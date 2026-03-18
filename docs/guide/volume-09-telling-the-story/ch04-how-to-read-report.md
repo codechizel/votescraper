@@ -70,6 +70,8 @@ The signature visualization. X-axis: ideology (liberal to conservative). Y-axis:
 **Mavericks Section**
 Prose identifying the most rebellious legislator in each party in each chamber. For each maverick, you'll see their party unity score, how it compares to the caucus average, and a sentence explaining their pattern.
 
+**Common misreading:** A maverick is not necessarily a moderate. A legislator can be ideologically extreme but defect on one or two specific issues (guns, education, agriculture) where their position diverges from the party base. Always check the profile's defection list before assuming a maverick is centrist.
+
 *What to look for:* The *magnitude* of the gap between the maverick's unity and the party average. A maverick at 72% in a party averaging 92% is modestly independent. A maverick at 55% is dramatically so.
 
 **Profile Cards**

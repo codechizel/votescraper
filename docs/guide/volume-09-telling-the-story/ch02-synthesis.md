@@ -64,7 +64,7 @@ The detection logic:
 1. Filter to one party in one chamber
 2. Find the legislator with the lowest `unity_score`
 3. If there's a tie, break it by `weighted_maverick` — the rate of defection on close votes (where the margin was tight, so the defection mattered more)
-4. Skip detection entirely if all members have unity above 0.95 — in an extremely disciplined caucus, the "most rebellious" member at 96% isn't meaningfully a maverick
+4. Skip detection entirely if all members have unity above 0.95 — in an extremely disciplined caucus, the "most rebellious" member at 96% isn't meaningfully a maverick. This threshold is a design choice to avoid false positives: when even the biggest rebel votes with the party 96% of the time, labeling them a "maverick" would mislead readers into thinking the caucus has real dissent
 
 The algorithm detects mavericks in both the majority and minority parties. In Kansas, that typically means a Republican maverick (in the majority) and a Democratic maverick (in the minority), for each chamber — potentially four mavericks total.
 
@@ -80,7 +80,7 @@ Finding them requires two pieces of information working together:
 
 **Step 1: Find the cross-party midpoint.** Compute the median ideal point for each party and take their average. In a chamber where the Republican median is +1.5 and the Democratic median is -1.2, the midpoint is +0.15. Legislators near this point are ideologically between the parties.
 
-**Step 2: Filter to nearby candidates.** Only legislators within 1.0 standard deviations of the midpoint qualify. This prevents a far-right Republican from being named "bridge-builder" just because they have high betweenness centrality (which could happen in a disconnected network where one member happens to link two Republican factions).
+**Step 2: Filter to nearby candidates.** Only legislators within 1.0 standard deviations of the midpoint qualify. The 1.0 standard deviation boundary is a pragmatic choice — wide enough to capture genuine centrists, narrow enough to exclude partisans who occasionally cross the aisle. This prevents a far-right Republican from being named "bridge-builder" just because they have high betweenness centrality (which could happen in a disconnected network where one member happens to link two Republican factions).
 
 **Step 3: Rank by centrality.** Among the qualifying candidates, the legislator with the highest network centrality wins. The specific centrality measure depends on the network structure:
 
@@ -106,7 +106,7 @@ The detection logic:
 
 1. Compute each majority-party member's percentile rank on both IRT ideology and clustering loyalty
 2. Find the legislator with the largest gap between the two ranks
-3. Require the gap to exceed 0.50 (50 percentile points) — otherwise it's not surprising enough to highlight
+3. Require the gap to exceed 0.50 (50 percentile points) — otherwise it's not surprising enough to highlight. This threshold is intentionally conservative — we'd rather miss a subtle paradox than highlight someone whose metrics barely disagree
 4. Determine the direction: does this legislator defect rightward (more conservative than their loyalty suggests), leftward, or toward the center?
 
 The paradox narrative explains the contradiction in plain language: "Representative Davis ranks 3rd most conservative among 85 Republicans by IRT, but only 67th in clustering loyalty — she defects rightward on bills where even most conservatives stay with the party."
