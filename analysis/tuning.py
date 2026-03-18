@@ -8,7 +8,7 @@ Django dashboard, these will be read from the database instead.
 
 # ── Vote Filtering ────────────────────────────────────────────────────────
 
-CONTESTED_THRESHOLD = 0.025
+CONTESTED_THRESHOLD = 0.10
 """Drop votes where the minority side is below this fraction.
 
 A vote with 97.5% Yea / 2.5% Nay has minority_frac = 0.025.  At the
