@@ -10,7 +10,6 @@ from dataclasses import dataclass
 
 import numpy as np
 import polars as pl
-from numpy.typing import NDArray
 
 # ---------------------------------------------------------------------------
 # Tuning constants
@@ -218,6 +217,56 @@ def _build_bridge_observations(
     )
 
 
+def _solve_pairwise_link(
+    roster: pl.DataFrame,
+    session_a: str,
+    session_b: str,
+    chamber: str,
+    trim_pct: int = TRIM_PCT,
+) -> tuple[float, float]:
+    """Estimate affine (A, B) mapping session_a scores to session_b scale.
+
+    xi_b[i] = A * xi_a[i] + B  for bridge legislators i.
+
+    Returns (A, B). Falls back to (1.0, 0.0) if insufficient bridges.
+    """
+    chamber_roster = roster.filter(pl.col("chamber") == chamber)
+    a_scores = (
+        chamber_roster.filter(pl.col("session") == session_a)
+        .select("name_norm", "xi_canonical")
+        .rename({"xi_canonical": "xi_a"})
+    )
+    b_scores = (
+        chamber_roster.filter(pl.col("session") == session_b)
+        .select("name_norm", "xi_canonical")
+        .rename({"xi_canonical": "xi_b"})
+    )
+    bridges = a_scores.join(b_scores, on="name_norm", how="inner")
+
+    if bridges.height < MIN_BRIDGES:
+        return (1.0, 0.0)
+
+    xi_a = bridges["xi_a"].to_numpy()
+    xi_b = bridges["xi_b"].to_numpy()
+
+    # OLS: xi_b = A * xi_a + B
+    X = np.column_stack([xi_a, np.ones(len(xi_a))])
+    params, _, _, _ = np.linalg.lstsq(X, xi_b, rcond=None)
+
+    # Trimmed re-fit
+    if trim_pct > 0 and len(xi_a) > 10:
+        residuals = X @ params - xi_b
+        abs_resid = np.abs(residuals)
+        threshold = np.percentile(abs_resid, 100 - trim_pct)
+        keep = abs_resid <= threshold
+        if np.sum(keep) >= 5:
+            X_trim = X[keep]
+            y_trim = xi_b[keep]
+            params, _, _, _ = np.linalg.lstsq(X_trim, y_trim, rcond=None)
+
+    return (float(params[0]), float(params[1]))
+
+
 def solve_simultaneous_alignment(
     roster: pl.DataFrame,
     sessions: list[str],
@@ -225,99 +274,79 @@ def solve_simultaneous_alignment(
     reference: str,
     trim_pct: int = TRIM_PCT,
 ) -> dict[str, tuple[float, float]]:
-    """Solve for affine (A, B) for all sessions simultaneously.
+    """Chained pairwise affine alignment (Battauz 2023, GLS 1999).
 
-    Minimizes:
-      sum_i (A_s * xi_s[i] + B_s - A_t * xi_t[i] - B_t)^2
-    subject to A_ref = 1, B_ref = 0.
+    For each adjacent pair, estimates (A, B) via trimmed OLS on bridge
+    legislators. Chains the transformations to map every session onto the
+    reference scale.
+
+    Despite the function name (kept for API compatibility), this uses
+    pairwise chaining, not simultaneous least-squares. The simultaneous
+    approach produced degenerate coefficients — see ADR-0120.
 
     Parameters
     ----------
     roster
         Global roster DataFrame.
     sessions
-        Ordered list of session names.
+        Ordered list of session names (chronological).
     chamber
         "House" or "Senate".
     reference
         Reference session name (A=1, B=0).
     trim_pct
-        Percentage of extreme residuals to trim.
+        Percentage of extreme residuals to trim per link.
 
     Returns
     -------
-    Dict mapping session -> (A, B). Reference session maps to (1.0, 0.0).
+    Dict mapping session -> (A_total, B_total) to reach the reference scale.
     """
-    obs = _build_bridge_observations(roster, sessions, chamber)
-    if obs.height == 0:
-        return {s: (1.0, 0.0) for s in sessions}
+    if len(sessions) < 2:
+        return {sessions[0]: (1.0, 0.0)} if sessions else {}
 
-    non_ref = [s for s in sessions if s != reference]
-    if not non_ref:
-        return {reference: (1.0, 0.0)}
+    # Step 1: Compute pairwise links between adjacent sessions
+    # Link maps session[i] → session[i+1]
+    pairwise: dict[tuple[str, str], tuple[float, float]] = {}
+    for i in range(len(sessions) - 1):
+        sa, sb = sessions[i], sessions[i + 1]
+        A, B = _solve_pairwise_link(roster, sa, sb, chamber, trim_pct)
+        pairwise[(sa, sb)] = (A, B)
 
-    session_idx = {s: i for i, s in enumerate(non_ref)}
-    n_params = len(non_ref) * 2  # A_t, B_t for each non-reference session
-    n_obs = obs.height
+    # Step 2: Find the reference session index
+    ref_idx = sessions.index(reference) if reference in sessions else len(sessions) - 1
 
-    def _build_system(
-        obs_df: pl.DataFrame,
-    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-        X = np.zeros((obs_df.height, n_params))
-        y = np.zeros(obs_df.height)
-
-        for row_idx, row in enumerate(obs_df.iter_rows(named=True)):
-            ss, st = row["session_s"], row["session_t"]
-            xi_s, xi_t = row["xi_s"], row["xi_t"]
-
-            # Equation: A_s * xi_s + B_s - A_t * xi_t - B_t = 0
-            # For reference session, A=1, B=0 are substituted directly.
-            if ss == reference:
-                # xi_s (known) = A_t * xi_t + B_t
-                # -> -A_t * xi_t - B_t = -xi_s
-                idx_t = session_idx[st]
-                X[row_idx, idx_t * 2] = -xi_t  # A_t coefficient
-                X[row_idx, idx_t * 2 + 1] = -1.0  # B_t coefficient
-                y[row_idx] = -xi_s
-            elif st == reference:
-                # A_s * xi_s + B_s = xi_t (known)
-                idx_s = session_idx[ss]
-                X[row_idx, idx_s * 2] = xi_s  # A_s coefficient
-                X[row_idx, idx_s * 2 + 1] = 1.0  # B_s coefficient
-                y[row_idx] = xi_t
-            else:
-                # A_s * xi_s + B_s - A_t * xi_t - B_t = 0
-                idx_s = session_idx[ss]
-                idx_t = session_idx[st]
-                X[row_idx, idx_s * 2] = xi_s
-                X[row_idx, idx_s * 2 + 1] = 1.0
-                X[row_idx, idx_t * 2] = -xi_t
-                X[row_idx, idx_t * 2 + 1] = -1.0
-                y[row_idx] = 0.0
-
-        return X, y
-
-    # Initial fit
-    X, y = _build_system(obs)
-    params, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
-
-    # Compute residuals and trim
-    residuals = X @ params - y
-    if trim_pct > 0 and n_obs > 10:
-        abs_resid = np.abs(residuals)
-        threshold = np.percentile(abs_resid, 100 - trim_pct)
-        keep_mask = abs_resid <= threshold
-        obs_trimmed = obs.filter(pl.Series(keep_mask))
-        if obs_trimmed.height >= n_params + 1:
-            X_trim, y_trim = _build_system(obs_trimmed)
-            params, _, _, _ = np.linalg.lstsq(X_trim, y_trim, rcond=None)
-
-    # Unpack
+    # Step 3: Chain forward from each session to the reference
     coefficients: dict[str, tuple[float, float]] = {reference: (1.0, 0.0)}
-    for s, idx in session_idx.items():
-        A = float(params[idx * 2])
-        B = float(params[idx * 2 + 1])
-        coefficients[s] = (A, B)
+
+    # Sessions before reference: chain forward (t → t+1 → ... → ref)
+    for i in range(ref_idx - 1, -1, -1):
+        # Compose: map session[i] → session[i+1], then session[i+1] → ref
+        A_link, B_link = pairwise[(sessions[i], sessions[i + 1])]
+        A_next, B_next = coefficients[sessions[i + 1]]
+        # Composition: f(g(x)) = A_next * (A_link * x + B_link) + B_next
+        A_total = A_next * A_link
+        B_total = A_next * B_link + B_next
+        coefficients[sessions[i]] = (A_total, B_total)
+
+    # Sessions after reference: chain backward (ref → ... → t)
+    # We need the inverse: map session[i+1] → session[i] is the link,
+    # but we need session[i+1] → ref. Since ref → session[i+1] means
+    # we need to invert the link direction.
+    for i in range(ref_idx, len(sessions) - 1):
+        # Link maps session[i] → session[i+1], so to go from
+        # session[i+1] to session[i]'s scale: invert the link.
+        A_link, B_link = pairwise[(sessions[i], sessions[i + 1])]
+        if abs(A_link) < 1e-10:
+            coefficients[sessions[i + 1]] = (1.0, 0.0)
+            continue
+        # Inverse: x = (y - B_link) / A_link → A_inv = 1/A_link, B_inv = -B_link/A_link
+        A_inv = 1.0 / A_link
+        B_inv = -B_link / A_link
+        # Compose with session[i] → ref
+        A_prev, B_prev = coefficients[sessions[i]]
+        A_total = A_prev * A_inv
+        B_total = A_prev * B_inv + B_prev
+        coefficients[sessions[i + 1]] = (A_total, B_total)
 
     return coefficients
 
@@ -325,81 +354,6 @@ def solve_simultaneous_alignment(
 # ---------------------------------------------------------------------------
 # Bootstrap
 # ---------------------------------------------------------------------------
-
-
-def bootstrap_alignment(
-    roster: pl.DataFrame,
-    sessions: list[str],
-    chamber: str,
-    reference: str,
-    n_bootstrap: int = N_BOOTSTRAP,
-    seed: int = BOOTSTRAP_SEED,
-    trim_pct: int = TRIM_PCT,
-) -> dict[str, tuple[float, float, float, float]]:
-    """Bootstrap the simultaneous alignment for uncertainty quantification.
-
-    Returns dict: session -> (A_lo, A_hi, B_lo, B_hi) at 95% CI.
-    """
-    rng = np.random.default_rng(seed)
-    obs = _build_bridge_observations(roster, sessions, chamber)
-    if obs.height == 0:
-        return {s: (1.0, 1.0, 0.0, 0.0) for s in sessions}
-
-    non_ref = [s for s in sessions if s != reference]
-    n_obs = obs.height
-
-    # Collect bootstrap A, B per session
-    boot_params: dict[str, list[tuple[float, float]]] = {s: [] for s in non_ref}
-
-    for _ in range(n_bootstrap):
-        indices = rng.choice(n_obs, size=n_obs, replace=True)
-        boot_obs = obs[indices.tolist()]
-        try:
-            coefs = solve_simultaneous_alignment(
-                roster=_roster_from_obs(boot_obs, roster, chamber),
-                sessions=sessions,
-                chamber=chamber,
-                reference=reference,
-                trim_pct=trim_pct,
-            )
-            for s in non_ref:
-                boot_params[s].append(coefs[s])
-        except Exception:
-            continue  # skip failed bootstrap iterations
-
-    result: dict[str, tuple[float, float, float, float]] = {reference: (1.0, 1.0, 0.0, 0.0)}
-    for s in non_ref:
-        if boot_params[s]:
-            As = [p[0] for p in boot_params[s]]
-            Bs = [p[1] for p in boot_params[s]]
-            result[s] = (
-                float(np.percentile(As, 2.5)),
-                float(np.percentile(As, 97.5)),
-                float(np.percentile(Bs, 2.5)),
-                float(np.percentile(Bs, 97.5)),
-            )
-        else:
-            result[s] = (np.nan, np.nan, np.nan, np.nan)
-
-    return result
-
-
-def _roster_from_obs(
-    obs: pl.DataFrame,
-    full_roster: pl.DataFrame,
-    chamber: str,
-) -> pl.DataFrame:
-    """Reconstruct a roster subset from bridge observations for bootstrap.
-
-    Rather than resampling the roster itself, we resample bridge observations
-    and pass the full roster — the alignment solver extracts its own obs.
-    For bootstrap, we just pass the full roster and let the solver work.
-    """
-    # The solver builds its own observations from the roster, so for
-    # bootstrap we need to resample at the observation level.
-    # Simplification: return the full roster and handle resampling in
-    # a dedicated bootstrap solver path.
-    return full_roster
 
 
 def bootstrap_alignment_direct(
@@ -411,77 +365,89 @@ def bootstrap_alignment_direct(
     seed: int = BOOTSTRAP_SEED,
     trim_pct: int = TRIM_PCT,
 ) -> dict[str, BootstrapStats]:
-    """Bootstrap by resampling bridge observations directly.
+    """Bootstrap the chained alignment by resampling bridge legislators.
 
-    More efficient than re-solving the full alignment for each resample.
-    Returns dict: session -> BootstrapStats with Var(A), Var(B), Cov(A,B)
-    for delta-method uncertainty propagation, plus 95% percentile CIs.
+    For each bootstrap iteration, resamples bridge legislators at each
+    pairwise link, re-estimates the chain, and records the total (A, B)
+    per session. Returns Var(A), Var(B), Cov(A,B) for delta-method
+    uncertainty propagation.
     """
-    obs = _build_bridge_observations(roster, sessions, chamber)
-    if obs.height == 0:
-        return {s: BootstrapStats(s, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0) for s in sessions}
-
     rng = np.random.default_rng(seed)
     non_ref = [s for s in sessions if s != reference]
-    session_idx = {s: i for i, s in enumerate(non_ref)}
-    n_params = len(non_ref) * 2
-    n_obs = obs.height
+    ref_idx = sessions.index(reference) if reference in sessions else len(sessions) - 1
 
-    # Pre-build the full design matrix once
-    X_full = np.zeros((n_obs, n_params))
-    y_full = np.zeros(n_obs)
+    # Pre-extract bridge pairs for each adjacent link
+    chamber_roster = roster.filter(pl.col("chamber") == chamber)
+    link_data: dict[tuple[str, str], pl.DataFrame] = {}
+    for i in range(len(sessions) - 1):
+        sa, sb = sessions[i], sessions[i + 1]
+        a_scores = (
+            chamber_roster.filter(pl.col("session") == sa)
+            .select("name_norm", "xi_canonical")
+            .rename({"xi_canonical": "xi_a"})
+        )
+        b_scores = (
+            chamber_roster.filter(pl.col("session") == sb)
+            .select("name_norm", "xi_canonical")
+            .rename({"xi_canonical": "xi_b"})
+        )
+        bridges = a_scores.join(b_scores, on="name_norm", how="inner")
+        link_data[(sa, sb)] = bridges
 
-    for row_idx, row in enumerate(obs.iter_rows(named=True)):
-        ss, st = row["session_s"], row["session_t"]
-        xi_s, xi_t = row["xi_s"], row["xi_t"]
+    # Collect bootstrap (A_total, B_total) per session
+    boot_results: dict[str, list[tuple[float, float]]] = {s: [] for s in non_ref}
 
-        if ss == reference:
-            idx_t = session_idx[st]
-            X_full[row_idx, idx_t * 2] = -xi_t
-            X_full[row_idx, idx_t * 2 + 1] = -1.0
-            y_full[row_idx] = -xi_s
-        elif st == reference:
-            idx_s = session_idx[ss]
-            X_full[row_idx, idx_s * 2] = xi_s
-            X_full[row_idx, idx_s * 2 + 1] = 1.0
-            y_full[row_idx] = xi_t
-        else:
-            idx_s = session_idx[ss]
-            idx_t = session_idx[st]
-            X_full[row_idx, idx_s * 2] = xi_s
-            X_full[row_idx, idx_s * 2 + 1] = 1.0
-            X_full[row_idx, idx_t * 2] = -xi_t
-            X_full[row_idx, idx_t * 2 + 1] = -1.0
-            y_full[row_idx] = 0.0
+    for _ in range(n_bootstrap):
+        # Resample each pairwise link independently
+        pairwise_boot: dict[tuple[str, str], tuple[float, float]] = {}
+        for key, bridges in link_data.items():
+            n = bridges.height
+            if n < MIN_BRIDGES:
+                pairwise_boot[key] = (1.0, 0.0)
+                continue
+            idx = rng.choice(n, size=n, replace=True)
+            boot_bridges = bridges[idx.tolist()]
+            xi_a = boot_bridges["xi_a"].to_numpy()
+            xi_b = boot_bridges["xi_b"].to_numpy()
+            X = np.column_stack([xi_a, np.ones(len(xi_a))])
+            try:
+                p, _, _, _ = np.linalg.lstsq(X, xi_b, rcond=None)
+                pairwise_boot[key] = (float(p[0]), float(p[1]))
+            except np.linalg.LinAlgError:
+                pairwise_boot[key] = (1.0, 0.0)
 
-    # Bootstrap: resample rows of the design matrix
-    all_params = np.zeros((n_bootstrap, n_params))
-    valid = 0
-    for b in range(n_bootstrap):
-        idx = rng.choice(n_obs, size=n_obs, replace=True)
-        X_b = X_full[idx]
-        y_b = y_full[idx]
-        try:
-            p, _, _, _ = np.linalg.lstsq(X_b, y_b, rcond=None)
-            all_params[valid] = p
-            valid += 1
-        except np.linalg.LinAlgError:
-            continue
+        # Chain composition (same logic as solve_simultaneous_alignment)
+        coefs: dict[str, tuple[float, float]] = {reference: (1.0, 0.0)}
+        for i in range(ref_idx - 1, -1, -1):
+            A_link, B_link = pairwise_boot.get((sessions[i], sessions[i + 1]), (1.0, 0.0))
+            A_next, B_next = coefs[sessions[i + 1]]
+            coefs[sessions[i]] = (A_next * A_link, A_next * B_link + B_next)
+        for i in range(ref_idx, len(sessions) - 1):
+            A_link, B_link = pairwise_boot.get((sessions[i], sessions[i + 1]), (1.0, 0.0))
+            if abs(A_link) < 1e-10:
+                coefs[sessions[i + 1]] = (1.0, 0.0)
+                continue
+            A_inv, B_inv = 1.0 / A_link, -B_link / A_link
+            A_prev, B_prev = coefs[sessions[i]]
+            coefs[sessions[i + 1]] = (A_prev * A_inv, A_prev * B_inv + B_prev)
 
-    all_params = all_params[:valid]
+        for s in non_ref:
+            boot_results[s].append(coefs.get(s, (1.0, 0.0)))
 
+    # Compute Var, Cov from bootstrap samples
     result: dict[str, BootstrapStats] = {
         reference: BootstrapStats(reference, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0)
     }
-    for s, idx in session_idx.items():
-        if valid > 0:
-            As = all_params[:, idx * 2]
-            Bs = all_params[:, idx * 2 + 1]
+    for s in non_ref:
+        samples = boot_results[s]
+        if samples:
+            As = np.array([p[0] for p in samples])
+            Bs = np.array([p[1] for p in samples])
             result[s] = BootstrapStats(
                 session=s,
                 var_A=float(np.var(As, ddof=1)),
                 var_B=float(np.var(Bs, ddof=1)),
-                cov_AB=float(np.cov(As, Bs)[0, 1]),
+                cov_AB=float(np.cov(As, Bs)[0, 1]) if len(As) > 1 else 0.0,
                 A_lo=float(np.percentile(As, 2.5)),
                 A_hi=float(np.percentile(As, 97.5)),
                 B_lo=float(np.percentile(Bs, 2.5)),
