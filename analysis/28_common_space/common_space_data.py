@@ -60,6 +60,24 @@ class LinkingCoefficients:
 
 
 @dataclass(frozen=True)
+class BootstrapStats:
+    """Per-session bootstrap statistics for uncertainty propagation.
+
+    Stores Var(A), Var(B), Cov(A,B) needed for the delta method:
+      Var(A*xi + B) = xi^2 * var_A + var_B + 2*xi*cov_AB
+    """
+
+    session: str
+    var_A: float
+    var_B: float
+    cov_AB: float
+    A_lo: float
+    A_hi: float
+    B_lo: float
+    B_hi: float
+
+
+@dataclass(frozen=True)
 class QualityGate:
     """Quality gate result for one chamber-session."""
 
@@ -93,7 +111,7 @@ def build_global_roster(
     Returns
     -------
     DataFrame with columns: name_norm, legislator_slug, full_name, party,
-    session, chamber, xi_canonical.
+    session, chamber, xi_canonical, xi_sd.
     """
     rows: list[dict] = []
     for session, chambers in sorted(all_scores.items()):
@@ -108,6 +126,7 @@ def build_global_roster(
                         "session": session,
                         "chamber": chamber,
                         "xi_canonical": row["xi_mean"],
+                        "xi_sd": row.get("xi_sd", 0.0),
                     }
                 )
     return pl.DataFrame(rows)
@@ -391,15 +410,16 @@ def bootstrap_alignment_direct(
     n_bootstrap: int = N_BOOTSTRAP,
     seed: int = BOOTSTRAP_SEED,
     trim_pct: int = TRIM_PCT,
-) -> dict[str, tuple[float, float, float, float]]:
+) -> dict[str, BootstrapStats]:
     """Bootstrap by resampling bridge observations directly.
 
     More efficient than re-solving the full alignment for each resample.
-    Returns dict: session -> (A_lo, A_hi, B_lo, B_hi) at 95% CI.
+    Returns dict: session -> BootstrapStats with Var(A), Var(B), Cov(A,B)
+    for delta-method uncertainty propagation, plus 95% percentile CIs.
     """
     obs = _build_bridge_observations(roster, sessions, chamber)
     if obs.height == 0:
-        return {s: (1.0, 1.0, 0.0, 0.0) for s in sessions}
+        return {s: BootstrapStats(s, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0) for s in sessions}
 
     rng = np.random.default_rng(seed)
     non_ref = [s for s in sessions if s != reference]
@@ -450,19 +470,25 @@ def bootstrap_alignment_direct(
 
     all_params = all_params[:valid]
 
-    result: dict[str, tuple[float, float, float, float]] = {reference: (1.0, 1.0, 0.0, 0.0)}
+    result: dict[str, BootstrapStats] = {
+        reference: BootstrapStats(reference, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0)
+    }
     for s, idx in session_idx.items():
         if valid > 0:
             As = all_params[:, idx * 2]
             Bs = all_params[:, idx * 2 + 1]
-            result[s] = (
-                float(np.percentile(As, 2.5)),
-                float(np.percentile(As, 97.5)),
-                float(np.percentile(Bs, 2.5)),
-                float(np.percentile(Bs, 97.5)),
+            result[s] = BootstrapStats(
+                session=s,
+                var_A=float(np.var(As, ddof=1)),
+                var_B=float(np.var(Bs, ddof=1)),
+                cov_AB=float(np.cov(As, Bs)[0, 1]),
+                A_lo=float(np.percentile(As, 2.5)),
+                A_hi=float(np.percentile(As, 97.5)),
+                B_lo=float(np.percentile(Bs, 2.5)),
+                B_hi=float(np.percentile(Bs, 97.5)),
             )
         else:
-            result[s] = (np.nan, np.nan, np.nan, np.nan)
+            result[s] = BootstrapStats(s, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
 
     return result
 
@@ -475,47 +501,68 @@ def bootstrap_alignment_direct(
 def transform_scores(
     roster: pl.DataFrame,
     coefficients: dict[str, tuple[float, float]],
-    bootstrap_cis: dict[str, tuple[float, float, float, float]] | None = None,
+    bootstrap_stats: dict[str, BootstrapStats] | None = None,
 ) -> pl.DataFrame:
-    """Apply affine transformation to produce common-space scores.
+    """Apply affine transformation with proper uncertainty propagation.
+
+    Combines two independent sources of uncertainty via the delta method:
+
+    1. **IRT estimation uncertainty** (xi_sd from the per-biennium posterior):
+       sd_irt = |A| * xi_sd
+
+    2. **Alignment uncertainty** (Var(A), Var(B), Cov(A,B) from bootstrap):
+       sd_align = sqrt(xi^2 * Var(A) + Var(B) + 2*xi*Cov(A,B))
+
+    3. **Combined** (independent sources, quadrature sum):
+       sd_total = sqrt(sd_irt^2 + sd_align^2)
+
+    For the reference session (A=1, B=0, Var=0), sd_total = xi_sd exactly.
+    For distant sessions, alignment uncertainty dominates.
 
     Parameters
     ----------
     roster
-        Global roster with xi_canonical column.
+        Global roster with xi_canonical and xi_sd columns.
     coefficients
         Dict mapping session -> (A, B).
-    bootstrap_cis
-        Optional dict mapping session -> (A_lo, A_hi, B_lo, B_hi).
+    bootstrap_stats
+        Optional dict mapping session -> BootstrapStats.
 
     Returns
     -------
-    Roster with additional columns: xi_common, xi_common_lo, xi_common_hi.
+    DataFrame with additional columns: xi_common, xi_common_sd, xi_common_lo,
+    xi_common_hi (95% CI from sd_total).
     """
     rows: list[dict] = []
     for row in roster.iter_rows(named=True):
         session = row["session"]
         xi = row["xi_canonical"]
+        xi_sd_irt = row.get("xi_sd", 0.0) or 0.0
         A, B = coefficients.get(session, (1.0, 0.0))
         xi_common = A * xi + B
 
-        xi_lo, xi_hi = xi_common, xi_common
-        if bootstrap_cis and session in bootstrap_cis:
-            a_lo, a_hi, b_lo, b_hi = bootstrap_cis[session]
-            # Propagate uncertainty: worst-case bounds
-            candidates = [
-                a_lo * xi + b_lo,
-                a_lo * xi + b_hi,
-                a_hi * xi + b_lo,
-                a_hi * xi + b_hi,
-            ]
-            xi_lo = min(candidates)
-            xi_hi = max(candidates)
+        # IRT uncertainty on common scale
+        sd_irt = abs(A) * xi_sd_irt
+
+        # Alignment uncertainty via delta method
+        sd_align = 0.0
+        if bootstrap_stats and session in bootstrap_stats:
+            bs = bootstrap_stats[session]
+            var_common = xi**2 * bs.var_A + bs.var_B + 2 * xi * bs.cov_AB
+            sd_align = float(np.sqrt(max(var_common, 0.0)))
+
+        # Combined uncertainty (quadrature)
+        sd_total = float(np.sqrt(sd_irt**2 + sd_align**2))
+
+        # 95% CI
+        xi_lo = xi_common - 1.96 * sd_total
+        xi_hi = xi_common + 1.96 * sd_total
 
         rows.append(
             {
                 **row,
                 "xi_common": xi_common,
+                "xi_common_sd": sd_total,
                 "xi_common_lo": xi_lo,
                 "xi_common_hi": xi_hi,
             }

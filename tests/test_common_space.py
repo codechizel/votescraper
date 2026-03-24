@@ -4,6 +4,7 @@ import numpy as np
 import polars as pl
 from analysis.common_space_data import (
     PARTY_D_MIN,
+    BootstrapStats,
     build_global_roster,
     compute_bridge_matrix,
     compute_polarization_trajectory,
@@ -220,6 +221,7 @@ class TestTransformScores:
                 "session": ["X"],
                 "chamber": ["House"],
                 "xi_canonical": [2.0],
+                "xi_sd": [0.1],
             }
         )
         transformed = transform_scores(roster, {"X": (3.0, -1.0)})
@@ -235,13 +237,19 @@ class TestTransformScores:
                 "session": ["X"],
                 "chamber": ["House"],
                 "xi_canonical": [1.0],
+                "xi_sd": [0.2],
             }
         )
-        cis = {"X": (0.8, 1.2, -0.5, 0.5)}
-        transformed = transform_scores(roster, {"X": (1.0, 0.0)}, cis)
+        stats = {
+            "X": BootstrapStats(
+                "X", var_A=0.01, var_B=0.04, cov_AB=0.0, A_lo=0.8, A_hi=1.2, B_lo=-0.5, B_hi=0.5
+            )
+        }
+        transformed = transform_scores(roster, {"X": (1.0, 0.0)}, stats)
         row = transformed.row(0, named=True)
         assert row["xi_common_lo"] < row["xi_common"]
         assert row["xi_common_hi"] > row["xi_common"]
+        assert row["xi_common_sd"] > 0.0
 
 
 # ---------------------------------------------------------------------------

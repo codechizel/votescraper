@@ -17,10 +17,12 @@ try:
     from analysis.report import (
         FigureSection,
         InteractiveSection,
+        InteractiveTableSection,
         KeyFindingsSection,
         ReportBuilder,
         TableSection,
         make_gt,
+        make_interactive_table,
     )
     from analysis.tuning import PARTY_COLORS
 except ModuleNotFoundError:
@@ -28,10 +30,12 @@ except ModuleNotFoundError:
     from report import (  # type: ignore[no-redef]
         FigureSection,
         InteractiveSection,
+        InteractiveTableSection,
         KeyFindingsSection,
         ReportBuilder,
         TableSection,
         make_gt,
+        make_interactive_table,
     )
     from tuning import PARTY_COLORS  # type: ignore[no-redef]
 
@@ -94,19 +98,22 @@ def build_common_space_report(
 
     # ---- Per-chamber sections ----
     for chamber, r in all_results.items():
-        # ---- 3. Linking Coefficients ----
+        # ---- 3. Ideal Points Table (searchable/sortable) ----
+        _add_ideal_points_table(report, r, chamber)
+
+        # ---- 4. Linking Coefficients ----
         _add_linking_coefficients(report, r, chamber, plots_dir)
 
-        # ---- 4. Polarization Trajectory ----
+        # ---- 5. Polarization Trajectory ----
         _add_polarization_trajectory(report, r, chamber)
 
-        # ---- 5. Party Separation ----
+        # ---- 6. Party Separation ----
         _add_party_separation(report, r, chamber, plots_dir)
 
-        # ---- 6. Top Movers ----
+        # ---- 7. Top Movers ----
         _add_top_movers(report, r, chamber)
 
-        # ---- 7. Career Trajectories ----
+        # ---- 8. Career Trajectories ----
         _add_career_trajectories(report, r, chamber)
 
         # ---- 9. Quality Gates ----
@@ -116,6 +123,68 @@ def build_common_space_report(
 # ---------------------------------------------------------------------------
 # Section builders
 # ---------------------------------------------------------------------------
+
+
+def _add_ideal_points_table(
+    report: ReportBuilder,
+    r: dict,
+    chamber: str,
+) -> None:
+    """Searchable/sortable table of all legislators on the common scale."""
+    transformed = r["transformed"]
+    if transformed.height == 0:
+        return
+
+    display_cols = [
+        "full_name",
+        "party",
+        "session",
+        "xi_common",
+        "xi_common_sd",
+        "xi_common_lo",
+        "xi_common_hi",
+    ]
+    available = [c for c in display_cols if c in transformed.columns]
+    df = transformed.select(available).sort("xi_common", descending=True)
+
+    # Round numeric columns
+    for col in ["xi_common", "xi_common_sd", "xi_common_lo", "xi_common_hi"]:
+        if col in df.columns:
+            df = df.with_columns(pl.col(col).round(3))
+
+    html = make_interactive_table(
+        df,
+        title=(
+            f"{chamber} — Common Space Ideal Points "
+            f"({df.height} legislator-sessions, positive = conservative)"
+        ),
+        column_labels={
+            "full_name": "Legislator",
+            "party": "Party",
+            "session": "Session",
+            "xi_common": "Score",
+            "xi_common_sd": "Std Dev",
+            "xi_common_lo": "95% CI Low",
+            "xi_common_hi": "95% CI High",
+        },
+        number_formats={
+            "xi_common": ".3f",
+            "xi_common_sd": ".3f",
+            "xi_common_lo": ".3f",
+            "xi_common_hi": ".3f",
+        },
+        caption=(
+            "Combined uncertainty from IRT posterior + alignment bootstrap. "
+            "Search by name or session. Sort by any column."
+        ),
+    )
+    report.add(
+        InteractiveTableSection(
+            id=f"ideal_points_{chamber.lower()}",
+            title=f"{chamber} — Common Space Ideal Points",
+            html=html,
+        )
+    )
 
 
 def _add_bridge_heatmap(
@@ -209,7 +278,9 @@ def _add_linking_coefficients(
             id=f"linking_coefs_{chamber.lower()}",
             title=f"{chamber} — Linking Coefficients with 95% Bootstrap CIs",
             path=path,
-            alt_text=f"Scale and shift coefficients for {chamber} alignment with confidence intervals",
+            alt_text=(
+                f"Scale and shift coefficients for {chamber} alignment with confidence intervals"
+            ),
         )
     )
 
@@ -299,7 +370,9 @@ def _add_party_separation(
             id=f"party_sep_{chamber.lower()}",
             title=f"{chamber} — Party Separation (Cohen's d) per Biennium",
             path=path,
-            alt_text=f"Bar chart showing party separation on aligned scale for each {chamber} biennium",
+            alt_text=(
+                f"Bar chart showing party separation on aligned scale for each {chamber} biennium"
+            ),
         )
     )
 

@@ -400,10 +400,10 @@ def main() -> None:
                     print(f"    {s}: A={A:.4f}, B={B:+.4f}")
 
             # Bootstrap
-            bootstrap_cis = None
+            bootstrap_stats = None
             if args.bootstrap:
                 print(f"  Bootstrap ({args.n_bootstrap} iterations)...")
-                bootstrap_cis = bootstrap_alignment_direct(
+                bootstrap_stats = bootstrap_alignment_direct(
                     roster=roster,
                     sessions=chamber_sessions,
                     chamber=chamber_cap,
@@ -415,7 +415,7 @@ def main() -> None:
             # Transform scores
             print("  Transforming scores to common scale...")
             chamber_roster = roster.filter(pl.col("chamber") == chamber_cap)
-            transformed = transform_scores(chamber_roster, coefficients, bootstrap_cis)
+            transformed = transform_scores(chamber_roster, coefficients, bootstrap_stats)
 
             # Quality gates
             print("  Running quality gates...")
@@ -449,25 +449,39 @@ def main() -> None:
             coef_rows = []
             for s in chamber_sessions:
                 A, B = coefficients[s]
-                ci = bootstrap_cis[s] if bootstrap_cis and s in bootstrap_cis else (A, A, B, B)
-                coef_rows.append(
-                    {
-                        "session": s,
-                        "chamber": chamber_cap,
-                        "A": A,
-                        "B": B,
-                        "A_lo": ci[0],
-                        "A_hi": ci[1],
-                        "B_lo": ci[2],
-                        "B_hi": ci[3],
-                    }
-                )
+                if bootstrap_stats and s in bootstrap_stats:
+                    bs = bootstrap_stats[s]
+                    coef_rows.append(
+                        {
+                            "session": s,
+                            "chamber": chamber_cap,
+                            "A": A,
+                            "B": B,
+                            "A_lo": bs.A_lo,
+                            "A_hi": bs.A_hi,
+                            "B_lo": bs.B_lo,
+                            "B_hi": bs.B_hi,
+                        }
+                    )
+                else:
+                    coef_rows.append(
+                        {
+                            "session": s,
+                            "chamber": chamber_cap,
+                            "A": A,
+                            "B": B,
+                            "A_lo": A,
+                            "A_hi": A,
+                            "B_lo": B,
+                            "B_hi": B,
+                        }
+                    )
             coef_df = pl.DataFrame(coef_rows)
 
             all_results[chamber_cap] = {
                 "transformed": transformed,
                 "coefficients": coefficients,
-                "bootstrap_cis": bootstrap_cis,
+                "bootstrap_stats": bootstrap_stats,
                 "coef_df": coef_df,
                 "gates": gates,
                 "trajectory": trajectory,
