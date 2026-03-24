@@ -238,7 +238,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--bootstrap",
-        "--no-bootstrap",
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Run bootstrap for uncertainty quantification (default: yes)",
