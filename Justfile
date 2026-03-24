@@ -183,6 +183,10 @@ cross-session *args:
 dynamic-irt *args:
     uv run python analysis/27_dynamic_irt/dynamic_irt.py {{args}}
 
+# Run common space ideal points (cross-temporal alignment)
+common-space *args:
+    uv run python analysis/28_common_space/common_space.py {{args}}
+
 # Run single-biennium pipeline (phases 01-25 + 07b)
 pipeline session="2025-26" *args:
     #!/usr/bin/env bash
@@ -221,10 +225,11 @@ pipeline session="2025-26" *args:
     echo ""
     echo "Pipeline complete: $RUN_ID"
 
-# Run cross-biennium pipeline (phases 26-27)
+# Run cross-biennium pipeline (phases 26-28)
 cross-pipeline *args:
     just cross-session {{args}}
     just dynamic-irt {{args}}
+    just common-space {{args}}
 
 # Generate dashboard index for a session
 dashboard session="2025-26" *args:
