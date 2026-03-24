@@ -28,9 +28,10 @@ Single-biennium pipeline (01-25 + 07b):
   24_synthesis        — Narrative Synthesis
   25_profiles         — Legislator Profiles
 
-Cross-biennium pipeline (26-27):
+Cross-biennium pipeline (26-28):
   26_cross_session — Cross-Biennium Validation
   27_dynamic_irt   — Dynamic Ideal Points
+  28_common_space  — Common Space Ideal Points (cross-temporal scale)
 
 Shared infrastructure at root: run_context.py, report.py
 
@@ -121,6 +122,9 @@ _MODULE_MAP: dict[str, str] = {
     "dynamic_irt": "27_dynamic_irt",
     "dynamic_irt_data": "27_dynamic_irt",
     "dynamic_irt_report": "27_dynamic_irt",
+    "common_space": "28_common_space",
+    "common_space_data": "28_common_space",
+    "common_space_report": "28_common_space",
 }
 
 
