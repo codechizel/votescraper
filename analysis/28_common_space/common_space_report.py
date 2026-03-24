@@ -116,7 +116,11 @@ def build_common_space_report(
         # ---- 8. Career Trajectories ----
         _add_career_trajectories(report, r, chamber)
 
-        # ---- 9. Quality Gates ----
+        # ---- 9. Career Scores ----
+        _add_career_scores_table(report, r, chamber)
+        _add_career_vs_recent(report, r, chamber, plots_dir)
+
+        # ---- 10. Quality Gates ----
         _add_quality_gates(report, r, chamber)
 
 
@@ -496,6 +500,138 @@ def _add_career_trajectories(
             aria_label=(
                 f"Interactive line chart showing ideological trajectories "
                 f"of long-serving {chamber} members"
+            ),
+        )
+    )
+
+
+def _add_career_scores_table(
+    report: ReportBuilder,
+    r: dict,
+    chamber: str,
+) -> None:
+    """Searchable/sortable table of career-fixed scores."""
+    career = r.get("career")
+    if career is None or career.height == 0:
+        return
+
+    display_cols = [
+        "full_name",
+        "party",
+        "n_sessions",
+        "first_session",
+        "last_session",
+        "career_score",
+        "career_se",
+        "career_lo",
+        "career_hi",
+        "i_squared",
+        "movement_flag",
+    ]
+    available = [c for c in display_cols if c in career.columns]
+    df = career.select(available)
+
+    for col in ["career_score", "career_se", "career_lo", "career_hi", "i_squared"]:
+        if col in df.columns:
+            df = df.with_columns(pl.col(col).round(3))
+
+    # Shorten session labels
+    for col in ["first_session", "last_session"]:
+        if col in df.columns:
+            df = df.with_columns(pl.col(col).str.split("_").list.first().alias(col))
+
+    html = make_interactive_table(
+        df,
+        title=(f"{chamber} — Career Scores ({df.height} legislators, positive = conservative)"),
+        column_labels={
+            "full_name": "Legislator",
+            "party": "Party",
+            "n_sessions": "Sessions",
+            "first_session": "First",
+            "last_session": "Last",
+            "career_score": "Career Score",
+            "career_se": "SE",
+            "career_lo": "95% CI Low",
+            "career_hi": "95% CI High",
+            "i_squared": "I²",
+            "movement_flag": "Stability",
+        },
+        number_formats={
+            "career_score": ".3f",
+            "career_se": ".3f",
+            "career_lo": ".3f",
+            "career_hi": ".3f",
+            "i_squared": ".2f",
+        },
+        caption=(
+            "Random-effects meta-analysis of per-session common-space scores. "
+            "I² measures heterogeneity: <0.25 = stable, >0.75 = mover."
+        ),
+    )
+    report.add(
+        InteractiveTableSection(
+            id=f"career_scores_{chamber.lower()}",
+            title=f"{chamber} — Career Scores (One Number Per Legislator)",
+            html=html,
+        )
+    )
+
+
+def _add_career_vs_recent(
+    report: ReportBuilder,
+    r: dict,
+    chamber: str,
+    plots_dir: Path,
+) -> None:
+    """Scatter: career score vs. most recent session score."""
+    career = r.get("career")
+    if career is None or career.height == 0:
+        return
+
+    multi = career.filter(pl.col("n_sessions") >= 2)
+    if multi.height < 3:
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    for party in ["Republican", "Democrat"]:
+        party_data = multi.filter(pl.col("party") == party)
+        if party_data.height == 0:
+            continue
+        color = PARTY_COLORS.get(party, "#999999")
+        ax.scatter(
+            party_data["most_recent_score"].to_numpy(),
+            party_data["career_score"].to_numpy(),
+            c=color,
+            alpha=0.6,
+            s=30,
+            label=party,
+        )
+
+    # Diagonal reference
+    lims = [
+        min(ax.get_xlim()[0], ax.get_ylim()[0]),
+        max(ax.get_xlim()[1], ax.get_ylim()[1]),
+    ]
+    ax.plot(lims, lims, "k--", alpha=0.3, linewidth=1)
+    ax.set_xlim(lims)
+    ax.set_ylim(lims)
+    ax.set_xlabel("Most Recent Session Score")
+    ax.set_ylabel("Career Score (RE Meta-Analysis)")
+    ax.set_title(f"{chamber} — Career Score vs. Most Recent Session")
+    ax.legend(fontsize=9)
+    ax.set_aspect("equal")
+    fig.tight_layout()
+
+    path = plots_dir / f"career_vs_recent_{chamber.lower()}.png"
+    save_fig(fig, path)
+    report.add(
+        FigureSection.from_file(
+            id=f"career_vs_recent_{chamber.lower()}",
+            title=f"{chamber} — Career Score vs. Most Recent Session",
+            path=path,
+            alt_text=(
+                f"Scatter plot comparing {chamber} career scores with most recent session scores"
             ),
         )
     )

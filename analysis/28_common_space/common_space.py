@@ -39,6 +39,7 @@ try:
         bootstrap_alignment_direct,
         build_global_roster,
         compute_bridge_matrix,
+        compute_career_scores,
         compute_polarization_trajectory,
         compute_quality_gates,
         solve_simultaneous_alignment,
@@ -54,6 +55,7 @@ except ModuleNotFoundError:
         bootstrap_alignment_direct,
         build_global_roster,
         compute_bridge_matrix,
+        compute_career_scores,
         compute_polarization_trajectory,
         compute_quality_gates,
         solve_simultaneous_alignment,
@@ -487,6 +489,27 @@ def main() -> None:
                 "trajectory": trajectory,
                 "sessions": chamber_sessions,
             }
+
+        # Career scores (random-effects meta-analysis)
+        for chamber_cap, r in all_results.items():
+            print(f"\n  Computing career scores for {chamber_cap}...")
+            career = compute_career_scores(r["transformed"], chamber_cap)
+            if career.height > 0:
+                career.write_parquet(ctx.data_dir / f"career_scores_{chamber_cap.lower()}.parquet")
+                ctx.export_csv(
+                    career,
+                    f"career_scores_{chamber_cap.lower()}.csv",
+                    f"Career-fixed ideal points — {chamber_cap} (RE meta-analysis)",
+                )
+                n_multi = career.filter(pl.col("n_sessions") >= 2).height
+                n_stable = career.filter(pl.col("movement_flag") == "stable").height
+                n_mover = career.filter(pl.col("movement_flag") == "mover").height
+                print(
+                    f"    {career.height} legislators, "
+                    f"{n_multi} multi-session, "
+                    f"{n_stable} stable, {n_mover} movers"
+                )
+                r["career"] = career
 
         # Save combined linking coefficients
         if all_results:

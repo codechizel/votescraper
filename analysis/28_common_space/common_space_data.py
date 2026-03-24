@@ -658,3 +658,119 @@ def compute_polarization_trajectory(
         )
 
     return pl.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Career scores (random-effects meta-analysis)
+# ---------------------------------------------------------------------------
+
+I_SQUARED_STABLE: float = 0.25
+"""I² below this → legislator classified as 'stable'."""
+
+I_SQUARED_MOVER: float = 0.75
+"""I² above this → legislator classified as 'mover'."""
+
+
+def compute_career_scores(
+    transformed: pl.DataFrame,
+    chamber: str,
+) -> pl.DataFrame:
+    """Compute one career-fixed score per legislator via RE meta-analysis.
+
+    Uses DerSimonian-Laird random-effects pooling of per-session
+    common-space scores. Each session's xi_common_sd provides the
+    within-session variance; tau² captures genuine between-session
+    ideological movement.
+
+    Returns one row per legislator with career_score, career_se,
+    i_squared, tau_squared, and movement_flag.
+    """
+    chamber_data = transformed.filter(pl.col("chamber") == chamber)
+    rows: list[dict] = []
+
+    for name_norm, group in chamber_data.group_by("name_norm"):
+        name_val = name_norm[0]
+        group_sorted = group.sort("session")
+        T = group_sorted.height
+
+        last_row = group_sorted.row(-1, named=True)
+        first_row = group_sorted.row(0, named=True)
+
+        base = {
+            "name_norm": name_val,
+            "full_name": last_row["full_name"],
+            "party": last_row["party"],
+            "chamber": chamber,
+            "n_sessions": T,
+            "first_session": first_row["session"],
+            "last_session": last_row["session"],
+            "most_recent_score": last_row["xi_common"],
+            "most_recent_se": last_row.get("xi_common_sd", 0.0),
+        }
+
+        if T == 1:
+            rows.append(
+                {
+                    **base,
+                    "career_score": last_row["xi_common"],
+                    "career_se": last_row.get("xi_common_sd", 0.0) or 0.0,
+                    "i_squared": None,
+                    "tau_squared": None,
+                    "movement_flag": None,
+                }
+            )
+            continue
+
+        x = group_sorted["xi_common"].to_numpy()
+        sd = group_sorted["xi_common_sd"].to_numpy()
+        sd = np.maximum(sd, 1e-6)
+        var = sd**2
+
+        # Fixed-effect weights and pooled mean
+        w = 1.0 / var
+        w_sum = np.sum(w)
+        mu_fe = np.sum(w * x) / w_sum
+
+        # Cochran's Q
+        Q = float(np.sum(w * (x - mu_fe) ** 2))
+        df = T - 1
+
+        # I²
+        i_sq = max(0.0, (Q - df) / Q) if Q > 0 else 0.0
+
+        # DerSimonian-Laird tau²
+        c = w_sum - np.sum(w**2) / w_sum
+        tau_sq = max(0.0, (Q - df) / c) if c > 0 else 0.0
+
+        # Random-effects weights and pooled mean
+        w_re = 1.0 / (var + tau_sq)
+        w_re_sum = np.sum(w_re)
+        mu_re = float(np.sum(w_re * x) / w_re_sum)
+        se_re = float(np.sqrt(1.0 / w_re_sum))
+
+        if i_sq < I_SQUARED_STABLE:
+            flag = "stable"
+        elif i_sq > I_SQUARED_MOVER:
+            flag = "mover"
+        else:
+            flag = "moderate"
+
+        rows.append(
+            {
+                **base,
+                "career_score": mu_re,
+                "career_se": se_re,
+                "i_squared": round(i_sq, 4),
+                "tau_squared": round(tau_sq, 4),
+                "movement_flag": flag,
+            }
+        )
+
+    if not rows:
+        return pl.DataFrame()
+
+    result = pl.DataFrame(rows)
+    return result.with_columns(
+        (pl.col("career_score") - 1.96 * pl.col("career_se")).alias("career_lo"),
+        (pl.col("career_score") + 1.96 * pl.col("career_se")).alias("career_hi"),
+    ).sort("career_score", descending=True)
