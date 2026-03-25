@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-25
 **Scope:** 84th Kansas Legislature (2011-2012), Phases 05-07b, 28, 30
-**Related:** ADR-0118, ADR-0120, ADR-0122, `docs/pca-ideology-axis-instability.md`, `docs/84th-biennium-analysis.md`
+**Related:** ADR-0109, ADR-0110, ADR-0117, ADR-0118, ADR-0120, ADR-0122, ADR-0123, `docs/pca-ideology-axis-instability.md`, `docs/84th-biennium-analysis.md`
 
 ---
 

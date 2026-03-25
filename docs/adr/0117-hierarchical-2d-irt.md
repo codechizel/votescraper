@@ -56,6 +56,8 @@ Updated routing preference for horseshoe-affected chambers:
 2. Flat 2D Dim 1 (existing)
 3. 1D IRT (fallback)
 
+**Caveat (ADR-0123):** The party-pooling prior can force party separation on Dim 1 even when Dim 1 is not the ideology axis. In 6/28 chamber-sessions, H2D Dim 2 or another model better agrees with W-NOMINATE Dim 1. A W-NOMINATE cross-validation gate (ADR-0123) checks the selected dimension against W-NOMINATE and swaps if a better IRT dimension is available.
+
 ### PPC Integration
 
 Phase 08 (PPC) discovers H2D as a 4th model in model comparison:

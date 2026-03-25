@@ -75,7 +75,10 @@ The routing manifest records the tier classification. The report displays:
 - Tier 2: ~15 chamber-sessions (most Senates, several Houses)
 - Tier 3: rare (only if mode-splitting is so severe that rankings are meaningless)
 
+**Known limitation (ADR-0123):** The tiered gate checks convergence quality and party separation, but does not validate whether the selected dimension is the correct ideology axis. The hierarchical model's party-pooling prior can create party separation on a non-ideology dimension, causing Tier 1 or Tier 2 to pass even when the dimension is wrong. A W-NOMINATE cross-validation gate (ADR-0123) adds dimension correctness checking as a final step after the convergence tiers.
+
 **Related:**
 - ADR-0109 — Canonical ideal point routing (original binary gate, now superseded by tiered gate)
 - ADR-0054 — 2D IRT pipeline integration (relaxed convergence thresholds)
+- ADR-0123 — W-NOMINATE cross-validation gate (dimension correctness check)
 - `analysis/canonical_ideal_points.py` — Implementation

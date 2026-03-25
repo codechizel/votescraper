@@ -354,6 +354,14 @@ Full pipeline completed successfully on the worst-case session (run `79-260314.3
 
 The 79th Senate canonical ideal points now use the party-pooled 2D model (Phase 07b) instead of the wrong-axis 1D IRT. This is the exact failure mode the deep dive identified.
 
+### Remaining Gap: Dimension Correctness (2026-03-25, ADR-0123)
+
+A systemic audit cross-validating all IRT dimensions against W-NOMINATE Dim 1 across all 28 chamber-sessions revealed that the R1-R7 party-separation gates are **necessary but not sufficient**. In 6/28 sessions, the canonical dimension passes all party-separation gates but disagrees with W-NOMINATE Dim 1 — the hierarchical model's party-pooling prior creates artificial party separation on a non-ideology dimension. These include the 79th Senate (canonical H2D-1 r=0.330 vs W-NOMINATE, while 1D IRT r=0.989), the 84th House/Senate, 85th House, 80th Senate, and 88th Senate.
+
+The fix: a W-NOMINATE cross-validation gate (ADR-0123) that checks the canonical IRT dimension against W-NOMINATE Dim 1 and swaps to a better IRT dimension if one exists. This uses W-NOMINATE's unsupervised dimension identification as an oracle, while retaining IRT's posterior uncertainty for the actual ideal point estimates.
+
+See `docs/84th-legislature-common-space-analysis.md` for the full per-session cross-validation table.
+
 ### Key References
 
 - Bafumi, J., Gelman, A., Park, D. K., & Kaplan, N. (2005). Practical issues in implementing and understanding Bayesian ideal point estimation. *Political Analysis*, 13(2), 171-187.

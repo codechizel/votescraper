@@ -75,9 +75,12 @@ Phase 06 now generates a forest plot of Dim 1 ideal points per chamber — the v
 **Research flags retained:**
 - `--dim1-prior` (ADR-0108), `--horseshoe-remediate` (ADR-0104), and `--init-strategy 2d-dim1` (ADR-0107) are retained for research but superseded for production pipelines
 
+**Known limitation (ADR-0123):** Convergence and party-separation gates do not guarantee the selected dimension is the ideology axis. In 6/28 chamber-sessions, the hierarchical model's party-pooling prior forces party separation on a non-ideology dimension, producing a canonical source that disagrees with W-NOMINATE Dim 1 (r as low as 0.33). A W-NOMINATE cross-validation gate (ADR-0123) addresses this by checking whether an alternative IRT dimension better agrees with the unsupervised W-NOMINATE dimension ordering.
+
 **Related:**
 - `docs/canonical-ideal-points.md` — Full article documenting the journey
 - `docs/canonical-ideal-points-implementation-plan.md` — Implementation plan
 - ADR-0104 — Robustness flags (now research-only)
 - ADR-0107 — Shared init strategy (Phase 06 default changed)
 - ADR-0108 — Dim 1 informative prior (superseded)
+- ADR-0123 — W-NOMINATE cross-validation gate (dimension correctness check)

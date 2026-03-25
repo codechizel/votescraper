@@ -113,7 +113,7 @@ Pairwise chaining avoids this because each link is a well-conditioned 1D regress
 
 ### Input: Canonical Ideal Points
 
-The alignment operates on *canonical* ideal points — the horseshoe-corrected scores from the pipeline's routing system (ADR-0109). For Senate sessions with the horseshoe effect (primarily 78th-83rd and 88th), the canonical score is Hierarchical 2D Dim 1 rather than flat 1D IRT. For clean sessions, it's flat 1D. The hard work of per-biennium identification is already done; the common space phase just links the corrected scales.
+The alignment operates on *canonical* ideal points — the horseshoe-corrected scores from the pipeline's routing system (ADR-0109), validated by the W-NOMINATE cross-validation gate (ADR-0123). For horseshoe-affected sessions, the canonical score is the IRT dimension that best agrees with W-NOMINATE Dim 1 — which may be H2D Dim 1, H2D Dim 2, Flat 2D Dim 1, or even 1D IRT, depending on whether the party-pooling prior distorted the first dimension. For clean sessions, it's typically 1D IRT. The quality of the common-space chain depends critically on correct per-session dimension identification; the W-NOMINATE gate catches the 6/28 sessions where convergence and party-separation gates alone are insufficient (see `docs/84th-legislature-common-space-analysis.md`).
 
 ### Uncertainty: Delta Method Through the Chain
 
