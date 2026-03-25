@@ -339,12 +339,119 @@ def load_h2d_dim1_ideal_points(h2d_dir: Path, chamber: str) -> pl.DataFrame | No
     return result
 
 
+def load_dim2_ideal_points(
+    data_dir: Path,
+    chamber: str,
+    filename_prefix: str,
+) -> pl.DataFrame | None:
+    """Load Dim 2 ideal points from a 2D IRT phase, mapped to standard schema.
+
+    Works for both flat 2D (``ideal_points_2d_``) and hierarchical 2D
+    (``ideal_points_h2d_``).  Maps ``xi_dim2_mean → xi_mean``, etc.
+    """
+    path = data_dir / "data" / f"{filename_prefix}{chamber.lower()}.parquet"
+    if not path.exists():
+        return None
+
+    df = pl.read_parquet(path)
+    if "xi_dim2_mean" not in df.columns:
+        return None
+
+    df = df.with_columns(
+        ((pl.col("xi_dim2_hdi_97%") - pl.col("xi_dim2_hdi_3%")) / 3.92).alias("xi_sd")
+    )
+
+    return df.select(
+        "legislator_slug",
+        "full_name",
+        "party",
+        pl.col("xi_dim2_mean").alias("xi_mean"),
+        "xi_sd",
+        pl.col("xi_dim2_hdi_3%").alias("xi_hdi_2.5"),
+        pl.col("xi_dim2_hdi_97%").alias("xi_hdi_97.5"),
+    )
+
+
+def load_wnominate_scores(wnom_dir: Path, chamber: str) -> pl.DataFrame | None:
+    """Load W-NOMINATE Dim 1 scores from Phase 16 output.
+
+    Returns DataFrame with ``legislator_slug`` and ``wnom_dim1`` columns,
+    or ``None`` if the file is missing.
+    """
+    path = wnom_dir / "data" / f"wnominate_coords_{chamber.lower()}.parquet"
+    if not path.exists():
+        return None
+
+    df = pl.read_parquet(path)
+    if "wnom_dim1" not in df.columns:
+        return None
+
+    return df.select("legislator_slug", "wnom_dim1")
+
+
+def apply_wnominate_gate(
+    selected_ip: pl.DataFrame,
+    selected_label: str,
+    candidates: dict[str, pl.DataFrame],
+    wnom_scores: pl.DataFrame,
+) -> tuple[pl.DataFrame, str, dict]:
+    """Cross-validate IRT dimensions against W-NOMINATE and swap if needed.
+
+    For each candidate dimension, compute |Pearson r| with W-NOMINATE Dim 1.
+    If a candidate beats the currently selected dimension by at least
+    ``WNOM_GATE_DELTA`` and has r >= ``WNOM_GATE_MIN_R``, swap to it.
+
+    Returns ``(best_ip, best_label, gate_metadata)`` where *gate_metadata*
+    records all correlations and the swap decision.
+    """
+    from scipy.stats import pearsonr
+
+    from analysis.tuning import WNOM_GATE_DELTA, WNOM_GATE_MIN_R
+
+    correlations: dict[str, float | None] = {}
+
+    for label, ip_df in candidates.items():
+        joined = ip_df.join(wnom_scores, on="legislator_slug", how="inner")
+        if joined.height < 10:
+            correlations[label] = None
+            continue
+        r, _ = pearsonr(joined["xi_mean"].to_numpy(), joined["wnom_dim1"].to_numpy())
+        correlations[label] = round(abs(float(r)), 4)
+
+    selected_r = correlations.get(selected_label)
+    best_label = selected_label
+    best_ip = selected_ip
+    swapped = False
+
+    if selected_r is not None:
+        best_r = selected_r
+        for label, r in correlations.items():
+            if r is None or label == selected_label:
+                continue
+            if r >= WNOM_GATE_MIN_R and r - selected_r >= WNOM_GATE_DELTA and r > best_r:
+                best_label = label
+                best_ip = candidates[label]
+                best_r = r
+                swapped = True
+
+    gate_meta = {
+        "correlations": correlations,
+        "selected_before": selected_label,
+        "selected_after": best_label,
+        "swapped": swapped,
+        "delta_threshold": WNOM_GATE_DELTA,
+        "min_r_threshold": WNOM_GATE_MIN_R,
+    }
+    return best_ip, best_label, gate_meta
+
+
 def route_canonical_ideal_points(
     irt_1d_dir: Path,
     irt_2d_dir: Path,
     chamber: str,
     pca_dir: Path | None = None,
     h2d_dir: Path | None = None,
+    wnom_dir: Path | None = None,
 ) -> tuple[pl.DataFrame, str, dict]:
     """Determine the canonical ideal points for a chamber.
 
@@ -376,10 +483,15 @@ def route_canonical_ideal_points(
     horseshoe = detect_horseshoe_from_ideal_points(ip_1d)
     metadata["horseshoe"] = horseshoe
 
+    # ── Select initial canonical source via existing routing logic ──────────
+    ip: pl.DataFrame
+    source: str
+
     if horseshoe["detected"]:
         print(f"  Horseshoe DETECTED in {chamber}: {horseshoe['reason']}")
 
         # Try Hierarchical 2D first (preferred: combines party pooling + 2D structure)
+        ip_h2d: pl.DataFrame | None = None
         if h2d_dir is not None:
             ip_h2d = load_h2d_dim1_ideal_points(h2d_dir, chamber)
             if ip_h2d is not None:
@@ -395,31 +507,16 @@ def route_canonical_ideal_points(
                     tier_label = (
                         "converged" if h2d_tier["tier"] == 1 else "point estimates credible"
                     )
-                    print(f"  → Canonical source: Hierarchical 2D Dim 1 ({tier_label})")
+                    print(f"  → Initial selection: Hierarchical 2D Dim 1 ({tier_label})")
                     metadata["reason"] = f"horseshoe_detected: {horseshoe['reason']}"
-
-                    # Add district and chamber columns from 1D if available
-                    extra_cols = []
-                    for col in ("district", "chamber"):
-                        if col in ip_1d.columns and col not in ip_h2d.columns:
-                            extra_cols.append(col)
-                    if extra_cols:
-                        ip_h2d = ip_h2d.join(
-                            ip_1d.select("legislator_slug", *extra_cols),
-                            on="legislator_slug",
-                            how="left",
-                        )
-
-                    return (
-                        ip_h2d.with_columns(pl.lit("hierarchical_2d_dim1").alias("source")),
-                        "hierarchical_2d_dim1",
-                        metadata,
-                    )
+                    ip, source = ip_h2d, "hierarchical_2d_dim1"
                 else:
                     print("  H2D convergence insufficient — trying flat 2D")
+                    ip_h2d = None  # mark unusable
 
-        # Fall back to flat 2D
-        if ip_2d is not None:
+        # Fall back to flat 2D if H2D not selected
+        selected_2d = horseshoe["detected"] and ip_h2d is not None
+        if horseshoe["detected"] and not selected_2d and ip_2d is not None:
             tier_result = assess_2d_convergence_tier(
                 irt_2d_dir,
                 chamber,
@@ -430,39 +527,62 @@ def route_canonical_ideal_points(
 
             if tier_result["usable"]:
                 tier_label = "converged" if tier_result["tier"] == 1 else "point estimates credible"
-                print(f"  → Canonical source: 2D Dim 1 ({tier_label})")
+                print(f"  → Initial selection: 2D Dim 1 ({tier_label})")
                 metadata["reason"] = f"horseshoe_detected: {horseshoe['reason']}"
+                ip, source = ip_2d, "2d_dim1"
+                selected_2d = True
 
-                # Add district and chamber columns from 1D if available
-                extra_cols = []
-                for col in ("district", "chamber"):
-                    if col in ip_1d.columns and col not in ip_2d.columns:
-                        extra_cols.append(col)
-                if extra_cols:
-                    ip_2d = ip_2d.join(
-                        ip_1d.select("legislator_slug", *extra_cols),
-                        on="legislator_slug",
-                        how="left",
-                    )
-
-                return (
-                    ip_2d.with_columns(pl.lit("2d_dim1").alias("source")),
-                    "2d_dim1",
-                    metadata,
-                )
-
-        reason = "2d_unavailable" if ip_2d is None else "2d_convergence_failed"
-        print(f"  → Falling back to 1D IRT ({reason})")
-        metadata["reason"] = f"horseshoe_detected_but_{reason}"
-        return (
-            ip_1d.with_columns(pl.lit("1d_irt").alias("source")),
-            "1d_irt",
-            metadata,
-        )
+        # Final fallback: 1D
+        if horseshoe["detected"] and not selected_2d:
+            reason = "2d_unavailable" if ip_2d is None else "2d_convergence_failed"
+            print(f"  → Falling back to 1D IRT ({reason})")
+            metadata["reason"] = f"horseshoe_detected_but_{reason}"
+            ip, source = ip_1d, "1d_irt"
     else:
         print(f"  No horseshoe in {chamber} — using 1D IRT")
         metadata["reason"] = "no_horseshoe"
-        return ip_1d.with_columns(pl.lit("1d_irt").alias("source")), "1d_irt", metadata
+        ip, source = ip_1d, "1d_irt"
+
+    # ── W-NOMINATE cross-validation gate (ADR-0123) ───────────────────────
+    if wnom_dir is not None:
+        wnom_scores = load_wnominate_scores(wnom_dir, chamber)
+        if wnom_scores is not None:
+            # Gather all available IRT dimensions as candidates
+            candidates: dict[str, pl.DataFrame] = {"1d_irt": ip_1d}
+            if ip_2d is not None:
+                candidates["2d_dim1"] = ip_2d
+                ip_2d_dim2 = load_dim2_ideal_points(irt_2d_dir, chamber, "ideal_points_2d_")
+                if ip_2d_dim2 is not None:
+                    candidates["2d_dim2"] = ip_2d_dim2
+            if h2d_dir is not None:
+                ip_h2d_dim1 = load_h2d_dim1_ideal_points(h2d_dir, chamber)
+                if ip_h2d_dim1 is not None:
+                    candidates["hierarchical_2d_dim1"] = ip_h2d_dim1
+                ip_h2d_dim2 = load_dim2_ideal_points(h2d_dir, chamber, "ideal_points_h2d_")
+                if ip_h2d_dim2 is not None:
+                    candidates["hierarchical_2d_dim2"] = ip_h2d_dim2
+
+            ip, source, gate_meta = apply_wnominate_gate(ip, source, candidates, wnom_scores)
+            metadata["wnom_gate"] = gate_meta
+            if gate_meta["swapped"]:
+                print(
+                    f"  → W-NOMINATE gate: swapped {gate_meta['selected_before']} "
+                    f"→ {gate_meta['selected_after']}"
+                )
+
+    # ── Add extra columns from 1D and finalize ────────────────────────────
+    extra_cols = []
+    for col in ("district", "chamber"):
+        if col in ip_1d.columns and col not in ip.columns:
+            extra_cols.append(col)
+    if extra_cols:
+        ip = ip.join(
+            ip_1d.select("legislator_slug", *extra_cols),
+            on="legislator_slug",
+            how="left",
+        )
+
+    return ip.with_columns(pl.lit(source).alias("source")), source, metadata
 
 
 def write_canonical_ideal_points(
@@ -472,6 +592,7 @@ def write_canonical_ideal_points(
     chambers: list[str] | None = None,
     pca_dir: Path | None = None,
     h2d_dir: Path | None = None,
+    wnom_dir: Path | None = None,
 ) -> dict[str, str]:
     """Write canonical ideal points for all chambers.
 
@@ -484,9 +605,12 @@ def write_canonical_ideal_points(
         h2d_dir: Phase 07b run directory (contains data/ideal_points_h2d_{chamber}.parquet).
             Optional. When available and converged, preferred over flat 2D for horseshoe
             chambers.
+        wnom_dir: Phase 16 run directory (contains data/wnominate_coords_{chamber}.parquet).
+            Optional. When available, cross-validates the selected dimension against
+            W-NOMINATE Dim 1 and swaps if a better IRT dimension exists (ADR-0123).
 
     Returns dict mapping chamber → source_label ("1d_irt", "2d_dim1",
-    or "hierarchical_2d_dim1").
+    "2d_dim2", "hierarchical_2d_dim1", or "hierarchical_2d_dim2").
     """
     import json
 
@@ -505,6 +629,7 @@ def write_canonical_ideal_points(
                 chamber,
                 pca_dir=pca_dir,
                 h2d_dir=h2d_dir,
+                wnom_dir=wnom_dir,
             )
             ip.write_parquet(output_dir / f"canonical_ideal_points_{chamber.lower()}.parquet")
             sources[chamber] = source
@@ -524,6 +649,8 @@ def write_canonical_ideal_points(
             "tier1_ess_threshold": TIER1_ESS_THRESHOLD,
             "tier2_rhat_threshold": TIER2_RHAT_THRESHOLD,
             "tier2_rank_corr_threshold": TIER2_RANK_CORR_THRESHOLD,
+            "wnom_gate_delta": 0.10,
+            "wnom_gate_min_r": 0.70,
         },
     }
     manifest_path = output_dir / "routing_manifest.json"

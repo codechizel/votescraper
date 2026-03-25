@@ -1,7 +1,7 @@
 # ADR-0123: W-NOMINATE Cross-Validation Gate for Canonical Routing
 
 **Date:** 2026-03-25
-**Status:** Proposed
+**Status:** Accepted
 **Deciders:** Joseph Claeys
 
 ## Context

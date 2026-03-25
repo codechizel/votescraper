@@ -24,6 +24,7 @@ from analysis.canonical_ideal_points import (  # noqa: E402
     TIER1_RHAT_THRESHOLD,
     TIER2_RANK_CORR_THRESHOLD,
     TIER2_RHAT_THRESHOLD,
+    apply_wnominate_gate,
     assess_2d_convergence_tier,
     check_2d_convergence_quality,
     detect_horseshoe_from_ideal_points,
@@ -270,14 +271,15 @@ class TestAssess2dConvergenceTier:
         )
 
         summary = {
-            "chambers": {
-                "Senate": {"convergence": {"xi_rhat_max": 1.80, "xi_ess_min": 5.0}}
-            }
+            "chambers": {"Senate": {"convergence": {"xi_rhat_max": 1.80, "xi_ess_min": 5.0}}}
         }
         (data_dir / "convergence_summary.json").write_text(json.dumps(summary))
 
         result = assess_2d_convergence_tier(
-            tmp_path / "2d", "Senate", ip_2d=ip_2d, pca_dir=pca_dir_fixture,
+            tmp_path / "2d",
+            "Senate",
+            ip_2d=ip_2d,
+            pca_dir=pca_dir_fixture,
         )
         assert result["tier"] == 2
         assert result["usable"] is True
@@ -288,11 +290,7 @@ class TestAssess2dConvergenceTier:
         """R-hat ≥ 2.50 → Tier 3 regardless of correlation."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
-        summary = {
-            "chambers": {
-                "Senate": {"convergence": {"xi_rhat_max": 3.0, "xi_ess_min": 5.0}}
-            }
-        }
+        summary = {"chambers": {"Senate": {"convergence": {"xi_rhat_max": 3.0, "xi_ess_min": 5.0}}}}
         (data_dir / "convergence_summary.json").write_text(json.dumps(summary))
         result = assess_2d_convergence_tier(tmp_path, "Senate")
         assert result["tier"] == 3
@@ -313,14 +311,15 @@ class TestAssess2dConvergenceTier:
         )
 
         summary = {
-            "chambers": {
-                "Senate": {"convergence": {"xi_rhat_max": 1.80, "xi_ess_min": 5.0}}
-            }
+            "chambers": {"Senate": {"convergence": {"xi_rhat_max": 1.80, "xi_ess_min": 5.0}}}
         }
         (data_dir / "convergence_summary.json").write_text(json.dumps(summary))
 
         result = assess_2d_convergence_tier(
-            tmp_path / "2d", "Senate", ip_2d=ip_2d, pca_dir=pca_dir_fixture,
+            tmp_path / "2d",
+            "Senate",
+            ip_2d=ip_2d,
+            pca_dir=pca_dir_fixture,
         )
         assert result["tier"] == 3
         assert result["usable"] is False
@@ -330,9 +329,7 @@ class TestAssess2dConvergenceTier:
         data_dir = tmp_path / "data"
         data_dir.mkdir()
         summary = {
-            "chambers": {
-                "Senate": {"convergence": {"xi_rhat_max": 1.50, "xi_ess_min": 5.0}}
-            }
+            "chambers": {"Senate": {"convergence": {"xi_rhat_max": 1.50, "xi_ess_min": 5.0}}}
         }
         (data_dir / "convergence_summary.json").write_text(json.dumps(summary))
 
@@ -365,9 +362,7 @@ class TestCheck2dConvergenceLegacy:
         data_dir = tmp_path / "data"
         data_dir.mkdir()
         summary = {
-            "chambers": {
-                "Senate": {"convergence": {"xi_rhat_max": 3.0, "xi_ess_min": 500.0}}
-            }
+            "chambers": {"Senate": {"convergence": {"xi_rhat_max": 3.0, "xi_ess_min": 500.0}}}
         }
         (data_dir / "convergence_summary.json").write_text(json.dumps(summary))
         assert check_2d_convergence_quality(tmp_path, "Senate") is False
@@ -430,14 +425,14 @@ class TestRouting:
 
         # Convergence: Tier 2 range (R-hat > 1.10 but < 2.50)
         summary = {
-            "chambers": {
-                "Senate": {"convergence": {"xi_rhat_max": 1.80, "xi_ess_min": 5.0}}
-            }
+            "chambers": {"Senate": {"convergence": {"xi_rhat_max": 1.80, "xi_ess_min": 5.0}}}
         }
         (data_dir / "convergence_summary.json").write_text(json.dumps(summary))
 
         ip, source, meta = route_canonical_ideal_points(
-            horseshoe_1d_dir, tmp_path / "2d_tier2", "Senate",
+            horseshoe_1d_dir,
+            tmp_path / "2d_tier2",
+            "Senate",
             pca_dir=tmp_path / "pca2",
         )
         assert source == "2d_dim1"
@@ -519,3 +514,143 @@ class TestConstants:
         """Legacy DIM1_* constants should alias to Tier 1 thresholds."""
         assert DIM1_RHAT_THRESHOLD == TIER1_RHAT_THRESHOLD
         assert DIM1_ESS_THRESHOLD == TIER1_ESS_THRESHOLD
+
+
+# ---------------------------------------------------------------------------
+# TestWnominateGate — W-NOMINATE cross-validation gate (ADR-0123)
+# ---------------------------------------------------------------------------
+
+
+def _make_irt_df(scores: list[float], label: str = "test") -> pl.DataFrame:
+    """Create a minimal IRT ideal points DataFrame for gate testing."""
+    n = len(scores)
+    return pl.DataFrame(
+        {
+            "legislator_slug": [f"leg_{i}" for i in range(n)],
+            "full_name": [f"Legislator {i}" for i in range(n)],
+            "party": ["Republican" if s > 0 else "Democrat" for s in scores],
+            "xi_mean": scores,
+            "xi_sd": [0.2] * n,
+            "xi_hdi_2.5": [s - 0.4 for s in scores],
+            "xi_hdi_97.5": [s + 0.4 for s in scores],
+        }
+    )
+
+
+def _make_wnom_df(scores: list[float]) -> pl.DataFrame:
+    """Create a minimal W-NOMINATE DataFrame for gate testing."""
+    n = len(scores)
+    return pl.DataFrame(
+        {
+            "legislator_slug": [f"leg_{i}" for i in range(n)],
+            "wnom_dim1": scores,
+        }
+    )
+
+
+class TestWnominateGate:
+    """Tests for the W-NOMINATE cross-validation gate (ADR-0123)."""
+
+    def test_gate_swaps_when_better_dimension(self):
+        """If an alternative dimension correlates much better, swap to it."""
+        wnom = _make_wnom_df([1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5])
+        # Selected: scrambled order — low correlation with W-NOMINATE
+        selected = _make_irt_df([0.5, 0.3, -0.2, 0.1, -0.5, 0.4, -0.3, 0.2, -0.1, -0.4])
+        # Alternative: scores that perfectly correlate
+        alt = _make_irt_df([1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5])
+
+        candidates = {"selected_dim": selected, "better_dim": alt}
+        ip, label, meta = apply_wnominate_gate(selected, "selected_dim", candidates, wnom)
+
+        assert meta["swapped"]
+        assert label == "better_dim"
+        assert meta["selected_before"] == "selected_dim"
+        assert meta["selected_after"] == "better_dim"
+
+    def test_gate_no_swap_below_delta(self):
+        """If improvement is < 0.10, no swap occurs."""
+        scores = [1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5]
+        # Both nearly identical — no meaningful delta
+        selected = _make_irt_df(scores)
+        alt = _make_irt_df([s * 1.01 for s in scores])
+        wnom = _make_wnom_df(scores)
+
+        candidates = {"dim1": selected, "dim2": alt}
+        _, label, meta = apply_wnominate_gate(selected, "dim1", candidates, wnom)
+
+        assert not meta["swapped"]
+        assert label == "dim1"
+
+    def test_gate_skipped_when_wnom_unavailable(self):
+        """When wnom_scores has too few matches, gate is effectively skipped."""
+        selected = _make_irt_df([1.0, -1.0, 2.0])
+        # W-NOMINATE with different slugs → 0 matches
+        wnom = pl.DataFrame(
+            {
+                "legislator_slug": ["other_1", "other_2", "other_3"],
+                "wnom_dim1": [1.0, -1.0, 2.0],
+            }
+        )
+        candidates = {"dim1": selected}
+        _, label, meta = apply_wnominate_gate(selected, "dim1", candidates, wnom)
+
+        assert not meta["swapped"]
+        assert label == "dim1"
+
+    def test_gate_selects_dim2(self):
+        """84th Senate scenario: H2D-2 correlates better than H2D-1."""
+        wnom = _make_wnom_df([3.0, 2.0, 1.0, -1.0, -2.0, -3.0, 2.5, 1.5, 0.5, -0.5, -1.5, -2.5])
+        # H2D Dim 1: scrambled — low correlation (party-pooled, wrong axis)
+        h2d_1 = _make_irt_df([0.3, -0.1, 0.5, 0.2, -0.3, 0.4, -0.2, 0.1, -0.05, 0.35, -0.15, 0.25])
+        # H2D Dim 2: near-perfect correlation (ideology axis)
+        h2d_2 = _make_irt_df([3.1, 2.1, 1.1, -0.9, -1.9, -2.9, 2.6, 1.6, 0.6, -0.4, -1.4, -2.4])
+
+        candidates = {"hierarchical_2d_dim1": h2d_1, "hierarchical_2d_dim2": h2d_2}
+        _, label, meta = apply_wnominate_gate(h2d_1, "hierarchical_2d_dim1", candidates, wnom)
+
+        assert meta["swapped"]
+        assert label == "hierarchical_2d_dim2"
+
+    def test_gate_min_r_enforced(self):
+        """Candidate with r < 0.70 is never selected, even with highest delta."""
+        import numpy as np
+
+        rng = np.random.default_rng(42)
+        n = 20
+        wnom = _make_wnom_df(list(rng.standard_normal(n)))
+        # Selected: moderate correlation
+        selected = _make_irt_df(list(rng.standard_normal(n)))
+        # Alternative: random noise (r < 0.70)
+        alt = _make_irt_df(list(rng.standard_normal(n)))
+
+        candidates = {"dim1": selected, "noise": alt}
+        _, label, meta = apply_wnominate_gate(selected, "dim1", candidates, wnom)
+
+        # Neither should be selected if both have low r
+        assert label == "dim1"  # stays with original
+
+    def test_gate_metadata_recorded(self):
+        """Gate metadata includes all correlations."""
+        scores = [1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5]
+        selected = _make_irt_df(scores)
+        wnom = _make_wnom_df(scores)
+        candidates = {"1d_irt": selected}
+
+        _, _, meta = apply_wnominate_gate(selected, "1d_irt", candidates, wnom)
+
+        assert "correlations" in meta
+        assert "1d_irt" in meta["correlations"]
+        assert meta["correlations"]["1d_irt"] is not None
+        assert meta["correlations"]["1d_irt"] > 0.99  # near-perfect
+        assert "delta_threshold" in meta
+        assert "min_r_threshold" in meta
+
+    def test_gate_preserves_schema(self):
+        """Output DataFrame has the same columns as input."""
+        scores = [1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5]
+        selected = _make_irt_df(scores)
+        wnom = _make_wnom_df(scores)
+        candidates = {"dim1": selected}
+
+        ip, _, _ = apply_wnominate_gate(selected, "dim1", candidates, wnom)
+        assert set(ip.columns) == set(selected.columns)
