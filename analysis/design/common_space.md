@@ -51,7 +51,7 @@ Match legislators across all bienniums using the 3-phase matching from Phase 26:
 2. Normalized name (`phase_utils.normalize_name()`)
 3. Optional fuzzy matching (disabled by default)
 
-Output: a global roster DataFrame with columns `name_norm`, `legislator_slug`, `session`, `chamber`, `party`, `full_name`, `xi_canonical`. Matching uses `name_norm` (normalized full name), not `legislator_slug`, because slugs are chamber-specific (`rep_smith` vs `sen_smith`). Career scores are computed per chamber; legislators who served in both chambers (54 of 708 unique) are annotated with cross-chamber service in the report.
+Output: a global roster DataFrame with columns `person_key`, `name_norm`, `legislator_slug`, `session`, `chamber`, `party`, `full_name`, `xi_canonical`. Identity resolution uses slug-based `person_key` (strips chamber prefix: `rep_smith_greg_1` → `smith_greg_1`), not `name_norm`, because name normalization is fragile across middle initials, nicknames, and punctuation (e.g., "J.R. Claeys" vs "J. R. Claeys" vs "Joseph Claeys"). A small override table in `_PERSON_KEY_OVERRIDES` handles known slug encoding variants (8 entries). Career scores are computed per chamber and unified (cross-chamber); 59 of 658 unique legislators served in both chambers.
 
 ### Step 3: Compute Bridge Matrix
 

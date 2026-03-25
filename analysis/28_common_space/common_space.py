@@ -359,7 +359,7 @@ def main() -> None:
         # Step 2: Build global roster
         print("\nBuilding global roster...")
         roster = build_global_roster(all_scores, normalize_name)
-        n_unique = roster["name_norm"].n_unique()
+        n_unique = roster["person_key"].n_unique()
         print(f"  {roster.height} legislator-session records, {n_unique} unique legislators")
 
         # Step 3: Bridge matrix
@@ -522,8 +522,8 @@ def main() -> None:
             career_a = all_results[ca].get("career")
             career_b = all_results[cb].get("career")
             if career_a is not None and career_b is not None:
-                names_a = set(career_a["name_norm"].to_list())
-                names_b = set(career_b["name_norm"].to_list())
+                names_a = set(career_a["person_key"].to_list())
+                names_b = set(career_b["person_key"].to_list())
                 cross_chamber = names_a & names_b
                 if cross_chamber:
                     print(f"\n  {len(cross_chamber)} legislators served in both chambers")
@@ -531,10 +531,10 @@ def main() -> None:
                         career = all_results[ch_key]["career"]
                         other_career = all_results[other_key]["career"]
                         annotations = []
-                        for name in career["name_norm"].to_list():
+                        for name in career["person_key"].to_list():
                             if name in cross_chamber:
                                 other_row = other_career.filter(
-                                    pl.col("name_norm") == name
+                                    pl.col("person_key") == name
                                 )
                                 n = other_row["n_sessions"][0] if other_row.height > 0 else 0
                                 label = "session" if n == 1 else "sessions"
@@ -553,10 +553,10 @@ def main() -> None:
             print("\n  Linking House and Senate scales...")
             unified, A_cs, B_cs = link_chambers(house_t, senate_t, trim_pct=TRIM_PCT)
             n_bridges = unified.filter(
-                pl.col("name_norm").is_in(
-                    set(house_t["name_norm"].to_list()) & set(senate_t["name_norm"].to_list())
+                pl.col("person_key").is_in(
+                    set(house_t["person_key"].to_list()) & set(senate_t["person_key"].to_list())
                 )
-            )["name_norm"].n_unique()
+            )["person_key"].n_unique()
             print(f"    {n_bridges} chamber-switcher bridges, A={A_cs:.4f}, B={B_cs:+.4f}")
 
             # Save unified scores

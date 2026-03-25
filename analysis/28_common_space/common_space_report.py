@@ -428,7 +428,7 @@ def _add_top_movers(
 
     # Find legislators who served in multiple sessions and moved the most
     multi = (
-        transformed.group_by("name_norm")
+        transformed.group_by("person_key")
         .agg(
             [
                 pl.col("xi_common").min().alias("xi_min"),
@@ -477,7 +477,7 @@ def _add_career_trajectories(
 
     # Long-serving legislators
     service_counts = (
-        transformed.group_by("name_norm")
+        transformed.group_by("person_key")
         .agg(
             [
                 pl.col("session").n_unique().alias("n_sessions"),
@@ -494,10 +494,10 @@ def _add_career_trajectories(
         return
 
     fig = go.Figure()
-    target_names = set(service_counts["name_norm"].to_list())
+    target_names = set(service_counts["person_key"].to_list())
 
-    for name_norm in sorted(target_names):
-        leg_data = transformed.filter(pl.col("name_norm") == name_norm).sort("session")
+    for person_key in sorted(target_names):
+        leg_data = transformed.filter(pl.col("person_key") == person_key).sort("session")
         if leg_data.height == 0:
             continue
 

@@ -89,6 +89,45 @@ class QualityGate:
 
 
 # ---------------------------------------------------------------------------
+# Person identity resolution
+# ---------------------------------------------------------------------------
+
+
+def _slug_to_person_key(slug: str) -> str:
+    """Extract person identity key from legislator slug.
+
+    Strips the chamber prefix (rep_/sen_) so the same person in different
+    chambers gets the same key: rep_smith_greg_1 → smith_greg_1.
+    """
+    parts = slug.split("_", 1)
+    return parts[1] if len(parts) > 1 else slug
+
+
+# Overrides for known slug encoding differences (same person, different slug).
+# Only include cases verified by zero session overlap + editorial confirmation.
+# Format: {variant_person_key: canonical_person_key}
+_PERSON_KEY_OVERRIDES: dict[str, str] = {
+    "claeys_jr_1": "claeys_j_r_1",  # J.R. Claeys: sen slug vs rep slug
+    "crum_david_1": "crum_dave_1",  # Dave Crum
+    "clifford_william_1": "clifford_bill_1",  # Bill Clifford
+    "pauls_janice_1": "pauls_jan_1",  # Jan Pauls
+    "roth_charles_1": "roth_charlie_1",  # Charlie Roth
+    "prescott_willie_1": "prescott_william_1",  # William Prescott
+    "bloom_lewis_1": "bloom_bill_1",  # Lewis "Bill" Bloom
+    "kelsey_richard_1": "kelsey_dick_1",  # Dick Kelsey
+}
+
+
+def resolve_person_key(slug: str) -> str:
+    """Resolve a legislator slug to a stable person identity key.
+
+    Strips chamber prefix and applies overrides for known slug variants.
+    """
+    raw = _slug_to_person_key(slug)
+    return _PERSON_KEY_OVERRIDES.get(raw, raw)
+
+
+# ---------------------------------------------------------------------------
 # Global roster
 # ---------------------------------------------------------------------------
 
@@ -109,17 +148,23 @@ def build_global_roster(
 
     Returns
     -------
-    DataFrame with columns: name_norm, legislator_slug, full_name, party,
-    session, chamber, xi_canonical, xi_sd.
+    DataFrame with columns: person_key, name_norm, legislator_slug, full_name,
+    party, session, chamber, xi_canonical, xi_sd.
+
+    Identity resolution uses slug-based person_key (strips chamber prefix,
+    applies overrides for known slug variants) rather than name_norm, which
+    is fragile across middle initials, nicknames, and punctuation.
     """
     rows: list[dict] = []
     for session, chambers in sorted(all_scores.items()):
         for chamber, df in chambers.items():
             for row in df.iter_rows(named=True):
+                slug = row["legislator_slug"]
                 rows.append(
                     {
+                        "person_key": resolve_person_key(slug),
                         "name_norm": normalize_fn(row["full_name"]),
-                        "legislator_slug": row["legislator_slug"],
+                        "legislator_slug": slug,
                         "full_name": row["full_name"],
                         "party": row.get("party", ""),
                         "session": session,
@@ -146,11 +191,11 @@ def compute_bridge_matrix(
     """
     rows: list[dict] = []
     for i, sa in enumerate(sessions):
-        names_a = set(roster.filter(pl.col("session") == sa)["name_norm"].to_list())
+        names_a = set(roster.filter(pl.col("session") == sa)["person_key"].to_list())
         for j, sb in enumerate(sessions):
             if j <= i:
                 continue
-            names_b = set(roster.filter(pl.col("session") == sb)["name_norm"].to_list())
+            names_b = set(roster.filter(pl.col("session") == sb)["person_key"].to_list())
             shared = len(names_a & names_b)
             rows.append({"session_a": sa, "session_b": sb, "n_bridges": shared})
     return pl.DataFrame(rows)
@@ -169,20 +214,20 @@ def _build_bridge_observations(
     """Extract all bridge observations for one chamber.
 
     A bridge observation is a legislator who served in two different sessions.
-    Returns DataFrame: name_norm, session_s, session_t, xi_s, xi_t.
+    Returns DataFrame: person_key, session_s, session_t, xi_s, xi_t.
     """
     chamber_roster = roster.filter(pl.col("chamber") == chamber)
 
-    # Pivot to wide: one row per (name_norm, session) with xi_canonical
-    wide = chamber_roster.select("name_norm", "session", "xi_canonical").unique(
-        subset=["name_norm", "session"]
+    # Pivot to wide: one row per (person_key, session) with xi_canonical
+    wide = chamber_roster.select("person_key", "session", "xi_canonical").unique(
+        subset=["person_key", "session"]
     )
 
     obs_rows: list[dict] = []
     session_set = set(sessions)
 
     # Group by legislator, find all session pairs
-    for name, group in wide.group_by("name_norm"):
+    for name, group in wide.group_by("person_key"):
         name_val = name[0]
         leg_sessions = [
             (r["session"], r["xi_canonical"])
@@ -195,7 +240,7 @@ def _build_bridge_observations(
                 t_sess, t_xi = leg_sessions[j]
                 obs_rows.append(
                     {
-                        "name_norm": name_val,
+                        "person_key": name_val,
                         "session_s": s_sess,
                         "session_t": t_sess,
                         "xi_s": s_xi,
@@ -207,7 +252,7 @@ def _build_bridge_observations(
         if obs_rows
         else pl.DataFrame(
             schema={
-                "name_norm": pl.Utf8,
+                "person_key": pl.Utf8,
                 "session_s": pl.Utf8,
                 "session_t": pl.Utf8,
                 "xi_s": pl.Float64,
@@ -233,15 +278,15 @@ def _solve_pairwise_link(
     chamber_roster = roster.filter(pl.col("chamber") == chamber)
     a_scores = (
         chamber_roster.filter(pl.col("session") == session_a)
-        .select("name_norm", "xi_canonical")
+        .select("person_key", "xi_canonical")
         .rename({"xi_canonical": "xi_a"})
     )
     b_scores = (
         chamber_roster.filter(pl.col("session") == session_b)
-        .select("name_norm", "xi_canonical")
+        .select("person_key", "xi_canonical")
         .rename({"xi_canonical": "xi_b"})
     )
-    bridges = a_scores.join(b_scores, on="name_norm", how="inner")
+    bridges = a_scores.join(b_scores, on="person_key", how="inner")
 
     if bridges.height < MIN_BRIDGES:
         return (1.0, 0.0)
@@ -688,8 +733,8 @@ def compute_career_scores(
     chamber_data = transformed.filter(pl.col("chamber") == chamber)
     rows: list[dict] = []
 
-    for name_norm, group in chamber_data.group_by("name_norm"):
-        name_val = name_norm[0]
+    for person_key, group in chamber_data.group_by("person_key"):
+        name_val = person_key[0]
         group_sorted = group.sort("session")
         T = group_sorted.height
 
@@ -697,7 +742,7 @@ def compute_career_scores(
         first_row = group_sorted.row(0, named=True)
 
         base = {
-            "name_norm": name_val,
+            "person_key": name_val,
             "full_name": last_row["full_name"],
             "party": last_row["party"],
             "chamber": chamber,
@@ -797,14 +842,14 @@ def link_chambers(
     """
     # Find chamber-switchers: legislators with scores in both chambers
     house_by_name = (
-        house_transformed.group_by("name_norm")
+        house_transformed.group_by("person_key")
         .agg(pl.col("xi_common").mean().alias("xi_house_mean"))
     )
     senate_by_name = (
-        senate_transformed.group_by("name_norm")
+        senate_transformed.group_by("person_key")
         .agg(pl.col("xi_common").mean().alias("xi_senate_mean"))
     )
-    bridges = house_by_name.join(senate_by_name, on="name_norm")
+    bridges = house_by_name.join(senate_by_name, on="person_key")
 
     if bridges.height < 5:
         # Not enough bridges — return identity transform
@@ -857,8 +902,8 @@ def compute_unified_career_scores(
     """
     rows: list[dict] = []
 
-    for name_norm, group in unified.group_by("name_norm"):
-        name_val = name_norm[0]
+    for person_key, group in unified.group_by("person_key"):
+        name_val = person_key[0]
         group_sorted = group.sort("session")
         T = group_sorted.height
 
@@ -869,7 +914,7 @@ def compute_unified_career_scores(
         chamber_str = " & ".join(chambers_served)
 
         base = {
-            "name_norm": name_val,
+            "person_key": name_val,
             "full_name": last_row["full_name"],
             "party": last_row["party"],
             "chambers": chamber_str,
