@@ -481,7 +481,27 @@ Compute network loadings from the EGA network and compare to IRT discrimination 
 
 ---
 
-## 13. References
+## 13. Implementation Status (2026-03-25)
+
+The following recommendations from this deep dive have been implemented:
+
+| Recommendation | Tier | Status | Location |
+|---|---|---|---|
+| TEFI as Phase 02 supplement | Tier 1 | **Implemented** | `analysis/02_pca/pca.py` (TEFI computation + curve plot) |
+| Residual network in Phase 11 | Tier 1 | **Implemented** | `analysis/11_network/network.py` (IRT-adjusted Kappa residuals) |
+| Q3 per-pair heatmap in Phase 08 | Tier 1 | **Implemented** | `analysis/08_ppc/ppc.py` (heatmap + top violations table) |
+| Static EGA as pre-IRT oracle | Tier 2 | **Implemented** | `analysis/02b_ega/` (Phase 02b, full EGA pipeline) |
+| bootEGA for stability | Tier 2 | **Implemented** | `analysis/ega/boot_ega.py` (500 replicates, item stability) |
+| UVA for bill filtering | Tier 2 | **Implemented** | `analysis/ega/uva.py` (wTO redundancy detection) |
+| hierEGA structural validation | Tier 3 | Not yet | Requires two-stage procedure |
+| Network loadings vs IRT beta | Tier 3 | Not yet | Available in `analysis/ega/ega.py` (network_loadings field) |
+| dynEGA for cross-session | — | Not recommended | Poor fit for legislative data structure |
+
+**ADRs:** ADR-0124 (EGA Phase 02b), ADR-0125 (TEFI/residual network/Q3 integration).
+
+---
+
+## 14. References
 
 ### Core EGA Papers
 

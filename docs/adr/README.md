@@ -57,6 +57,8 @@ What are the trade-offs?
 | [0027](0027-umap-validation-and-robustness.md) | UMAP validation and robustness improvements |
 | [0041](0041-mca-implementation-choices.md) | MCA implementation choices |
 | [0115](0115-pca-multidimensional-interpretation.md) | PCA multidimensional interpretation (scatter matrices, loading heatmaps, horseshoe diagnostic) |
+| [0124](0124-exploratory-graph-analysis.md) | Exploratory Graph Analysis (EGA) — network psychometrics dimensionality (Phase 02b) |
+| [0125](0125-tefi-residual-network-q3-integration.md) | TEFI, residual network, and Q3 per-pair integration (Phases 02, 08, 11) |
 
 ### Bayesian Models
 
@@ -312,6 +314,8 @@ What are the trade-offs?
 | [0121](0121-prediction-canonical-irt-routing.md) | Prediction phase canonical IRT routing (fix horseshoe bypass in Phase 15 + Phase 26 path resolution) | Accepted | 2026-03-25 |
 | [0122](0122-cross-chamber-person-identity-resolution.md) | Cross-chamber person identity resolution (OCD expansion + duplicate quality gate) | Accepted | 2026-03-25 |
 | [0123](0123-wnominate-cross-validation-gate.md) | W-NOMINATE cross-validation gate for canonical routing (6/28 dimension fix) | Accepted | 2026-03-25 |
+| [0124](0124-exploratory-graph-analysis.md) | Exploratory Graph Analysis (EGA) — network psychometrics dimensionality (Phase 02b) | Accepted | 2026-03-25 |
+| [0125](0125-tefi-residual-network-q3-integration.md) | TEFI, residual network, and Q3 per-pair integration (Phases 02, 08, 11) | Accepted | 2026-03-25 |
 
 ## Creating a New ADR
 
