@@ -8,7 +8,7 @@
 
 1. **Both sessions have completed the full pipeline** (at minimum: EDA, PCA, IRT, clustering, network, prediction, indices, synthesis). Missing phases produce warnings but don't block the analysis.
 
-2. **IRT ideal points are the canonical ideology measure.** All cross-session ideology comparisons use flat IRT `xi_mean`, not hierarchical or PCA scores. Flat IRT is available for both sessions and provides the most comparable baseline.
+2. **IRT ideal points are the canonical ideology measure.** Cross-session ideology comparisons use canonical IRT scores from Phase 06 routing (`load_all_upstream()`), which selects 2D Dim 1 for horseshoe-affected chambers and 1D IRT for balanced chambers. Vote prediction features (`vote_features_{chamber}.parquet`) also use canonical IRT via Phase 15's `_load_canonical_irt()` (ADR-0121). This ensures the `xi_mean` feature in XGBoost encodes ideology, not intra-party factionalism, preventing anti-prediction (AUC < 0.5) in cross-session transfer.
 
 3. **Legislators are matched by name, not slug.** Slugs (`rep_schreiber`) encode a session-specific hash and are not stable across bienniums. Matching uses normalized `full_name` (lowercased, stripped of whitespace and leadership suffixes).
 

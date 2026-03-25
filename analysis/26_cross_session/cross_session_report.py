@@ -72,6 +72,27 @@ def build_cross_session_report(
 
     for chamber in sorted(results["chambers"]):
         cr = results[chamber]
+        r_val = cr.get("r_value")
+        if r_val is not None and r_val < CORRELATION_WARN:
+            report.add(
+                TextSection(
+                    id=f"alignment-warning-{chamber.lower()}",
+                    title=f"{chamber} — Alignment Warning",
+                    text=(
+                        f"<div style='background:#fff3cd;border:1px solid #ffc107;"
+                        f"padding:12px 16px;border-radius:6px;margin:8px 0'>"
+                        f"<strong>Low ideology correlation (r = {r_val:.3f}).</strong> "
+                        f"The cross-session IRT alignment for the {chamber} has "
+                        f"r &lt; {CORRELATION_WARN}, which indicates that ideology "
+                        f"scores may not be comparable across these two sessions. "
+                        f"This can occur when major legislative turnover reshapes "
+                        f"the ideological landscape (e.g., wave elections), or when "
+                        f"the underlying IRT model captures different latent dimensions "
+                        f"in each session. Downstream metrics (ideology shift, prediction "
+                        f"transfer) should be interpreted with caution.</div>"
+                    ),
+                )
+            )
         _add_ideology_scatter(report, plots_dir, chamber)
         _add_biggest_movers_figure(report, plots_dir, chamber)
         _add_biggest_movers_table(report, cr["shifted"], chamber)
@@ -427,17 +448,43 @@ def _add_prediction_summary(
 
     df = pl.DataFrame(within_rows + rows)
     tau = prediction.get("kendall_tau", float("nan"))
+
+    # Detect anti-prediction (AUC < 0.5 = worse than random)
+    mean_auc = (prediction["auc_ab"] + prediction["auc_ba"]) / 2
+    if mean_auc < 0.5:
+        auc_warning = (
+            f"⚠ Mean cross-session AUC = {mean_auc:.3f} (worse than random). "
+            "This indicates a structural break between sessions — the model learned "
+            "patterns that invert across the boundary. Common causes: major legislative "
+            "turnover (e.g., Tea Party wave), IRT scale misalignment between sessions "
+            "with different ideological structures, or genuine political realignment. "
+            "Within-session AUCs remain strong, confirming the features are valid — "
+            "the issue is domain transfer, not model quality."
+        )
+    elif mean_auc < 0.7:
+        auc_warning = (
+            f"⚠ Mean cross-session AUC = {mean_auc:.3f} (weak generalization). "
+            "The model partially transfers but the two sessions have meaningfully "
+            "different voting structures."
+        )
+    else:
+        auc_warning = None
+
+    source_note = (
+        "Cross-session AUC below within-session AUC is expected — "
+        "different bills and political contexts reduce performance. "
+        f"Feature importance Kendall's tau = {tau:.3f} "
+        f"(top {FEATURE_IMPORTANCE_TOP_K} features)."
+    )
+    if auc_warning:
+        source_note = auc_warning + " " + source_note
+
     html = make_gt(
         df,
         title=f"{chamber} — Cross-Session Prediction Transfer",
         subtitle="Does a model trained on one session generalize to another?",
         number_formats={"AUC-ROC": ".3f", "Accuracy": ".3f", "F1": ".3f"},
-        source_note=(
-            "Cross-session AUC below within-session AUC is expected — "
-            "different bills and political contexts reduce performance. "
-            f"Feature importance Kendall's tau = {tau:.3f} "
-            f"(top {FEATURE_IMPORTANCE_TOP_K} features)."
-        ),
+        source_note=source_note,
     )
     report.add(
         TableSection(

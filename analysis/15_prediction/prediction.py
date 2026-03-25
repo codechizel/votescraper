@@ -267,11 +267,49 @@ def _load_parquet_pair(
     return results[0], results[1]
 
 
+def _load_canonical_irt(
+    results_root: Path, run_id: str | None, chamber: str
+) -> pl.DataFrame | None:
+    """Load canonical ideal points from Phase 06's routing output.
+
+    Canonical routing selects 1D IRT or 2D Dim 1 per chamber based on horseshoe
+    detection.  When available, this supersedes raw Phase 05 output.
+    """
+    irt_2d_dir = resolve_upstream_dir("06_irt_2d", results_root, run_id)
+    canonical_path = irt_2d_dir / "canonical_irt" / f"canonical_ideal_points_{chamber}.parquet"
+    if canonical_path.exists():
+        df = pl.read_parquet(canonical_path)
+        source = df["source"][0] if "source" in df.columns else "unknown"
+        print(f"    Canonical IRT ({chamber}): {source}")
+        return df
+    return None
+
+
 def load_ideal_points(
     irt_dir: Path,
+    results_root: Path | None = None,
+    run_id: str | None = None,
 ) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
-    """Load IRT ideal points for both chambers."""
-    return _load_parquet_pair(irt_dir, "ideal_points")
+    """Load IRT ideal points for both chambers.
+
+    Prefers canonical ideal points (from Phase 06 routing) over raw Phase 05
+    output.  Canonical routing corrects horseshoe-affected chambers by using
+    2D Dim 1 instead of confounded 1D IRT scores.
+    """
+    results: list[pl.DataFrame | None] = []
+    for ch in ("house", "senate"):
+        canonical = None
+        if results_root is not None:
+            canonical = _load_canonical_irt(results_root, run_id, ch)
+        if canonical is not None:
+            results.append(canonical)
+        else:
+            path = irt_dir / "data" / f"ideal_points_{ch}.parquet"
+            if path.exists():
+                results.append(pl.read_parquet(path))
+            else:
+                results.append(None)
+    return results[0], results[1]
 
 
 def load_bill_params(
@@ -1750,7 +1788,7 @@ def main() -> None:
         print(f"    Legislators: {legislators.height:,} rows")
 
         print("  Loading upstream results...")
-        ip_house, ip_senate = load_ideal_points(irt_dir)
+        ip_house, ip_senate = load_ideal_points(irt_dir, results_root, args.run_id)
         bp_house, bp_senate = load_bill_params(irt_dir)
         loyalty_house, loyalty_senate = load_party_loyalty(clustering_dir)
         cent_house, cent_senate = load_centrality(network_dir)

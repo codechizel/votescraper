@@ -671,19 +671,26 @@ def validate_detection(
 def _load_vote_features(
     ks: object,
     chamber: str,
+    run_id: str | None = None,
 ) -> pl.DataFrame | None:
     """Load vote_features parquet from a session's prediction results."""
     results_dir = ks.results_dir  # type: ignore[attr-defined]
-    path = results_dir / "15_prediction" / "latest" / "data" / f"vote_features_{chamber}.parquet"
+    phase_dir = resolve_upstream_dir("15_prediction", results_dir, run_id)
+    path = phase_dir / "data" / f"vote_features_{chamber}.parquet"
     if not path.exists():
         return None
     return pl.read_parquet(path)
 
 
-def _load_within_session_auc(ks: object, chamber: str) -> float | None:
+def _load_within_session_auc(
+    ks: object,
+    chamber: str,
+    run_id: str | None = None,
+) -> float | None:
     """Load the within-session XGBoost AUC from holdout results."""
     results_dir = ks.results_dir  # type: ignore[attr-defined]
-    path = results_dir / "15_prediction" / "latest" / "data" / f"holdout_results_{chamber}.parquet"
+    phase_dir = resolve_upstream_dir("15_prediction", results_dir, run_id)
+    path = phase_dir / "data" / f"holdout_results_{chamber}.parquet"
     if not path.exists():
         return None
     holdout = pl.read_parquet(path)
@@ -702,6 +709,7 @@ def _run_cross_prediction(
     session_a_label: str,
     session_b_label: str,
     matched: pl.DataFrame | None = None,
+    run_id: str | None = None,
 ) -> dict | None:
     """Run cross-session prediction transfer for one chamber.
 
@@ -720,8 +728,8 @@ def _run_cross_prediction(
     print("\n  Cross-session prediction transfer...")
 
     # Load vote features
-    vf_a = _load_vote_features(ks_a, chamber)
-    vf_b = _load_vote_features(ks_b, chamber)
+    vf_a = _load_vote_features(ks_a, chamber, run_id)
+    vf_b = _load_vote_features(ks_b, chamber, run_id)
     if vf_a is None or vf_b is None:
         missing = []
         if vf_a is None:
@@ -780,8 +788,8 @@ def _run_cross_prediction(
     print(f"      AUC={auc_ba:.3f}, Accuracy={acc_ba:.3f}, F1={f1_ba:.3f}")
 
     # Within-session AUC for comparison
-    within_auc_a = _load_within_session_auc(ks_a, chamber)
-    within_auc_b = _load_within_session_auc(ks_b, chamber)
+    within_auc_a = _load_within_session_auc(ks_a, chamber, run_id)
+    within_auc_b = _load_within_session_auc(ks_b, chamber, run_id)
     if within_auc_a is not None:
         print(f"    Within-session AUC ({session_a_label}): {within_auc_a:.3f}")
     if within_auc_b is not None:
@@ -1115,6 +1123,7 @@ def main() -> None:
                     session_a_label,
                     session_b_label,
                     matched=matched,
+                    run_id=args.run_id,
                 )
 
             # ── Save data ──

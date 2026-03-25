@@ -130,6 +130,7 @@ What are the trade-offs?
 | [0062](0062-dime-cfscore-external-validation.md) | DIME/CFscore external validation (Phase 18) |
 | [0035](0035-cross-session-deep-dive-improvements.md) | Cross-session deep dive improvements |
 | [0039](0039-cross-session-validation-enhancements.md) | Cross-session validation enhancements |
+| [0121](0121-prediction-canonical-irt-routing.md) | Prediction phase canonical IRT routing (fix horseshoe bypass in Phase 15 + Phase 26 path resolution) |
 | [0059](0059-wnominate-validation-phase.md) | W-NOMINATE + OC validation phase |
 | [0063](0063-ppc-loo-standalone-phase.md) | Standalone PPC + LOO-CV phase (Phase 08) |
 | [0073](0073-wnominate-all-biennium-production-run.md) | W-NOMINATE all-biennium production run + R compatibility fixes |
@@ -306,6 +307,7 @@ What are the trade-offs?
 | [0118](0118-party-separation-quality-gates.md) | Party separation quality gates across pipeline (7 fixes for PCA axis instability) | Accepted | 2026-03-15 |
 | [0119](0119-pipeline-tuning-centralization.md) | Pipeline tuning centralization (`analysis/tuning.py`, 10 parameters, MINORITY→CONTESTED rename) | Accepted | 2026-03-18 |
 | [0120](0120-common-space-ideal-points.md) | Common space ideal points (cross-temporal alignment via bridge legislators) | Accepted | 2026-03-24 |
+| [0121](0121-prediction-canonical-irt-routing.md) | Prediction phase canonical IRT routing (fix horseshoe bypass in Phase 15 + Phase 26 path resolution) | Accepted | 2026-03-25 |
 
 ## Creating a New ADR
 
