@@ -41,7 +41,7 @@ Keith T. Poole and Howard Rosenthal, then at Carnegie Mellon University, develop
 
 **DW-NOMINATE** is the cross-session variant used for temporal comparisons at the congressional level. It uses legislators who served in multiple Congresses as "bridge" observations to link coordinate systems across time. DW-NOMINATE scores are the lingua franca of congressional research.
 
-For **state legislatures**, neither W-NOMINATE nor DW-NOMINATE solves the cross-state comparability problem — each state votes on different bills. Shor & McCarty (2011) addressed this by bridging via NPAT survey responses, using IRT rather than NOMINATE for the underlying estimation.
+For **state legislatures**, neither W-NOMINATE nor DW-NOMINATE solves the cross-state comparability problem — each state votes on different bills. Shor & McCarty (2011) addressed this by bridging via NPAT survey responses, using IRT rather than NOMINATE for the underlying estimation. For cross-temporal comparison within Kansas, Phase 30 applies pairwise chain linking (the same approach as Phase 28's IRT common space) to per-session W-NOMINATE Dim 1 scores, producing field-standard W-NOMINATE-scaled career scores. See `docs/wnominate-common-space.md`.
 
 ---
 

@@ -145,6 +145,8 @@ Three independent external checks, all already integrated into the pipeline:
 
 3. **Dynamic IRT** (84th-91st coverage): The state-space model produces independently estimated cross-temporal trajectories. Agreement between the chain-linked point estimates and the Bayesian trajectories validates the linking methodology.
 
+4. **W-NOMINATE common space** (Phase 30, planned): The same pairwise chain linking applied to W-NOMINATE Dim 1 scores instead of IRT. If both methods produce the same career rank ordering, the findings are robust to modeling choices. See `docs/wnominate-common-space.md`.
+
 Additionally, the common-space scores should pass internal consistency checks:
 - Party separation should be stable or slowly trending (no abrupt sign flips)
 - Bridge legislators' aligned scores should be highly correlated across sessions (r > 0.85)

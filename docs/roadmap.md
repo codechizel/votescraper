@@ -502,6 +502,14 @@ Additional milestones from code audit:
 
 ---
 
+## Planned
+
+### 30. W-NOMINATE Common Space
+
+W-NOMINATE common-space ideal points via the same pairwise chain linking as Phase 28, applied to Phase 16 W-NOMINATE Dim 1 scores instead of IRT. Reuses Phase 28's alignment infrastructure directly. Cross-method validation comparing W-NOMINATE and IRT career scores. Produces field-standard W-NOMINATE-scaled output for researchers who prefer that scaling. Design: `analysis/design/wnominate_common_space.md`, article: `docs/wnominate-common-space.md`.
+
+---
+
 ## Other Backlog
 
 ### ~~Per-Phase Results Primers~~ — Done
