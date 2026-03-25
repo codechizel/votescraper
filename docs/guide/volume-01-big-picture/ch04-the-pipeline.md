@@ -219,7 +219,7 @@ The most ambitious temporal model: a state-space IRT that tracks each legislator
 
 **Phase 28: Common Space Ideal Points**
 
-Places every legislator from every biennium on a single ideological scale so that legislators who never served together can be directly compared. Uses simultaneous affine alignment: bridge legislators who served in multiple sessions anchor the transformation between each biennium's independent IRT scale and a common reference (the most recent session). Bootstrap resampling provides confidence intervals. Quality gates check party separation and sign consistency. Enables questions like "Was Tim Huelskamp in 2001 more conservative than any current legislator?" and "Has the Kansas Senate polarized over the last 25 years?"
+Places every legislator from every biennium on a single ideological scale so that legislators who never served together can be directly compared. Uses pairwise chain affine alignment (GLS 1999, Battauz 2023): each pair of adjacent bienniums is linked via bridge legislators who served in both, then the pairwise transforms are composed into a chain reaching the reference session (91st). Bootstrap resampling provides confidence intervals. Quality gates check party separation and sign consistency. House and Senate are then linked via 54 chamber-switcher bridges into a unified cross-chamber scale. Career scores (one number per legislator) are computed via DerSimonian-Laird random-effects meta-analysis, pooling per-session scores with uncertainty. Enables questions like "Was Tim Huelskamp in 2001 more conservative than any current legislator?" and "Has the Kansas Senate polarized over the last 25 years?"
 
 ### Group 7: Synthesis and Reporting (Phases 24-25)
 

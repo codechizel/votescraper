@@ -38,6 +38,7 @@ Read these sequentially. Each phase inherits data from the previous one, so assu
 | 25. Profiles | [profiles.md](profiles.md) | Per-legislator deep-dives: 0-1 scorecard metrics, bill discrimination tiers, defection sorting, agreement vs Kappa |
 | 26. Cross-Session | [cross_session.md](cross_session.md) | Affine IRT alignment, name matching, shift thresholds, prediction transfer, detection validation |
 | 27. Dynamic IRT | [dynamic_irt.md](dynamic_irt.md) | State-space IRT, random walk evolution, per-party tau, polarization decomposition, bridge coverage, post-hoc sign correction (ADR-0068) |
+| 28. Common Space | [common_space.md](common_space.md) | Pairwise chain affine alignment, delta-method uncertainty, cross-chamber unification via chamber-switchers, career scores via RE meta-analysis (ADR-0120) |
 
 ## Investigations
 

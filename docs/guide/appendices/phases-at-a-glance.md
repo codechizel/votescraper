@@ -49,7 +49,7 @@ The pipeline runs phases in a specific order (matching the dashboard sidebar). E
 |---|-------|-------|--------|------------|-------------|
 | 26 | **Cross-Session** | Vol. 8, Ch. 3-4 | Affine alignment, conversion-replacement decomposition | IRT from adjacent sessions | Aligned ideal points, top movers, KS tests, Sankey diagrams |
 | 27 | **Dynamic IRT** | Vol. 8, Ch. 2 | Dynamic state-space IRT (random walk, nutpie) | Vote matrices from all 8 bienniums | 15-year trajectories, tau estimates, polarization trend |
-| 28 | **Common Space** | Vol. 8, Ch. 5 | Simultaneous affine alignment (GLS 1999) | Canonical IRT from all sessions | Universal ideal points, linking coefficients, polarization trajectory |
+| 28 | **Common Space** | Vol. 8, Ch. 5 | Pairwise chain affine alignment (GLS 1999, Battauz 2023) + RE career scores | Canonical IRT from all sessions | Universal ideal points, linking coefficients, polarization trajectory, career scores (per-chamber + unified) |
 
 ---
 

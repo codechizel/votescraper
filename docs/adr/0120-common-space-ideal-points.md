@@ -75,10 +75,20 @@ Pool all 14 sessions into one giant IRT model with shared legislator parameters 
 
 Constrain each legislator to a linear career trajectory. Fast but too rigid for a 28-year span that includes the Brownback disruption and the 2012 Republican purge.
 
+## Cross-Chamber Unification (2026-03-25)
+
+House and Senate are aligned independently across time (different bills, different IRT scales). After within-chamber alignment, the two scales are linked via 54 legislators who served in both chambers. An affine transform (A, B) maps Senate common-space scores onto the House scale, estimated via trimmed OLS on chamber-switchers' mean scores. This produces a unified scale for all 708 unique legislators.
+
+Career scores are computed three ways:
+- **Per-chamber** (`career_scores_house.parquet`, `career_scores_senate.parquet`): DerSimonian-Laird random-effects meta-analysis pooling per-session common-space scores within each chamber
+- **Unified** (`career_scores_unified.parquet`): same RE meta-analysis but pooling across both chambers on the unified scale — one number per legislator
+
 ## Consequences
 
 - Every Kansas legislator from 1999-2026 receives a score on a common ideological scale
 - Cross-era comparison becomes possible (Huelskamp 2001 vs. any current legislator)
+- Cross-chamber comparison enabled by chamber-switcher linking (54 bridges)
+- 708 legislators get unified career scores — one number per person, regardless of which chamber(s) they served in
 - Polarization trajectories show how party means evolved on the common scale
 - Career trajectories show how individual legislators moved over their careers
 - Confidence intervals honestly reflect chain distance from the reference biennium — earlier sessions have wider CIs
