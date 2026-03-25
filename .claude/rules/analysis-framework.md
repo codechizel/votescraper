@@ -11,9 +11,9 @@ paths:
 
 EDA → PCA → MCA → Bill Text → IRT → 2D IRT → Hierarchical IRT → Hierarchical 2D IRT → PPC → UMAP → Clustering → LCA → Network → Bipartite → Indices → Beta-Binomial → Prediction → W-NOMINATE → External Validation → DIME → TSA → TBIP → Issue IRT → Model Legislation → Synthesis → Profiles
 
-**Cross-biennium** (`just cross-pipeline`): phases 26-28. Requires data from multiple bienniums.
+**Cross-biennium** (`just cross-pipeline`): phases 26-30. Requires data from multiple bienniums.
 
-Cross-Session → Dynamic IRT → Common Space
+Cross-Session → Dynamic IRT → Common Space → W-NOMINATE Common Space
 
 Hierarchical IRT's joint cross-chamber model is off by default (`--run-joint` to enable); Stocking-Lord linking is the production cross-chamber alignment method (ADR-0074). A flat pooled alternative exists in `analysis/experimental/joint_irt_experiment.py`.
 

@@ -77,6 +77,7 @@ What's been done, what's next, and what's on the horizon for the Tallgrass analy
 | 7b | Hierarchical 2D IRT | 2026-03-14 | Party-pooled M2PL IRT combining 2D structure (Phase 06 PLT) with hierarchical partial pooling (Phase 07). Informative priors from both upstream phases. Canonical routing: H2D preferred over flat 2D when converged. 4-way PPC model comparison. `just hierarchical-2d`. Design: `analysis/design/hierarchical_2d.md`, ADR-0117. |
 | — | PCA Axis Instability Deep Dive + Fixes | 2026-03-15 | Discovered PC1 ≠ ideology in 7/14 Senate sessions (78th-83rd, 88th). 7 party-separation quality gates implemented (R1-R7, ADR-0118): party-aware PCA init, 1D IRT party-d gate, Tier 2 party-d check, hierarchical min-sep guard, 2D dimension swap detection, dynamic IRT canonical reference. Validated on 79th pipeline: Senate now routes to `hierarchical_2d_dim1` (d=4.36) instead of wrong-axis 1D IRT (d=1.19). Article: `docs/pca-ideology-axis-instability.md`. |
 | 28 | Common Space Ideal Points | 2026-03-24 | Cross-temporal alignment: pairwise chain affine linking of canonical ideal points across all 14 bienniums (78th-91st) via bridge legislators (GLS 1999, Battauz 2023). Bootstrap uncertainty, quality gates, polarization trajectory. Cross-chamber unification via 54 chamber-switcher bridges. Unified career scores (RE meta-analysis, 708 legislators). Design: `analysis/design/common_space.md`, article: `docs/common-space-ideal-points.md`, ADR-0120. |
+| 30 | W-NOMINATE Common Space | 2026-03-25 | W-NOMINATE common space via same pairwise chain linking as Phase 28, applied to Phase 16 W-NOMINATE Dim 1 scores. Cross-method validation: IRT vs W-NOMINATE career score r=0.96. All 28 House quality gates pass; 4 early Senate sessions have weak W-NOMINATE party separation (known horseshoe era). Design: `analysis/design/wnominate_common_space.md`, article: `docs/wnominate-common-space.md`. |
 
 ---
 
@@ -499,14 +500,6 @@ Additional milestones from code audit:
 | [ITables](https://github.com/mwouts/itables) (v2.6+) | Searchable/sortable tables | All phases with legislator tables |
 | [Folium](https://python-visualization.github.io/folium/) | Interactive choropleth maps | EDA geographic sections |
 | [GeoPandas](https://geopandas.org/) | GeoJSON/shapefile handling | District boundary loading |
-
----
-
-## Planned
-
-### 30. W-NOMINATE Common Space
-
-W-NOMINATE common-space ideal points via the same pairwise chain linking as Phase 28, applied to Phase 16 W-NOMINATE Dim 1 scores instead of IRT. Reuses Phase 28's alignment infrastructure directly. Cross-method validation comparing W-NOMINATE and IRT career scores. Produces field-standard W-NOMINATE-scaled output for researchers who prefer that scaling. Design: `analysis/design/wnominate_common_space.md`, article: `docs/wnominate-common-space.md`.
 
 ---
 

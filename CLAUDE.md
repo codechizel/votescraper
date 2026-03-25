@@ -29,8 +29,9 @@ just test-scraper                            # → pytest -m scraper (~643 tests
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just test-web                                # → Django tests only (-m web, requires PostgreSQL)
 just pipeline 2025-26                        # → single-biennium pipeline (phases 01-25 + 07b)
-just cross-pipeline                          # → cross-biennium pipeline (phases 26-28)
+just cross-pipeline                          # → cross-biennium pipeline (phases 26-30)
 just common-space                            # → common space ideal points (cross-temporal scale)
+just wnominate-common-space                  # → W-NOMINATE common space (Phase 30)
 just scrape 2025 --auto-load                 # → scrape + load CSVs into PostgreSQL
 just extract report.html --section 15        # → tallgrass-extract (bespoke report extraction)
 ```
@@ -85,7 +86,7 @@ src/tallgrass/
   extract/      - Bespoke report extraction (tallgrass-extract)
 ```
 
-29-phase analysis pipeline in `analysis/01_eda/` through `analysis/28_common_space/` plus `analysis/07b_hierarchical_2d/` (Hierarchical 2D IRT — party-pooled M2PL with PLT identification, ADR-0117). PEP 302 meta-path finder redirects `from analysis.eda import X` to numbered subdirectories (ADR-0030). `analysis/db.py` provides PostgreSQL loading (psycopg3 + Polars `read_database()`) with CSV fallback; `--csv` flag forces CSV-only mode (ADR-0099). `analysis/tuning.py` centralizes pipeline tuning parameters: `CONTESTED_THRESHOLD`, `MIN_VOTES`, `SENSITIVITY_THRESHOLD`, `PARTY_COLORS`, `SUPERMAJORITY_THRESHOLD`, `HIGH_DISC_THRESHOLD`, `LOW_DISC_THRESHOLD`, and external validation correlation thresholds — change values here to retune the entire pipeline (future Django dashboard integration). `analysis/init_strategy.py` provides shared MCMC initialization strategies (`--init-strategy {auto,irt-informed,pca-informed,2d-dim1}`, ADR-0107). `analysis/phase_utils.py` provides cross-phase utilities: horseshoe detection (`load_horseshoe_status()`), horseshoe warning banners (`horseshoe_warning_html()`), and column pruning (`drop_empty_optional_columns()`) — see ADR-0114. Experimental lab at `analysis/experimental/` — standalone experiments that bypass the pipeline (e.g., `joint_irt_experiment.py` for flat pooled cross-chamber IRT). See `.claude/rules/analysis-framework.md`.
+30-phase analysis pipeline in `analysis/01_eda/` through `analysis/30_wnominate_common_space/` plus `analysis/07b_hierarchical_2d/` (Hierarchical 2D IRT — party-pooled M2PL with PLT identification, ADR-0117). PEP 302 meta-path finder redirects `from analysis.eda import X` to numbered subdirectories (ADR-0030). `analysis/db.py` provides PostgreSQL loading (psycopg3 + Polars `read_database()`) with CSV fallback; `--csv` flag forces CSV-only mode (ADR-0099). `analysis/tuning.py` centralizes pipeline tuning parameters: `CONTESTED_THRESHOLD`, `MIN_VOTES`, `SENSITIVITY_THRESHOLD`, `PARTY_COLORS`, `SUPERMAJORITY_THRESHOLD`, `HIGH_DISC_THRESHOLD`, `LOW_DISC_THRESHOLD`, and external validation correlation thresholds — change values here to retune the entire pipeline (future Django dashboard integration). `analysis/init_strategy.py` provides shared MCMC initialization strategies (`--init-strategy {auto,irt-informed,pca-informed,2d-dim1}`, ADR-0107). `analysis/phase_utils.py` provides cross-phase utilities: horseshoe detection (`load_horseshoe_status()`), horseshoe warning banners (`horseshoe_warning_html()`), and column pruning (`drop_empty_optional_columns()`) — see ADR-0114. Experimental lab at `analysis/experimental/` — standalone experiments that bypass the pipeline (e.g., `joint_irt_experiment.py` for flat pooled cross-chamber IRT). See `.claude/rules/analysis-framework.md`.
 
 Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `.claude/rules/database.md`.
 
@@ -103,7 +104,7 @@ Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `
 | Rule file | Loads when editing | Content |
 |-----------|-------------------|---------|
 | `scraper-architecture.md` | `src/**/*.py` | Session coverage, retry strategy, ODT parsing, concurrency |
-| `analysis-framework.md` | `analysis/**/*.py` | 29-phase pipeline, report system, experiment framework, MCMC concurrency |
+| `analysis-framework.md` | `analysis/**/*.py` | 30-phase pipeline, report system, experiment framework, MCMC concurrency |
 | `analytic-workflow.md` | `analysis/**/*.py` | Methodology rules, validation, audience guidance |
 | `testing.md` | `tests/**/*.py` | Test inventory, markers, conventions |
 | `html-pitfalls.md` | `src/tallgrass/scraper.py`, `odt_parser.py`, `bills.py` | 10 hard-won HTML parsing lessons, session URL logic |

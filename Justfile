@@ -187,6 +187,10 @@ dynamic-irt *args:
 common-space *args:
     uv run python analysis/28_common_space/common_space.py {{args}}
 
+# Run W-NOMINATE common space (Phase 30 — field-standard scaling)
+wnominate-common-space *args:
+    uv run python analysis/30_wnominate_common_space/wnominate_common.py {{args}}
+
 # Run single-biennium pipeline (phases 01-25 + 07b)
 pipeline session="2025-26" *args:
     #!/usr/bin/env bash
@@ -225,11 +229,12 @@ pipeline session="2025-26" *args:
     echo ""
     echo "Pipeline complete: $RUN_ID"
 
-# Run cross-biennium pipeline (phases 26-28)
+# Run cross-biennium pipeline (phases 26-30)
 cross-pipeline *args:
     just cross-session {{args}}
     just dynamic-irt {{args}}
     just common-space {{args}}
+    just wnominate-common-space {{args}}
 
 # Generate dashboard index for a session
 dashboard session="2025-26" *args:
