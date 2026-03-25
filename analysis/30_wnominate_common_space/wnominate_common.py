@@ -691,6 +691,135 @@ def main() -> None:
                 / f"wnominate_common_{name}_report.html"
             )
 
+        # Validation report (cross-method comparison)
+        comparison_df = all_results.get("comparison")
+        validation_summary = all_results.get("validation")
+        if comparison_df is not None and validation_summary is not None:
+            from analysis.report import (
+                InteractiveTableSection,
+                KeyFindingsSection,
+                ReportBuilder,
+                TableSection,
+                TextSection,
+                make_gt,
+                make_interactive_table,
+            )
+
+            val_report = ReportBuilder(title="W-NOMINATE vs IRT — Cross-Method Validation")
+            val_report.add(
+                KeyFindingsSection(
+                    findings=[
+                        f"Matched {validation_summary['n_matched']} legislators across both methods",
+                        f"Overall: Pearson r = {validation_summary['pearson_r']:.4f}, "
+                        f"Spearman ρ = {validation_summary['spearman_rho']:.4f}",
+                    ]
+                    + [
+                        f"{party.capitalize()}: r = {validation_summary[f'{party}_r']:.4f} "
+                        f"(n={validation_summary[f'{party}_n']})"
+                        for party in ("republican", "democrat")
+                        if f"{party}_r" in validation_summary
+                    ]
+                )
+            )
+
+            # Top 25 divergent legislators
+            top_25 = comparison_df.head(25).select(
+                "full_name", "party", "wnom_score", "irt_score",
+                "wnom_rank", "irt_rank", "rank_diff",
+            )
+            for col in ("wnom_score", "irt_score"):
+                top_25 = top_25.with_columns(pl.col(col).round(3))
+            top_25 = top_25.with_columns(
+                pl.col("wnom_rank").cast(pl.Int32),
+                pl.col("irt_rank").cast(pl.Int32),
+                pl.col("rank_diff").cast(pl.Int32),
+            )
+
+            html = make_interactive_table(
+                top_25,
+                title="Top 25 Legislators with Largest Rank Differences",
+                column_labels={
+                    "full_name": "Legislator",
+                    "party": "Party",
+                    "wnom_score": "W-NOM Score",
+                    "irt_score": "IRT Score",
+                    "wnom_rank": "W-NOM Rank",
+                    "irt_rank": "IRT Rank",
+                    "rank_diff": "Rank Diff",
+                },
+                number_formats={
+                    "wnom_score": ".3f",
+                    "irt_score": ".3f",
+                },
+                caption=(
+                    "Legislators where W-NOMINATE and IRT career scores disagree "
+                    "most on rank ordering. Large rank differences may indicate "
+                    "sessions where W-NOMINATE's bounded [-1,+1] scale compresses "
+                    "scores differently than IRT's unbounded scale, or where the "
+                    "two methods weight different voting patterns."
+                ),
+            )
+            val_report.add(
+                InteractiveTableSection(
+                    id="top-divergent",
+                    title="Top 25 Divergent Legislators",
+                    html=html,
+                )
+            )
+
+            # Full comparison table
+            full_display = comparison_df.select(
+                "full_name", "party", "wnom_score", "irt_score",
+                "wnom_rank", "irt_rank", "rank_diff",
+            )
+            for col in ("wnom_score", "irt_score"):
+                full_display = full_display.with_columns(pl.col(col).round(3))
+            full_display = full_display.with_columns(
+                pl.col("wnom_rank").cast(pl.Int32),
+                pl.col("irt_rank").cast(pl.Int32),
+                pl.col("rank_diff").cast(pl.Int32),
+            )
+            full_html = make_interactive_table(
+                full_display,
+                title=f"All {full_display.height} Legislators — W-NOMINATE vs IRT Rank Comparison",
+                column_labels={
+                    "full_name": "Legislator",
+                    "party": "Party",
+                    "wnom_score": "W-NOM Score",
+                    "irt_score": "IRT Score",
+                    "wnom_rank": "W-NOM Rank",
+                    "irt_rank": "IRT Rank",
+                    "rank_diff": "Rank Diff",
+                },
+                number_formats={
+                    "wnom_score": ".3f",
+                    "irt_score": ".3f",
+                },
+                caption="Sorted by rank difference (descending). Searchable and sortable.",
+            )
+            val_report.add(
+                InteractiveTableSection(
+                    id="full-comparison",
+                    title="Full Comparison Table",
+                    html=full_html,
+                )
+            )
+
+            # Write validation report
+            val_path = ctx.run_dir / "wnominate_common_validation_report.html"
+            val_report.session = ctx.session
+            val_report.write(val_path)
+            print(f"  Saved: wnominate_common_validation_report.html")
+
+            link_path = session_root / "wnominate_common_validation_report.html"
+            if link_path.is_symlink() or link_path.exists():
+                link_path.unlink()
+            link_path.symlink_to(
+                Path("wnominate_common")
+                / "latest"
+                / "wnominate_common_validation_report.html"
+            )
+
         # Combined report (auto-written by RunContext)
         from analysis.common_space_report import build_common_space_report
 
@@ -702,6 +831,11 @@ def main() -> None:
             reference=reference,
             plots_dir=ctx.plots_dir,
         )
+
+        # Add validation sections to combined report
+        if comparison_df is not None and validation_summary is not None:
+            for _, section in val_report._sections:
+                ctx.report.add(section)
 
         print(f"\n{'=' * 60}")
         print("Phase 30 Complete")
