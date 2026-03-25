@@ -5,11 +5,15 @@ import polars as pl
 from analysis.common_space_data import (
     PARTY_D_MIN,
     BootstrapStats,
+    _other_chamber_slug,
+    _slug_to_person_key,
     build_global_roster,
+    build_person_key_lookup,
     compute_bridge_matrix,
     compute_career_scores,
     compute_polarization_trajectory,
     compute_quality_gates,
+    detect_potential_duplicates,
     solve_simultaneous_alignment,
     transform_scores,
 )
@@ -473,3 +477,166 @@ class TestEdgeCases:
         # Senate should produce empty bridge matrix
         matrix = compute_bridge_matrix(roster, ["A"])
         assert matrix.height == 0
+
+
+# ---------------------------------------------------------------------------
+# TestPersonIdentity — cross-chamber variant expansion & duplicate detection
+# ---------------------------------------------------------------------------
+
+
+class TestPersonIdentity:
+    """Tests for person identity resolution (OCD expansion, duplicate detection)."""
+
+    def test_slug_to_person_key_strips_prefix(self):
+        assert _slug_to_person_key("rep_tyson_caryn_1") == "tyson_caryn_1"
+        assert _slug_to_person_key("sen_tyson_caryn_1") == "tyson_caryn_1"
+
+    def test_slug_to_person_key_no_prefix_strips_first_component(self):
+        """Without a chamber prefix, the first _-delimited component is stripped."""
+        assert _slug_to_person_key("tyson_caryn_1") == "caryn_1"
+
+    def test_other_chamber_slug_rep_to_sen(self):
+        assert _other_chamber_slug("rep_tyson_caryn_1") == "sen_tyson_caryn_1"
+
+    def test_other_chamber_slug_sen_to_rep(self):
+        assert _other_chamber_slug("sen_tyson_caryn_1") == "rep_tyson_caryn_1"
+
+    def test_other_chamber_slug_no_prefix(self):
+        assert _other_chamber_slug("tyson_caryn_1") is None
+
+    def test_cross_chamber_expansion_adds_variant(self):
+        """If only sen_ slug is mapped, rep_ variant should be auto-derived."""
+        slug_to_ocd = {"sen_tyson_caryn_1": "ocd-person/abc123"}
+        lookup = build_person_key_lookup(slug_to_ocd)
+        assert lookup["sen_tyson_caryn_1"] == "ocd-person/abc123"
+        assert lookup["rep_tyson_caryn_1"] == "ocd-person/abc123"
+
+    def test_cross_chamber_expansion_does_not_overwrite(self):
+        """If both chamber slugs have DIFFERENT OCD IDs, don't overwrite."""
+        slug_to_ocd = {
+            "rep_thompson_mike_1": "ocd-person/house-mike",
+            "sen_thompson_mike_1": "ocd-person/senate-mike",
+        }
+        lookup = build_person_key_lookup(slug_to_ocd)
+        assert lookup["rep_thompson_mike_1"] == "ocd-person/house-mike"
+        assert lookup["sen_thompson_mike_1"] == "ocd-person/senate-mike"
+
+    def test_ocd_overrides_applied(self):
+        """OCD overrides canonicalize split OCD IDs before expansion."""
+        slug_to_ocd = {
+            "rep_goddard_dan_1": "ocd-person/2d7cf122-fd6c-406c-a158-de6c61ff0afa",
+            "sen_goddard_dan_1": "ocd-person/804bbf3c-f3b3-4666-a50a-d55f3716f741",
+        }
+        lookup = build_person_key_lookup(slug_to_ocd)
+        # Both should resolve to the same canonical OCD ID
+        assert lookup["rep_goddard_dan_1"] == lookup["sen_goddard_dan_1"]
+
+    def test_resolve_person_key_uses_ocd_via_roster(self):
+        """build_global_roster populates the lookup so resolve_person_key works."""
+        slug_to_ocd = {"sen_tyson_caryn_1": "ocd-person/abc123"}
+        lookup = build_person_key_lookup(slug_to_ocd)
+        # Cross-chamber expansion should add rep_ variant
+        assert "rep_tyson_caryn_1" in lookup
+        assert lookup["rep_tyson_caryn_1"] == "ocd-person/abc123"
+
+    def test_resolve_person_key_falls_back_to_slug(self):
+        """Without OCD mapping, falls back to slug-based key."""
+        # build_person_key_lookup with empty mapping → empty lookup
+        lookup = build_person_key_lookup({})
+        assert len(lookup) == 0
+        # When _person_key_lookup is empty, resolve falls back to slug-based
+        assert _slug_to_person_key("rep_unknown_person_1") == "unknown_person_1"
+
+
+class TestDetectPotentialDuplicates:
+    """Tests for the duplicate detection quality gate."""
+
+    def test_no_duplicates_when_clean(self):
+        """Clean roster with unique person_keys produces no duplicates."""
+        roster = pl.DataFrame(
+            {
+                "legislator_slug": ["rep_smith_a_1", "sen_jones_b_1"],
+                "person_key": ["ocd-person/111", "ocd-person/222"],
+                "full_name": ["A Smith", "B Jones"],
+                "session": ["S1", "S1"],
+            }
+        )
+        dupes = detect_potential_duplicates(roster)
+        assert dupes.height == 0
+
+    def test_detects_split_identity(self):
+        """Detects when same slug root maps to different person_keys."""
+        roster = pl.DataFrame(
+            {
+                "legislator_slug": [
+                    "rep_tyson_caryn_1",
+                    "sen_tyson_caryn_1",
+                ],
+                "person_key": [
+                    "tyson_caryn_1",  # slug fallback
+                    "ocd-person/abc123",  # OCD-based
+                ],
+                "full_name": ["Caryn Tyson", "Caryn Tyson"],
+                "session": ["84th", "85th"],
+            }
+        )
+        dupes = detect_potential_duplicates(roster)
+        assert dupes.height == 1
+        assert dupes["slug_root"][0] == "tyson_caryn_1"
+
+    def test_same_person_key_not_flagged(self):
+        """Same slug root with same person_key (correctly resolved) is fine."""
+        roster = pl.DataFrame(
+            {
+                "legislator_slug": [
+                    "rep_tyson_caryn_1",
+                    "sen_tyson_caryn_1",
+                ],
+                "person_key": [
+                    "ocd-person/abc123",
+                    "ocd-person/abc123",
+                ],
+                "full_name": ["Caryn Tyson", "Caryn Tyson"],
+                "session": ["84th", "85th"],
+            }
+        )
+        dupes = detect_potential_duplicates(roster)
+        assert dupes.height == 0
+
+    def test_allowlisted_same_name_different_person_not_flagged(self):
+        """Entries in _SAME_NAME_DIFFERENT_PERSON are skipped (genuinely different)."""
+        roster = pl.DataFrame(
+            {
+                "legislator_slug": [
+                    "rep_thompson_mike_1",
+                    "sen_thompson_mike_1",
+                ],
+                "person_key": [
+                    "ocd-person/house-mike",
+                    "ocd-person/senate-mike",
+                ],
+                "full_name": ["Mike Thompson", "Mike Thompson"],
+                "session": ["90th", "90th"],
+            }
+        )
+        dupes = detect_potential_duplicates(roster)
+        assert dupes.height == 0
+
+    def test_unknown_same_slug_root_different_person_flagged(self):
+        """Unknown slug root collisions ARE flagged (need investigation)."""
+        roster = pl.DataFrame(
+            {
+                "legislator_slug": [
+                    "rep_smith_john_1",
+                    "sen_smith_john_1",
+                ],
+                "person_key": [
+                    "ocd-person/house-john",
+                    "ocd-person/senate-john",
+                ],
+                "full_name": ["John Smith", "John Smith"],
+                "session": ["90th", "90th"],
+            }
+        )
+        dupes = detect_potential_duplicates(roster)
+        assert dupes.height == 1

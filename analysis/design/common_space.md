@@ -51,7 +51,13 @@ Match legislators across all bienniums using the 3-phase matching from Phase 26:
 2. Normalized name (`phase_utils.normalize_name()`)
 3. Optional fuzzy matching (disabled by default)
 
-Output: a global roster DataFrame with columns `person_key`, `name_norm`, `legislator_slug`, `session`, `chamber`, `party`, `full_name`, `xi_canonical`. Identity resolution uses OpenStates OCD person IDs as primary key (loaded from `data/external/openstates/ks_slug_to_ocd.json`), falling back to slug-based keys for pre-2011 KanFocus sessions without OCD coverage. OCD IDs correctly separate same-name legislators (e.g., two different Mike Thompsons — one Senate, one House — who served simultaneously in the 90th). `_OCD_OVERRIDES` merges cases where OpenStates itself splits one person into multiple IDs (J.R. Claeys). `_SLUG_OVERRIDES` handles pre-2011 slug encoding variants (8 entries).
+Output: a global roster DataFrame with columns `person_key`, `name_norm`, `legislator_slug`, `session`, `chamber`, `party`, `full_name`, `xi_canonical`. Identity resolution uses OpenStates OCD person IDs as primary key (loaded from `data/external/openstates/ks_slug_to_ocd.json`), falling back to slug-based keys for pre-2011 KanFocus sessions without OCD coverage. OCD IDs correctly separate same-name legislators (e.g., two different Mike Thompsons — one Senate, one House — who served simultaneously in the 90th). Three override/expansion mechanisms handle data quality issues:
+
+- **Cross-chamber expansion (ADR-0122):** `build_person_key_lookup()` auto-derives the other-chamber variant (`rep_` ↔ `sen_`) for every mapped slug. If `sen_tyson_caryn_1` maps to an OCD ID, `rep_tyson_caryn_1` automatically gets the same mapping — unless it already has its own (different person). This resolves 28 chamber-switch orphans without manual overrides.
+- **`_OCD_OVERRIDES`:** Merges cases where OpenStates itself splits one person into multiple OCD IDs (J.R. Claeys, Dan Goddard, Ronald Ryckman Sr.).
+- **`_SLUG_OVERRIDES`:** Handles pre-2011 slug encoding variants (8 entries).
+
+A **duplicate detection quality gate** (`detect_potential_duplicates()`) runs after roster construction and raises `ValueError` if different person_keys share the same slug root (excluding allowlisted genuinely-different-people like the two Mike Thompsons). This catches future identity resolution failures immediately.
 
 ### Step 3: Compute Bridge Matrix
 

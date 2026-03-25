@@ -115,7 +115,7 @@ Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `
 
 ## Documentation
 
-- ADRs: `docs/adr/README.md` (118 decisions)
+- ADRs: `docs/adr/README.md` (119 decisions)
 - Design docs: `analysis/design/README.md`
 - Deep dives: `docs/*.md` (search by topic name)
 - Known issue: `docs/pca-ideology-axis-instability.md` — PC1 ≠ ideology in 7/14 Senate sessions

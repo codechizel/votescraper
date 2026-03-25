@@ -126,6 +126,15 @@ _OCD_OVERRIDES: dict[str, str] = {
     "ocd-person/2bbf4d79-672b-46f7-8745-ee91db3169e3": (
         "ocd-person/26607b1c-8e09-4c41-a1cc-aed9bf5216d5"
     ),
+    # Dan Goddard: Senate (87th-88th) then House (90th-91st). Two OCD IDs.
+    "ocd-person/2d7cf122-fd6c-406c-a158-de6c61ff0afa": (
+        "ocd-person/804bbf3c-f3b3-4666-a50a-d55f3716f741"
+    ),
+    # Ronald Ryckman Sr.: House (84th-86th) then Senate (89th-91st). Two OCD IDs.
+    # (Not Ron Ryckman Jr., who is rep_ryckman_jr_ron_1, a different person.)
+    "ocd-person/43caafd7-9177-40f4-b515-0681ef5930f3": (
+        "ocd-person/ae978391-0baa-4dff-af69-f9d95106bb98"
+    ),
 }
 
 # Slug-level overrides for sessions without OCD coverage (pre-2011 KanFocus).
@@ -142,17 +151,43 @@ _SLUG_OVERRIDES: dict[str, str] = {
 }
 
 
+# Slug roots where different person_keys are expected — genuinely different
+# people who share the same name component.  The quality gate skips these.
+_SAME_NAME_DIFFERENT_PERSON: frozenset[str] = frozenset(
+    {
+        "thompson_mike_1",  # Rep. Mike Thompson (House) and Sen. Mike Thompson (Senate)
+    }
+)
+
+_CHAMBER_PREFIXES: tuple[str, str] = ("rep_", "sen_")
+"""Chamber prefixes used in Kansas Legislature slugs."""
+
+
+def _other_chamber_slug(slug: str) -> str | None:
+    """Return the other-chamber variant of a slug, or None if not prefixed."""
+    if slug.startswith("rep_"):
+        return "sen_" + slug[4:]
+    if slug.startswith("sen_"):
+        return "rep_" + slug[4:]
+    return None
+
+
 def build_person_key_lookup(slug_to_ocd: dict[str, str] | None = None) -> dict[str, str]:
     """Build a slug→person_key lookup using OCD IDs as primary identity.
 
     Strategy:
     1. If slug has an OCD mapping, use the OCD ID as person_key (applying
        _OCD_OVERRIDES for known OpenStates errors).
-    2. If no OCD mapping (pre-2011 KanFocus), fall back to slug-based key
+    2. Expand cross-chamber variants: if ``sen_tyson_caryn_1`` maps to an
+       OCD ID, also map ``rep_tyson_caryn_1`` to the same OCD ID — unless
+       that slug already has its own mapping (different person, like two
+       Mike Thompsons).
+    3. If no OCD mapping (pre-2011 KanFocus), fall back to slug-based key
        with _SLUG_OVERRIDES for known encoding variants.
 
     This correctly separates same-name legislators (e.g., two Mike Thompsons)
-    who have different OCD IDs, while merging same-person slug variants.
+    who have different OCD IDs, while merging same-person slug variants
+    across chamber switches.
     """
     if slug_to_ocd is None:
         slug_to_ocd = load_slug_to_ocd()
@@ -162,7 +197,16 @@ def build_person_key_lookup(slug_to_ocd: dict[str, str] | None = None) -> dict[s
         canonical_ocd = _OCD_OVERRIDES.get(ocd_id, ocd_id)
         lookup[slug] = canonical_ocd
 
-    # Store the mapping for use by resolve_person_key
+    # Expand cross-chamber variants: if only one chamber's slug is in the
+    # OCD mapping, derive the other so chamber-switchers get the same
+    # person_key regardless of which slug appears in the data.
+    expansions: dict[str, str] = {}
+    for slug, person_key in lookup.items():
+        alt = _other_chamber_slug(slug)
+        if alt is not None and alt not in lookup and alt not in expansions:
+            expansions[alt] = person_key
+    lookup.update(expansions)
+
     return lookup
 
 
@@ -237,6 +281,46 @@ def build_global_roster(
                     }
                 )
     return pl.DataFrame(rows)
+
+
+def detect_potential_duplicates(roster: pl.DataFrame) -> pl.DataFrame:
+    """Detect person_keys that likely refer to the same legislator.
+
+    Checks for different person_keys that share the same slug root (the part
+    after stripping ``rep_``/``sen_``). This catches chamber-switch orphans
+    that slipped past OCD expansion — e.g., one person_key is an OCD ID
+    (from a mapped slug) and another is a slug-based fallback key (from an
+    unmapped variant).
+
+    Slug roots listed in :data:`_SAME_NAME_DIFFERENT_PERSON` are excluded
+    (genuinely different people who happen to share a slug root).
+
+    Returns a DataFrame with columns: ``slug_root``, ``person_keys``,
+    ``full_names``, ``sessions``.  Empty if no duplicates found.
+    """
+    enriched = roster.with_columns(
+        pl.col("legislator_slug")
+        .map_elements(_slug_to_person_key, return_dtype=pl.Utf8)
+        .alias("slug_root"),
+    )
+
+    # Group by slug_root, collect distinct person_keys
+    grouped = (
+        enriched.select("slug_root", "person_key", "full_name", "session")
+        .unique(subset=["slug_root", "person_key"])
+        .group_by("slug_root")
+        .agg(
+            pl.col("person_key").n_unique().alias("n_keys"),
+            pl.col("person_key").unique().alias("person_keys"),
+            pl.col("full_name").unique().alias("full_names"),
+            pl.col("session").unique().alias("sessions"),
+        )
+        .filter(pl.col("n_keys") > 1)
+        .filter(~pl.col("slug_root").is_in(list(_SAME_NAME_DIFFERENT_PERSON)))
+        .sort("slug_root")
+    )
+
+    return grouped
 
 
 # ---------------------------------------------------------------------------
@@ -904,22 +988,22 @@ def link_chambers(
     Senate legislators, and xi_unified = xi_common for House legislators.
     """
     # Find chamber-switchers: legislators with scores in both chambers
-    house_by_name = (
-        house_transformed.group_by("person_key")
-        .agg(pl.col("xi_common").mean().alias("xi_house_mean"))
+    house_by_name = house_transformed.group_by("person_key").agg(
+        pl.col("xi_common").mean().alias("xi_house_mean")
     )
-    senate_by_name = (
-        senate_transformed.group_by("person_key")
-        .agg(pl.col("xi_common").mean().alias("xi_senate_mean"))
+    senate_by_name = senate_transformed.group_by("person_key").agg(
+        pl.col("xi_common").mean().alias("xi_senate_mean")
     )
     bridges = house_by_name.join(senate_by_name, on="person_key")
 
     if bridges.height < 5:
         # Not enough bridges — return identity transform
-        unified = pl.concat([
-            house_transformed.with_columns(pl.col("xi_common").alias("xi_unified")),
-            senate_transformed.with_columns(pl.col("xi_common").alias("xi_unified")),
-        ])
+        unified = pl.concat(
+            [
+                house_transformed.with_columns(pl.col("xi_common").alias("xi_unified")),
+                senate_transformed.with_columns(pl.col("xi_common").alias("xi_unified")),
+            ]
+        )
         return unified, 1.0, 0.0
 
     x_senate = bridges["xi_senate_mean"].to_numpy()

@@ -38,6 +38,7 @@ What are the trade-offs?
 | [0083](0083-bill-text-retrieval.md) | Bill text retrieval — multi-state-ready architecture |
 | [0084](0084-bill-text-analysis-phase-18.md) | Bill text analysis — Phase 18 (BERTopic + CAP classification) |
 | [0085](0085-openstates-legislator-identity.md) | OpenStates OCD person IDs for stable legislator identity |
+| [0122](0122-cross-chamber-person-identity-resolution.md) | Cross-chamber person identity resolution (OCD expansion + quality gate) |
 | [0086](0086-text-ideal-points-embedding-vote.md) | Text-based ideal points via embedding-vote approach (Phase 21) |
 | [0087](0087-issue-specific-ideal-points.md) | Issue-specific ideal points via topic-stratified flat IRT (Phase 19) |
 | [0088](0088-kanfocus-vote-data-adapter.md) | KanFocus vote data adapter (1999-2026, Chrome cookie auth, data archiving) |
@@ -308,6 +309,7 @@ What are the trade-offs?
 | [0119](0119-pipeline-tuning-centralization.md) | Pipeline tuning centralization (`analysis/tuning.py`, 10 parameters, MINORITY→CONTESTED rename) | Accepted | 2026-03-18 |
 | [0120](0120-common-space-ideal-points.md) | Common space ideal points (cross-temporal alignment via bridge legislators) | Accepted | 2026-03-24 |
 | [0121](0121-prediction-canonical-irt-routing.md) | Prediction phase canonical IRT routing (fix horseshoe bypass in Phase 15 + Phase 26 path resolution) | Accepted | 2026-03-25 |
+| [0122](0122-cross-chamber-person-identity-resolution.md) | Cross-chamber person identity resolution (OCD expansion + duplicate quality gate) | Accepted | 2026-03-25 |
 
 ## Creating a New ADR
 

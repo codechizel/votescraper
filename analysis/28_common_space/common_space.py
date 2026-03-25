@@ -43,6 +43,7 @@ try:
         compute_polarization_trajectory,
         compute_quality_gates,
         compute_unified_career_scores,
+        detect_potential_duplicates,
         link_chambers,
         solve_simultaneous_alignment,
         transform_scores,
@@ -61,6 +62,7 @@ except ModuleNotFoundError:
         compute_polarization_trajectory,
         compute_quality_gates,
         compute_unified_career_scores,
+        detect_potential_duplicates,
         link_chambers,
         solve_simultaneous_alignment,
         transform_scores,
@@ -69,7 +71,10 @@ except ModuleNotFoundError:
 try:
     from analysis.common_space_report import build_common_space_report, build_common_space_reports
 except ModuleNotFoundError:
-    from common_space_report import build_common_space_report, build_common_space_reports  # type: ignore[no-redef]
+    from common_space_report import (  # type: ignore[no-redef]
+        build_common_space_report,
+        build_common_space_reports,
+    )
 
 try:
     from analysis.phase_utils import normalize_name, print_header
@@ -362,6 +367,24 @@ def main() -> None:
         n_unique = roster["person_key"].n_unique()
         print(f"  {roster.height} legislator-session records, {n_unique} unique legislators")
 
+        # Quality gate: detect potential duplicate person_keys
+        dupes = detect_potential_duplicates(roster)
+        if dupes.height > 0:
+            print(f"\n  WARNING: {dupes.height} potential duplicate(s) detected:")
+            for row in dupes.iter_rows(named=True):
+                keys = row["person_keys"]
+                names = row["full_names"]
+                print(
+                    f"    {row['slug_root']}: {len(keys)} person_keys "
+                    f"({', '.join(str(n) for n in names)})"
+                )
+            msg = (
+                f"{dupes.height} person_key collision(s) detected — same slug root "
+                f"maps to multiple identities. Add entries to _OCD_OVERRIDES or "
+                f"_SLUG_OVERRIDES in common_space_data.py."
+            )
+            raise ValueError(msg)
+
         # Step 3: Bridge matrix
         print("\nComputing bridge coverage...")
         bridge_matrix = compute_bridge_matrix(roster, loaded_sessions)
@@ -533,9 +556,7 @@ def main() -> None:
                         annotations = []
                         for name in career["person_key"].to_list():
                             if name in cross_chamber:
-                                other_row = other_career.filter(
-                                    pl.col("person_key") == name
-                                )
+                                other_row = other_career.filter(pl.col("person_key") == name)
                                 n = other_row["n_sessions"][0] if other_row.height > 0 else 0
                                 label = "session" if n == 1 else "sessions"
                                 annotations.append(f"Also {other_key} ({n} {label})")
@@ -577,16 +598,10 @@ def main() -> None:
                     "career_scores_unified.csv",
                     "Unified career scores — one number per legislator across both chambers",
                 )
-                n_cross = unified_career.filter(
-                    pl.col("chambers").str.contains("&")
-                ).height
+                n_cross = unified_career.filter(pl.col("chambers").str.contains("&")).height
                 n_multi = unified_career.filter(pl.col("n_sessions") >= 2).height
-                n_stable = unified_career.filter(
-                    pl.col("movement_flag") == "stable"
-                ).height
-                n_mover = unified_career.filter(
-                    pl.col("movement_flag") == "mover"
-                ).height
+                n_stable = unified_career.filter(pl.col("movement_flag") == "stable").height
+                n_mover = unified_career.filter(pl.col("movement_flag") == "mover").height
                 print(
                     f"    {unified_career.height} legislators, "
                     f"{n_cross} cross-chamber, "
