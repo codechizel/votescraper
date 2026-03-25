@@ -79,6 +79,10 @@ eda *args:
 pca *args:
     uv run python analysis/02_pca/pca.py {{args}}
 
+# Run Exploratory Graph Analysis (network psychometrics dimensionality)
+ega *args:
+    uv run python analysis/02b_ega/ega_phase.py {{args}}
+
 # Run MCA analysis
 mca *args:
     uv run python analysis/03_mca/mca.py {{args}}
@@ -201,6 +205,7 @@ pipeline session="2025-26" *args:
     echo ""
     just eda        --session {{session}} --run-id "$RUN_ID" {{args}}
     just pca        --session {{session}} --run-id "$RUN_ID" {{args}}
+    just ega        --session {{session}} --run-id "$RUN_ID" --skip-boot {{args}}
     just mca        --session {{session}} --run-id "$RUN_ID" {{args}}
     just text-analysis --session {{session}} --run-id "$RUN_ID" {{args}}
     just irt        --session {{session}} --run-id "$RUN_ID" {{args}}

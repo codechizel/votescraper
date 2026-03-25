@@ -3,6 +3,7 @@
 Single-biennium pipeline (01-25 + 07b):
   01_eda              — Exploratory Data Analysis
   02_pca              — Principal Component Analysis
+  02b_ega             — Exploratory Graph Analysis (network psychometrics)
   03_mca              — Multiple Correspondence Analysis
   20_bill_text        — Bill Text NLP
   05_irt              — Bayesian IRT (1D)
