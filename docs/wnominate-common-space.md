@@ -80,7 +80,11 @@ One number per legislator across their entire career, computed via DerSimonian-L
 
 ### Cross-Method Validation
 
-The headline output: how well do W-NOMINATE and IRT common-space career scores agree? Within each session, IRT and W-NOMINATE typically correlate at r > 0.98 (Phase 16). But do the *cross-temporal alignments* agree? If the same bridge legislators produce different linking coefficients under the two methods, it reveals sessions where the ideological structure is scale-dependent.
+The headline output: how well do W-NOMINATE and IRT common-space career scores agree? Within each session, IRT and W-NOMINATE typically correlate at r > 0.98 (Phase 16). But do the *cross-temporal alignments* agree?
+
+**Results:** Unified career scores correlate at r = 0.96 (Spearman ρ = 0.95) across 696 matched legislators. Within-party: Republicans r = 0.86 (n=501), Democrats r = 0.86 (n=195). The two methods tell the same story about Kansas ideology.
+
+The validation report highlights the **top 25 legislators with the largest rank disagreements** between methods. These divergences typically reflect W-NOMINATE's bounded [-1, +1] scale compressing extreme legislators differently than IRT's unbounded scale, or sessions where the two methods weight different voting patterns. The full searchable comparison table covers all 696 legislators.
 
 ## Known Limitations
 

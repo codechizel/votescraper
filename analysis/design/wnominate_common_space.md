@@ -104,7 +104,7 @@ Split into focused reports (same pattern as Phase 28):
 | `wnominate_common_house_report.html` | House scores, linking coefficients, career scores |
 | `wnominate_common_senate_report.html` | Senate |
 | `wnominate_common_unified_report.html` | Unified career scores |
-| `wnominate_common_validation_report.html` | W-NOMINATE vs IRT cross-method comparison |
+| `wnominate_common_validation_report.html` | W-NOMINATE vs IRT: top 25 divergent legislators + full searchable comparison table |
 
 ## Implementation Plan
 
