@@ -511,6 +511,36 @@ def main() -> None:
                 )
                 r["career"] = career
 
+        # Annotate cross-chamber legislators
+        chamber_names = list(all_results.keys())
+        if len(chamber_names) == 2:
+            ca, cb = chamber_names
+            career_a = all_results[ca].get("career")
+            career_b = all_results[cb].get("career")
+            if career_a is not None and career_b is not None:
+                names_a = set(career_a["name_norm"].to_list())
+                names_b = set(career_b["name_norm"].to_list())
+                cross_chamber = names_a & names_b
+                if cross_chamber:
+                    print(f"\n  {len(cross_chamber)} legislators served in both chambers")
+                    for ch_key, other_key in [(ca, cb), (cb, ca)]:
+                        career = all_results[ch_key]["career"]
+                        other_career = all_results[other_key]["career"]
+                        annotations = []
+                        for name in career["name_norm"].to_list():
+                            if name in cross_chamber:
+                                other_row = other_career.filter(
+                                    pl.col("name_norm") == name
+                                )
+                                n = other_row["n_sessions"][0] if other_row.height > 0 else 0
+                                label = "session" if n == 1 else "sessions"
+                                annotations.append(f"Also {other_key} ({n} {label})")
+                            else:
+                                annotations.append("")
+                        all_results[ch_key]["career"] = career.with_columns(
+                            pl.Series("also_served", annotations)
+                        )
+
         # Save combined linking coefficients
         if all_results:
             all_coefs = pl.concat([r["coef_df"] for r in all_results.values()])

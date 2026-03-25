@@ -527,6 +527,7 @@ def _add_career_scores_table(
         "career_hi",
         "i_squared",
         "movement_flag",
+        "also_served",
     ]
     available = [c for c in display_cols if c in career.columns]
     df = career.select(available)
@@ -555,6 +556,7 @@ def _add_career_scores_table(
             "career_hi": "95% CI High",
             "i_squared": "I²",
             "movement_flag": "Stability",
+            "also_served": "Cross-Chamber",
         },
         number_formats={
             "career_score": ".3f",
