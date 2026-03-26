@@ -5,6 +5,9 @@ using the Graphical LASSO (L1-penalized precision matrix estimation).
 Model selection via Extended Bayesian Information Criterion (EBIC) with
 hyperparameter gamma controlling sparsity preference.
 
+Uses sklearn's ``graphical_lasso`` function which accepts an empirical
+covariance matrix directly — no synthetic data generation needed.
+
 References:
     Friedman, J., Hastie, T., & Tibshirani, R. (2008). Sparse inverse
     covariance estimation with the graphical lasso. Biostatistics, 9(3).
@@ -17,7 +20,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
-from sklearn.covariance import GraphicalLasso
+from sklearn.covariance import graphical_lasso
 
 
 @dataclass(frozen=True)
@@ -89,6 +92,12 @@ def glasso_ebic(
 ) -> GLASSOResult:
     """Estimate sparse network via GLASSO with EBIC model selection.
 
+    Uses sklearn's ``graphical_lasso`` function which accepts an empirical
+    covariance matrix directly.  Previous implementation generated synthetic
+    data with ``max(n_obs, p + 1)`` rows, which inflated the effective
+    sample size when p > n (e.g., Senate: 226 bills from 40 legislators).
+    The direct-covariance approach avoids this distortion (ADR-0126).
+
     Parameters:
         corr_matrix: p × p symmetric correlation matrix (tetrachoric or Pearson).
         n_obs: Number of observations (legislators) used to compute the
@@ -124,23 +133,14 @@ def glasso_ebic(
 
     for lam in lambdas:
         try:
-            model = GraphicalLasso(
+            # Use sklearn's graphical_lasso function directly with the
+            # empirical covariance matrix — no synthetic data needed.
+            _, precision = graphical_lasso(
+                emp_cov,
                 alpha=float(lam),
                 max_iter=200,
                 tol=1e-4,
-                assume_centered=True,
             )
-            # GraphicalLasso computes empirical covariance from data, but
-            # we already have the correlation matrix. Generate synthetic data
-            # with matching covariance via Cholesky decomposition.
-            eigvals, eigvecs = np.linalg.eigh(emp_cov)
-            eigvals = np.maximum(eigvals, 1e-8)
-            sqrt_cov = eigvecs @ np.diag(np.sqrt(eigvals))
-            rng = np.random.default_rng(42)
-            z = rng.standard_normal((max(n_obs, p + 1), p))
-            synth_data = z @ sqrt_cov.T
-            model.fit(synth_data)
-            precision = model.precision_
         except Exception:
             ebic_values.append((float(lam), np.inf))
             continue

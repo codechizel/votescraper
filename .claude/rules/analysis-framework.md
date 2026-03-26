@@ -117,6 +117,7 @@ Standalone structural experiments (2D IRT, PC2-targeted IRT, joint pooled IRT) b
 - **PyTensor C compiler**: requires `clang++`/`g++` for C-compiled kernels. Without it, falls back to pure Python (~18x slower). Common failure: Xcode update requires opening Xcode.app to accept license.
 - **R (optional)**: Required for Phase 16 (W-NOMINATE/OC) and Phase 19 TSA enrichment. Not managed by uv. R CSV files use literal "NA" — always pass `null_values="NA"` to `pl.read_csv()` when reading R output (ADR-0073).
 - **StepMix / scikit-learn shim (Phase 10 LCA)**: StepMix 2.2.1 uses deprecated sklearn internals removed in scikit-learn 1.8. Monkey-patch in `analysis/10_lca/lca.py` (guarded, will no-op when StepMix fixes it).
+- **Pipeline runs use background agents.** `just pipeline`, `just cross-pipeline`, and other long-running commands (10-30+ min) must be launched via a background Agent so the user can keep working. Report results when the background notification arrives. Short commands (lint, single quick phases) are fine in foreground.
 
 ## Known Issues
 

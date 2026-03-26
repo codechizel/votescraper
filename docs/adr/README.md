@@ -59,6 +59,7 @@ What are the trade-offs?
 | [0115](0115-pca-multidimensional-interpretation.md) | PCA multidimensional interpretation (scatter matrices, loading heatmaps, horseshoe diagnostic) |
 | [0124](0124-exploratory-graph-analysis.md) | Exploratory Graph Analysis (EGA) — network psychometrics dimensionality (Phase 02b) |
 | [0125](0125-tefi-residual-network-q3-integration.md) | TEFI, residual network, and Q3 per-pair integration (Phases 02, 08, 11) |
+| [0126](0126-ega-glasso-direct-covariance-and-fragmentation-guard.md) | EGA GLASSO direct covariance and fragmentation guard (fix K=196 in small chambers) |
 
 ### Bayesian Models
 
@@ -316,6 +317,7 @@ What are the trade-offs?
 | [0123](0123-wnominate-cross-validation-gate.md) | W-NOMINATE cross-validation gate for canonical routing (6/28 dimension fix) | Accepted | 2026-03-25 |
 | [0124](0124-exploratory-graph-analysis.md) | Exploratory Graph Analysis (EGA) — network psychometrics dimensionality (Phase 02b) | Accepted | 2026-03-25 |
 | [0125](0125-tefi-residual-network-q3-integration.md) | TEFI, residual network, and Q3 per-pair integration (Phases 02, 08, 11) | Accepted | 2026-03-25 |
+| [0126](0126-ega-glasso-direct-covariance-and-fragmentation-guard.md) | EGA GLASSO direct covariance and fragmentation guard (fix K=196 in small chambers) | Accepted | 2026-03-25 |
 
 ## Creating a New ADR
 

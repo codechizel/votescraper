@@ -8,6 +8,12 @@ finds K >= 2, test whether Louvain on the zero-order correlation
 matrix finds K=1. If so, the data may be unidimensional despite
 apparent multidimensionality in the partial correlation network.
 
+Fragmentation guard: when Walktrap/Leiden produces K > p/4 (e.g.,
+196 communities from 226 bills), the network is too fragmented for
+meaningful community detection — fall back to connected-component
+analysis on the largest component, or report unidimensional if even
+that is fragmented. See ADR-0126.
+
 References:
     Pons, P., & Latapy, M. (2006). Computing communities in large
     networks using random walks. JGAA, 10(2), 191-218.
@@ -33,6 +39,8 @@ class CommunityResult:
         modularity: Modularity of the partition.
         unidimensional: True if the unidimensional check overrode
             the community detection result.
+        fragmented: True if the initial detection was too fragmented
+            and the result was corrected by the fragmentation guard.
         algorithm: Algorithm used ("walktrap" or "leiden").
     """
 
@@ -40,6 +48,7 @@ class CommunityResult:
     n_communities: int
     modularity: float
     unidimensional: bool
+    fragmented: bool
     algorithm: str
 
 
@@ -117,6 +126,66 @@ def _unidimensional_check(
     return len(clustering) == 1
 
 
+def _fragmentation_guard(
+    graph: ig.Graph,
+    assignments: NDArray[np.int64],
+    k: int,
+    algorithm: str,
+) -> tuple[NDArray[np.int64], int, float, bool]:
+    """Detect and correct network fragmentation.
+
+    When Walktrap/Leiden produces K > p/4, the network is too sparse for
+    meaningful community detection (most bills are in singleton communities).
+    Fall back to community detection on only the largest connected component,
+    assigning all other nodes to a catch-all community.
+
+    Returns (assignments, k, modularity, was_fragmented).
+    """
+    p = graph.vcount()
+    threshold = max(p // 4, 10)
+
+    if k <= threshold:
+        return assignments, k, 0.0, False
+
+    # Network is fragmented — retry on the largest connected component
+    components = graph.connected_components()
+    if len(components) <= 1:
+        # Single component but still fragmented — algorithm issue, not topology
+        return assignments, k, 0.0, True
+
+    # Find largest component
+    largest_idx = max(range(len(components)), key=lambda i: len(components[i]))
+    largest_members = components[largest_idx]
+
+    if len(largest_members) < 5:
+        # Even the largest component is tiny — network is too sparse
+        return np.zeros(p, dtype=np.int64), 1, 0.0, True
+
+    # Build subgraph of largest component and re-run community detection
+    subgraph = graph.induced_subgraph(largest_members)
+    if algorithm == "walktrap":
+        sub_clustering = _walktrap(subgraph)
+    else:
+        sub_clustering = _leiden(subgraph)
+
+    sub_k = len(set(sub_clustering.membership))
+    sub_mod = float(sub_clustering.modularity)
+
+    # Map back to full node set: non-largest-component nodes get community label sub_k
+    # (a catch-all "unassigned" community)
+    new_assignments = np.full(p, sub_k, dtype=np.int64)
+    for local_idx, global_idx in enumerate(largest_members):
+        new_assignments[global_idx] = sub_clustering.membership[local_idx]
+
+    # If the largest component is also fragmented, fall back to unidimensional
+    sub_threshold = max(len(largest_members) // 4, 10)
+    if sub_k > sub_threshold:
+        return np.zeros(p, dtype=np.int64), 1, 0.0, True
+
+    # +1 for the catch-all community of isolated nodes
+    return new_assignments, sub_k + 1, sub_mod, True
+
+
 def detect_communities(
     partial_corr: NDArray[np.float64],
     corr_matrix: NDArray[np.float64] | None = None,
@@ -145,6 +214,7 @@ def detect_communities(
             n_communities=1,
             modularity=0.0,
             unidimensional=True,
+            fragmented=False,
             algorithm=algorithm,
         )
 
@@ -160,6 +230,11 @@ def detect_communities(
     k = len(set(clustering.membership))
     modularity = float(clustering.modularity)
 
+    # Fragmentation guard: catch pathological K (e.g., K=196 from 226 items)
+    assignments, k, modularity, fragmented = _fragmentation_guard(
+        graph, assignments, k, algorithm
+    )
+
     # Unidimensional check
     uni = False
     if check_unidimensional and k >= 2 and corr_matrix is not None:
@@ -173,5 +248,6 @@ def detect_communities(
         n_communities=k,
         modularity=modularity,
         unidimensional=uni,
+        fragmented=fragmented,
         algorithm=algorithm,
     )

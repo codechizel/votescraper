@@ -360,6 +360,9 @@ def main() -> None:
                     gamma=EGA_GLASSO_GAMMA,
                 )
             print(f"  EGA result: K={ega_result.n_communities}, edges={ega_result.glasso.n_edges}")
+            if ega_result.community.fragmented:
+                print("  ** Fragmentation guard: network too sparse for community detection")
+                print("     Retried on largest connected component")
             if ega_result.unidimensional:
                 print("  ** Unidimensional check: TRUE — data appears 1-dimensional")
 
@@ -438,6 +441,7 @@ def main() -> None:
                 "n_bills": n_items,
                 "n_communities": ega_result.n_communities,
                 "unidimensional": ega_result.unidimensional,
+                "fragmented": ega_result.community.fragmented,
                 "glasso_lambda": ega_result.glasso.selected_lambda,
                 "glasso_n_edges": ega_result.glasso.n_edges,
                 "algorithm": args.algorithm,

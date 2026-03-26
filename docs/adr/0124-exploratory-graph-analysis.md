@@ -72,7 +72,7 @@ Outputs per chamber:
 **Costs:**
 - ~2-5 minutes per chamber for full EGA + bootEGA.
 - Tetrachoric estimation is O(p²) — scales quadratically with bill count.
-- Senate chambers (N~40) may produce very sparse GLASSO networks.
+- Senate chambers (N~40) may produce very sparse GLASSO networks. Fixed in ADR-0126 (direct covariance + fragmentation guard).
 
 **Advisory, not authoritative.** EGA does not replace canonical routing (ADR-0109/0110). It provides an independent dimensionality signal. Canonical routing remains the final arbiter for 1D vs 2D selection.
 

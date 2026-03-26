@@ -26,6 +26,9 @@ Pearson correlation on binary data underestimates true associations. Tetrachoric
 ### GLASSO over raw correlation
 The Kappa agreement network in Phase 11 uses observed (marginal) associations — two legislators who both vote conservative have strong Kappa even if they disagree on social issues. GLASSO estimates **conditional** dependencies via L1-penalized precision matrix. Edges represent associations after controlling for all other items. This is what IRT's local independence assumption says should be zero if the model is correct.
 
+### GLASSO via direct covariance (ADR-0126)
+Uses sklearn's `graphical_lasso()` function which accepts an empirical covariance matrix directly. Previous implementation generated synthetic data with `max(n_obs, p+1)` rows to work around the `GraphicalLasso` class's raw-data requirement, which inflated effective sample size when p > n (e.g., 227 synthetic observations for 40 real legislators). The direct-covariance approach eliminates this distortion.
+
 ### EBIC model selection (gamma=0.5)
 100 lambda values log-spaced from lambda_max to lambda_max/100. EBIC with gamma=0.5 (Golino default) balances model fit with sparsity. Higher gamma → sparser networks; lower gamma → denser networks.
 
@@ -34,6 +37,9 @@ Walktrap (random walks, step=4) is Golino's default and handles unequal communit
 
 ### Unidimensional check
 When community detection finds K ≥ 2, Louvain on the zero-order (non-regularized) correlation matrix tests whether K=1 is more appropriate. If Louvain finds a single community, the GLASSO-based multidimensionality may be a regularization artifact.
+
+### Fragmentation guard (ADR-0126)
+When Walktrap/Leiden produces K > max(p/4, 10), the GLASSO network is too sparse for meaningful community detection (most nodes in singletons). The guard retries community detection on the largest connected component and assigns isolated nodes to a catch-all community. If even the largest component is fragmented, falls back to K=1. The `CommunityResult.fragmented` field records when this guard activated. Triggered by the 78th Senate (K=196 from 226 bills with only 40 legislators).
 
 ### Parametric bootstrap (default)
 bootEGA defaults to parametric (generate from tetrachoric correlation matrix → threshold to binary). Non-parametric (resample rows) can produce degenerate columns in small chambers (Senate N~40).
@@ -53,6 +59,6 @@ wTO measures structural equivalence — items sharing the same neighbors with si
 
 ## Kansas-Specific Notes
 
-- **Senate (N~40)**: Small sample may produce very sparse GLASSO networks. Monitor edge count. If zero edges, the chamber may need TMFG (non-regularized alternative) in a future update.
+- **Senate (N~40)**: Small sample produces sparse GLASSO networks. The fragmentation guard (ADR-0126) handles pathological cases where Walktrap fragments the network into near-singleton communities. If zero edges, the chamber is reported as unidimensional.
 - **Supermajority chambers**: High base rate (~82% Yea) means many bill pairs have degenerate 2×2 tables. Tetrachoric falls back to Pearson for these; monitor `n_fallback` in the summary JSON.
 - **Contested-only filtering**: EGA uses the EDA-filtered vote matrix (already filtered to `CONTESTED_THRESHOLD`). Additional filtering is not recommended — EGA handles low-variance items via GLASSO regularization.
