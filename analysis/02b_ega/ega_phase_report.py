@@ -51,7 +51,7 @@ def build_ega_report(
                 f"{summary['uva_n_suggested_removals']} suggested removals"
             )
 
-    report.add(KeyFindingsSection(id="key-findings", title="Key Findings", bullets=findings))
+    report.add(KeyFindingsSection(findings=findings))
 
     # Per-chamber sections
     for chamber, res in all_results.items():

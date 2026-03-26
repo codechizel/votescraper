@@ -508,6 +508,15 @@ def main() -> None:
             report_path = build_ega_report(all_results, ctx.plots_dir, ctx.data_dir, ctx.run_dir)
             print(f"\n  Report: {report_path}")
 
+            # Create session-root symlink for the report
+            if ctx.run_id is not None:
+                report_link = ctx.session_root / f"{ctx.analysis_name}_report.html"
+                if report_link.is_symlink() or report_link.exists():
+                    report_link.unlink()
+                report_link.symlink_to(
+                    Path(ctx.run_id) / ctx.analysis_name / report_path.name
+                )
+
 
 if __name__ == "__main__":
     main()

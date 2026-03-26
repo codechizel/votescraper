@@ -1388,8 +1388,8 @@ def main() -> None:
                 pc_cols = [c for c in loadings.columns if c.startswith("PC")]
                 if pc_cols:
                     loading_arr = loadings.select(pc_cols).to_numpy()
-                    # Correlation matrix from bill loadings
-                    corr_approx = np.corrcoef(loading_arr.T)
+                    # Correlation matrix from bill loadings (p × p, bills as rows)
+                    corr_approx = np.corrcoef(loading_arr)
                     p = loading_arr.shape[0]
 
                     tefi_scores: dict[int, float] = {}

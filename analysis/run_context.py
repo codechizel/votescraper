@@ -264,6 +264,7 @@ class RunContext:
         session: Normalized session string (e.g. "2025-2026").
         analysis_name: Name of the analysis phase (e.g. "eda", "pca").
         params: Script parameters to record in run_info.json.
+        session_root: Session-level results directory (e.g. results/kansas/78th_1999-2000/).
         run_dir: Root of this run's output (results/<session>/<analysis>/<date>/).
         plots_dir: Directory for PNG plots.
         data_dir: Directory for parquet/intermediate data files.
@@ -315,6 +316,7 @@ class RunContext:
 
         self.plots_dir = self.run_dir / "plots"
         self.data_dir = self.run_dir / "data"
+        self.session_root = self._session_root
 
         self._today = today
         self._primer = primer
