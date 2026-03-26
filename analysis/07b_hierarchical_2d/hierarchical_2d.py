@@ -1078,12 +1078,6 @@ def main() -> None:
             Path(args.irt_dir) if args.irt_dir else None,
         )
 
-        # Resolve W-NOMINATE dir for cross-validation gate (ADR-0123)
-        wnom_dir: Path | None = None
-        wnom_candidate = results_root / "latest" / "16_wnominate"
-        if (wnom_candidate / "data").exists():
-            wnom_dir = wnom_candidate
-
         canonical_dir = ctx.run_dir / "canonical_irt"
         canonical_sources = write_canonical_ideal_points(
             irt_1d_dir=irt_dir,
@@ -1091,7 +1085,6 @@ def main() -> None:
             output_dir=canonical_dir,
             pca_dir=pca_dir,
             h2d_dir=ctx.run_dir,
-            wnom_dir=wnom_dir,
             session=args.session,
         )
         print(f"  Canonical sources: {canonical_sources}")

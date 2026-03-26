@@ -73,12 +73,6 @@ GOOD_CORRELATION = 0.85
 CONCERN_CORRELATION = 0.70
 """Pearson r below this flags potential methodology concerns."""
 
-WNOM_GATE_DELTA: float = 0.10
-"""Minimum improvement in |Pearson r| vs W-NOMINATE to trigger a canonical dimension swap."""
-
-WNOM_GATE_MIN_R: float = 0.70
-"""Minimum W-NOMINATE correlation for any candidate canonical source."""
-
 # ── PCA axis ambiguity ─────────────────────────────────────────────────
 
 EIGENVALUE_RATIO_AMBIGUOUS: float = 2.0
