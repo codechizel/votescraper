@@ -475,3 +475,111 @@ class TestLoadIrtScores:
         assert result is not None
         assert result.height == 4
         assert "xi_mean" in result.columns
+
+
+# ── PCA override ─────────────────────────────────────────────────────────────
+
+
+class TestPcaOverride:
+    """Tests for manual PCA dimension override loading."""
+
+    def test_load_override_known_session(self) -> None:
+        """79th Senate should return PC2 from the production override file."""
+        from analysis.init_strategy import load_pca_override
+
+        result = load_pca_override("79th_2001-2002", "senate")
+        assert result == "PC2"
+
+    def test_load_override_known_session_title_case(self) -> None:
+        """Chamber normalization: 'Senate' should match '79th_Senate' key."""
+        from analysis.init_strategy import load_pca_override
+
+        result = load_pca_override("79th_2001-2002", "Senate")
+        assert result == "PC2"
+
+    def test_load_override_unknown_session(self) -> None:
+        """91st Senate has no override — should return None."""
+        from analysis.init_strategy import load_pca_override
+
+        result = load_pca_override("91st_2025-2026", "senate")
+        assert result is None
+
+    def test_load_override_house_not_overridden(self) -> None:
+        """79th House has no axis instability — should return None."""
+        from analysis.init_strategy import load_pca_override
+
+        result = load_pca_override("79th_2001-2002", "house")
+        assert result is None
+
+    def test_load_override_none_session(self) -> None:
+        from analysis.init_strategy import load_pca_override
+
+        assert load_pca_override(None, "senate") is None
+
+    def test_load_override_none_chamber(self) -> None:
+        from analysis.init_strategy import load_pca_override
+
+        assert load_pca_override("79th_2001-2002", None) is None
+
+    def test_load_override_all_known_entries(self) -> None:
+        """Verify all 8 entries in pca_overrides.yaml are loadable."""
+        from analysis.init_strategy import load_pca_override
+
+        expected = [
+            ("78th_1999-2000", "senate", "PC2"),
+            ("79th_2001-2002", "senate", "PC2"),
+            ("80th_2003-2004", "senate", "PC2"),
+            ("81st_2005-2006", "senate", "PC2"),
+            ("82nd_2007-2008", "senate", "PC2"),
+            ("83rd_2009-2010", "senate", "PC2"),
+            ("84th_2011-2012", "senate", "PC2"),
+            ("88th_2019-2020", "senate", "PC2"),
+        ]
+        for session, chamber, expected_pc in expected:
+            result = load_pca_override(session, chamber)
+            assert result == expected_pc, f"Expected {expected_pc} for {session} {chamber}, got {result}"
+
+    def test_resolve_init_source_uses_override(self) -> None:
+        """When override exists, resolve_init_source should use the override PC."""
+        from analysis.init_strategy import resolve_init_source
+
+        pca = pl.DataFrame({
+            "legislator_slug": ["r1", "r2", "d1", "d2"],
+            "party": ["Republican", "Republican", "Democrat", "Democrat"],
+            "PC1": [0.5, 0.3, -0.2, -0.4],
+            "PC2": [2.0, 1.5, -1.5, -2.0],
+        })
+        vals, _, source = resolve_init_source(
+            strategy="pca-informed",
+            slugs=["r1", "r2", "d1", "d2"],
+            pca_scores=pca,
+            pca_column="PC1",
+            session="79th_2001-2002",
+            chamber="senate",
+        )
+        assert "PC2" in source
+        assert vals is not None
+        assert len(vals) == 4
+
+    def test_resolve_override_skipped_when_explicit_pc2(self) -> None:
+        """When caller explicitly requests PC2, override should not apply."""
+        from analysis.init_strategy import resolve_init_source
+
+        pca = pl.DataFrame({
+            "legislator_slug": ["r1", "r2", "d1", "d2"],
+            "party": ["Republican", "Republican", "Democrat", "Democrat"],
+            "PC1": [0.5, 0.3, -0.2, -0.4],
+            "PC2": [2.0, 1.5, -1.5, -2.0],
+        })
+        # Explicit pca_column="PC2" — override should not fire
+        vals, _, source = resolve_init_source(
+            strategy="pca-informed",
+            slugs=["r1", "r2", "d1", "d2"],
+            pca_scores=pca,
+            pca_column="PC2",
+            session="79th_2001-2002",
+            chamber="senate",
+        )
+        # Source should say PC2 directly (not "swapped from PC1")
+        assert "PC2" in source
+        assert "swapped" not in source

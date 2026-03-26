@@ -935,12 +935,16 @@ def main() -> None:
                     slugs=data["leg_slugs"],
                     pca_scores=pca_scores,
                     pca_column="PC1",
+                    session=args.session,
+                    chamber=chamber.lower(),
                 )
                 dim2_init, _, _ = resolve_init_source(
                     strategy="pca-informed",
                     slugs=data["leg_slugs"],
                     pca_scores=pca_scores,
                     pca_column="PC2",
+                    session=args.session,
+                    chamber=chamber.lower(),
                 )
                 xi_initvals_2d = np.stack([dim1_init, dim2_init], axis=1).astype(np.float64)
                 print(f"  Init: {init_source}")
@@ -1088,6 +1092,7 @@ def main() -> None:
             pca_dir=pca_dir,
             h2d_dir=ctx.run_dir,
             wnom_dir=wnom_dir,
+            session=args.session,
         )
         print(f"  Canonical sources: {canonical_sources}")
 

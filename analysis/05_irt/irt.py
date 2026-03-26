@@ -3996,6 +3996,8 @@ def main() -> None:
                     strategy="2d-dim1",
                     slugs=data["leg_slugs"],
                     irt_2d_scores=irt_2d_scores.get(ch_lower),
+                    session=args.session,
+                    chamber=ch_lower,
                 )
                 xi_init = init_vals[free_pos].astype(np.float64)
                 print(

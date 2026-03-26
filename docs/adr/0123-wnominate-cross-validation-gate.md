@@ -1,7 +1,7 @@
 # ADR-0123: W-NOMINATE Cross-Validation Gate for Canonical Routing
 
 **Date:** 2026-03-25
-**Status:** Accepted
+**Status:** Superseded (demoted to diagnostic-only, 2026-03-26)
 **Deciders:** Joseph Claeys
 
 ## Context
@@ -75,3 +75,11 @@ If W-NOMINATE scores are unavailable (Phase 16 skipped due to missing R), the ga
 - ADR-0117 — Hierarchical 2D IRT (party-pooling prior, source of dimension distortion)
 - ADR-0118 — Party separation quality gates (party-d checks, necessary but not sufficient)
 - `docs/84th-legislature-common-space-analysis.md` — Full investigation with per-session cross-validation table
+
+## Superseded (2026-03-26)
+
+The W-NOMINATE gate is demoted from auto-routing to diagnostic-only. The gate still computes all correlations and records them in the routing manifest, but it no longer triggers automatic dimension swaps. Instead, a manual PCA override file (`analysis/pca_overrides.yaml`) provides stable, auditable dimension assignments for the 8 problematic sessions.
+
+**Rationale:** The gate makes the Bayesian IRT pipeline dependent on a frequentist method for a fundamental structural decision. The automated swap works for the observed data but has no theoretical guarantee of generalization to future bienniums. Manual overrides, updated biennially, are more durable.
+
+See `docs/pca-rotation-and-human-intervention.md` for the full analysis of rotation methods and the case for human intervention.

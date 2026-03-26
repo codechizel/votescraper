@@ -482,6 +482,8 @@ def run_pca_for_chamber(
     for row in sorted_scores.tail(5).iter_rows(named=True):
         print(f"    {row['full_name']:30s}  {row['party']:12s}  PC1={row['PC1']:+.3f}")
 
+    from analysis.tuning import EIGENVALUE_RATIO_AMBIGUOUS
+
     return {
         "scores_df": scores_df,
         "loadings_df": loadings_df,
@@ -494,6 +496,7 @@ def run_pca_for_chamber(
         "explained_variance": ev.tolist(),
         "n_components": n_comp,
         "eigenvalue_ratio": eigenvalue_ratio,
+        "axis_ambiguous": eigenvalue_ratio < EIGENVALUE_RATIO_AMBIGUOUS,
         "parallel_thresholds": pa_thresholds,
         "n_significant": n_significant,
         "reconstruction_error_df": recon_df,
@@ -1447,6 +1450,7 @@ def main() -> None:
             validation_results=validation_results,
             plots_dir=ctx.plots_dir,
             n_components=args.n_components,
+            session=args.session,
         )
 
         print_header("DONE")

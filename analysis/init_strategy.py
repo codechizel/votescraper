@@ -141,6 +141,44 @@ def detect_ideology_pc(
     return best_pc, best_corr, all_corrs
 
 
+def load_pca_override(session: str | None, chamber: str | None) -> str | None:
+    """Load a manual PCA dimension override for a session+chamber.
+
+    Reads ``analysis/pca_overrides.yaml`` and returns the ideology PC column name
+    (e.g., ``"PC2"``) if an override exists, or ``None`` to fall through to
+    automated detection.
+
+    Args:
+        session: Canonical session string (e.g., ``"79th_2001-2002"``).
+        chamber: Chamber name (e.g., ``"senate"`` or ``"Senate"``).
+
+    Returns:
+        PC column name (e.g., ``"PC2"``) or ``None``.
+    """
+    if session is None or chamber is None:
+        return None
+
+    override_path = Path(__file__).parent / "pca_overrides.yaml"
+    if not override_path.exists():
+        return None
+
+    import yaml
+
+    with open(override_path) as f:
+        overrides = yaml.safe_load(f)
+    if not isinstance(overrides, dict):
+        return None
+
+    # Extract legislature name from session string: "79th_2001-2002" → "79th"
+    legislature_name = session.split("_")[0]
+    key = f"{legislature_name}_{chamber.title()}"
+
+    entry = overrides.get(key)
+    if isinstance(entry, dict) and "ideology_pc" in entry:
+        return entry["ideology_pc"]
+    return None
+
+
 def resolve_init_source(
     strategy: str,
     slugs: list[str],
@@ -149,6 +187,8 @@ def resolve_init_source(
     irt_2d_scores: pl.DataFrame | None = None,
     canonical_scores: pl.DataFrame | None = None,
     pca_column: str = "PC1",
+    session: str | None = None,
+    chamber: str | None = None,
 ) -> tuple[np.ndarray, str, str]:
     """Resolve initialization values for IRT ideal points.
 
@@ -232,7 +272,16 @@ def resolve_init_source(
         # When pca_column is explicitly set to something other than PC1 (e.g., "PC2"
         # for 2D IRT Dim 2 init), respect the caller's choice.
         actual_column = pca_column
-        if pca_column == "PC1" and "party" in pca_scores.columns:
+        # 1. Check manual override first (pca_overrides.yaml)
+        override_pc = load_pca_override(session, chamber) if pca_column == "PC1" else None
+        if override_pc is not None and override_pc in pca_scores.columns:
+            actual_column = override_pc
+            print(
+                f"  PCA override: using {override_pc} for {session} {chamber} "
+                f"(from pca_overrides.yaml)"
+            )
+        # 2. Fall back to automated party-correlation detection
+        elif pca_column == "PC1" and "party" in pca_scores.columns:
             best_pc, best_corr, all_corrs = detect_ideology_pc(pca_scores)
             pc1_corr = all_corrs.get("PC1", 0.0)
             if (

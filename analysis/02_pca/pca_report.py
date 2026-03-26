@@ -44,6 +44,7 @@ def build_pca_report(
     validation_results: dict[str, dict],
     plots_dir: Path,
     n_components: int,
+    session: str | None = None,
 ) -> None:
     """Build the full PCA HTML report by adding ~14 sections to the ReportBuilder."""
     findings = _generate_pca_key_findings(results, validation_results)
@@ -53,6 +54,7 @@ def build_pca_report(
     for chamber, result in results.items():
         n_sig = result.get("n_significant", 2)
         _add_axis_swap_warning(report, result, chamber)
+        _add_axis_ambiguity_section(report, result, chamber, session)
         _add_pca_summary(report, result, chamber)
         _add_dimensionality_diagnostics(report, result, chamber)
         _add_tefi_section(report, result, plots_dir, chamber)
@@ -133,6 +135,53 @@ def _add_axis_swap_warning(
                 html=html,
             )
         )
+
+
+def _add_axis_ambiguity_section(
+    report: ReportBuilder,
+    result: dict,
+    chamber: str,
+    session: str | None,
+) -> None:
+    """Inject a diagnostic section when eigenvalue ratio signals axis ambiguity."""
+    if not result.get("axis_ambiguous", False):
+        return
+
+    from analysis.init_strategy import load_pca_override
+
+    eigenvalue_ratio = result.get("eigenvalue_ratio", 0.0)
+    pc_party_d = result.get("pc_party_d", {})
+    pc1_d = pc_party_d.get("PC1", 0.0)
+    pc2_d = pc_party_d.get("PC2", 0.0)
+
+    override_pc = load_pca_override(session, chamber)
+    override_status = (
+        f"Manual override active: using <strong>{override_pc}</strong> "
+        f"(from <code>pca_overrides.yaml</code>)."
+        if override_pc
+        else "No manual override. Consider adding one to <code>analysis/pca_overrides.yaml</code>."
+    )
+
+    html = (
+        '<div style="background:#fce4ec; border:1px solid #e57373; '
+        'border-radius:6px; padding:12px 16px; margin:16px 0;">'
+        f"<strong>Axis Ambiguity ({chamber}):</strong> "
+        f"Eigenvalue ratio &lambda;&#x2081;/&lambda;&#x2082;&nbsp;=&nbsp;"
+        f"{eigenvalue_ratio:.2f} (below 2.0 threshold). "
+        f"PC1 and PC2 capture similar amounts of variance, so the component "
+        f"ordering may not reflect the party-vs-faction distinction. "
+        f"Party separation: PC1 d&nbsp;=&nbsp;{pc1_d:.2f}, "
+        f"PC2 d&nbsp;=&nbsp;{pc2_d:.2f}. "
+        f"{override_status}"
+        "</div>"
+    )
+    report.add(
+        TextSection(
+            id=f"axis-ambiguity-{chamber.lower()}",
+            title=f"{chamber} — Axis Ambiguity Diagnostic",
+            html=html,
+        )
+    )
 
 
 def _add_pca_summary(

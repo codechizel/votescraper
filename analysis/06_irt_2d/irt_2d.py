@@ -1238,6 +1238,8 @@ def main() -> None:
                 irt_scores=irt_1d,
                 pca_scores=pca_scores,
                 pca_column="PC1",
+                session=args.session,
+                chamber=chamber.lower(),
             )
             print(f"  Dim 1 init: {dim1_source} (strategy: {dim1_strategy})")
 
@@ -1247,6 +1249,8 @@ def main() -> None:
                 slugs=slugs,
                 pca_scores=pca_scores,
                 pca_column="PC2",
+                session=args.session,
+                chamber=chamber.lower(),
             )
             print(f"  Dim 2 init: {dim2_source}")
 
@@ -1389,6 +1393,7 @@ def main() -> None:
             output_dir=canonical_dir,
             pca_dir=pca_dir,
             wnom_dir=wnom_dir,
+            session=args.session,
         )
 
         # ── Build HTML report ──

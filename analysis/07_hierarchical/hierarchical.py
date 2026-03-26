@@ -1807,6 +1807,8 @@ def main() -> None:
                 pca_scores=pca_scores,
                 canonical_scores=canonical_scores.get(ch),
                 pca_column="PC1",
+                session=args.session,
+                chamber=ch,
             )
             xi_init = xi_init_vals.astype(np.float64) if init_strat != "none" else None
             print(f"  Init: {init_source} (strategy: {init_strat})")
@@ -1936,6 +1938,8 @@ def main() -> None:
                         pca_scores=pca_scores,
                         canonical_scores=canonical_scores.get(ch_key),
                         pca_column="PC1",
+                        session=args.session,
+                        chamber=ch_key,
                     )
                     joint_init_parts.append(vals.astype(np.float64))
                     print(f"  Joint init ({chamber_label}): {src}")

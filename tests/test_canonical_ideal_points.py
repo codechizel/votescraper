@@ -654,3 +654,53 @@ class TestWnominateGate:
 
         ip, _, _ = apply_wnominate_gate(selected, "dim1", candidates, wnom)
         assert set(ip.columns) == set(selected.columns)
+
+
+class TestWnominateGateDiagnostic:
+    """Tests for diagnostic-only mode of the W-NOMINATE gate."""
+
+    def test_diagnostic_does_not_swap(self):
+        """In diagnostic mode, a better dimension is recorded but not swapped to."""
+        wnom = _make_wnom_df([1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5])
+        selected = _make_irt_df([0.5, 0.3, -0.2, 0.1, -0.5, 0.4, -0.3, 0.2, -0.1, -0.4])
+        alt = _make_irt_df([1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5])
+
+        candidates = {"selected_dim": selected, "better_dim": alt}
+        ip, label, meta = apply_wnominate_gate(
+            selected, "selected_dim", candidates, wnom, diagnostic_only=True
+        )
+
+        assert not meta["swapped"]
+        assert label == "selected_dim"
+        assert meta["diagnostic_only"] is True
+        assert meta["would_swap"] is True
+        assert meta["would_swap_to"] == "better_dim"
+
+    def test_diagnostic_records_correlations(self):
+        """Correlations are computed even in diagnostic mode."""
+        scores = [1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5]
+        selected = _make_irt_df(scores)
+        wnom = _make_wnom_df(scores)
+        candidates = {"dim1": selected}
+
+        _, _, meta = apply_wnominate_gate(
+            selected, "dim1", candidates, wnom, diagnostic_only=True
+        )
+
+        assert "correlations" in meta
+        assert meta["correlations"]["dim1"] is not None
+        assert meta["correlations"]["dim1"] > 0.99
+        assert meta["would_swap"] is False
+
+    def test_default_still_swaps(self):
+        """Without diagnostic_only, the gate still swaps (backward compat)."""
+        wnom = _make_wnom_df([1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5])
+        selected = _make_irt_df([0.5, 0.3, -0.2, 0.1, -0.5, 0.4, -0.3, 0.2, -0.1, -0.4])
+        alt = _make_irt_df([1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5])
+
+        candidates = {"selected_dim": selected, "better_dim": alt}
+        _, label, meta = apply_wnominate_gate(selected, "selected_dim", candidates, wnom)
+
+        assert meta["swapped"]
+        assert label == "better_dim"
+        assert meta["diagnostic_only"] is False

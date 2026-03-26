@@ -99,6 +99,20 @@ def detect_horseshoe_from_ideal_points(ideal_points: pl.DataFrame) -> dict:
     }
 
 
+def _compute_party_d(ip_df: pl.DataFrame) -> float:
+    """Compute Cohen's d for party separation on ideal points."""
+    import numpy as np
+
+    r_ip = ip_df.filter(pl.col("party") == "Republican")["xi_mean"].to_numpy()
+    d_ip = ip_df.filter(pl.col("party") == "Democrat")["xi_mean"].to_numpy()
+    if len(r_ip) == 0 or len(d_ip) == 0:
+        return 0.0
+    pooled_sd = np.sqrt((r_ip.std() ** 2 + d_ip.std() ** 2) / 2)
+    if pooled_sd == 0:
+        return 0.0
+    return float(abs(r_ip.mean() - d_ip.mean()) / pooled_sd)
+
+
 def load_1d_ideal_points(irt_1d_dir: Path, chamber: str) -> pl.DataFrame | None:
     """Load 1D IRT ideal points from Phase 05 data directory."""
     path = irt_1d_dir / "data" / f"ideal_points_{chamber.lower()}.parquet"
@@ -394,15 +408,19 @@ def apply_wnominate_gate(
     selected_label: str,
     candidates: dict[str, pl.DataFrame],
     wnom_scores: pl.DataFrame,
+    *,
+    diagnostic_only: bool = False,
 ) -> tuple[pl.DataFrame, str, dict]:
-    """Cross-validate IRT dimensions against W-NOMINATE and swap if needed.
+    """Cross-validate IRT dimensions against W-NOMINATE.
 
     For each candidate dimension, compute |Pearson r| with W-NOMINATE Dim 1.
-    If a candidate beats the currently selected dimension by at least
-    ``WNOM_GATE_DELTA`` and has r >= ``WNOM_GATE_MIN_R``, swap to it.
+    When *diagnostic_only* is ``False`` (legacy behavior), swaps to a better
+    candidate if it exceeds ``WNOM_GATE_DELTA``.  When ``True`` (production
+    default since ADR-0123 demotion), computes all correlations and records
+    what *would* have been swapped, but does not actually swap.
 
     Returns ``(best_ip, best_label, gate_metadata)`` where *gate_metadata*
-    records all correlations and the swap decision.
+    records all correlations and the swap/diagnostic decision.
     """
     from scipy.stats import pearsonr
 
@@ -423,25 +441,38 @@ def apply_wnominate_gate(
     best_ip = selected_ip
     swapped = False
 
+    # Find the best available candidate (always computed for metadata)
+    would_swap_to: str | None = None
     if selected_r is not None:
         best_r = selected_r
         for label, r in correlations.items():
             if r is None or label == selected_label:
                 continue
             if r >= WNOM_GATE_MIN_R and r - selected_r >= WNOM_GATE_DELTA and r > best_r:
-                best_label = label
-                best_ip = candidates[label]
-                best_r = r
-                swapped = True
+                if diagnostic_only:
+                    would_swap_to = label
+                    best_r = r
+                else:
+                    best_label = label
+                    best_ip = candidates[label]
+                    best_r = r
+                    swapped = True
 
-    gate_meta = {
+    gate_meta: dict = {
         "correlations": correlations,
         "selected_before": selected_label,
         "selected_after": best_label,
         "swapped": swapped,
+        "diagnostic_only": diagnostic_only,
         "delta_threshold": WNOM_GATE_DELTA,
         "min_r_threshold": WNOM_GATE_MIN_R,
     }
+    if diagnostic_only and would_swap_to is not None:
+        gate_meta["would_swap"] = True
+        gate_meta["would_swap_to"] = would_swap_to
+    elif diagnostic_only:
+        gate_meta["would_swap"] = False
+
     return best_ip, best_label, gate_meta
 
 
@@ -452,6 +483,7 @@ def route_canonical_ideal_points(
     pca_dir: Path | None = None,
     h2d_dir: Path | None = None,
     wnom_dir: Path | None = None,
+    session: str | None = None,
 ) -> tuple[pl.DataFrame, str, dict]:
     """Determine the canonical ideal points for a chamber.
 
@@ -461,10 +493,13 @@ def route_canonical_ideal_points(
         chamber: "House" or "Senate".
         pca_dir: Phase 02 run directory (for Tier 2 rank correlation check).
         h2d_dir: Phase 07b run directory (optional, preferred over flat 2D when converged).
+        wnom_dir: Phase 16 run directory (W-NOMINATE, diagnostic cross-validation).
+        session: Canonical session string (for PCA override lookup).
 
     Returns (ideal_points_df, source_label, routing_metadata).
 
-    source_label is "hierarchical_2d_dim1", "2d_dim1", or "1d_irt".
+    source_label is "hierarchical_2d_dim1", "hierarchical_2d_dim2", "2d_dim1",
+    "2d_dim2", or "1d_irt".
     """
     ip_1d = load_1d_ideal_points(irt_1d_dir, chamber)
     ip_2d = load_2d_dim1_ideal_points(irt_2d_dir, chamber)
@@ -543,7 +578,42 @@ def route_canonical_ideal_points(
         metadata["reason"] = "no_horseshoe"
         ip, source = ip_1d, "1d_irt"
 
-    # ── W-NOMINATE cross-validation gate (ADR-0123) ───────────────────────
+    # ── PCA override: prefer Dim 2 when PC2 is the ideology axis ──────────
+    from analysis.init_strategy import load_pca_override
+
+    override_pc = load_pca_override(session, chamber)
+    if override_pc == "PC2" and source.endswith("_dim1"):
+        dim2_label = source.replace("dim1", "dim2")
+        dim2_ip: pl.DataFrame | None = None
+        if source == "hierarchical_2d_dim1" and h2d_dir is not None:
+            dim2_ip = load_dim2_ideal_points(h2d_dir, chamber, "ideal_points_h2d_")
+        elif source == "2d_dim1":
+            dim2_ip = load_dim2_ideal_points(irt_2d_dir, chamber, "ideal_points_2d_")
+        if dim2_ip is not None:
+            dim2_d = _compute_party_d(dim2_ip)
+            dim1_d = _compute_party_d(ip)
+            if dim2_d > dim1_d:
+                print(
+                    f"  → PCA override: {dim2_label} (party d={dim2_d:.2f} > "
+                    f"dim1 d={dim1_d:.2f})"
+                )
+                ip, source = dim2_ip, dim2_label
+                metadata["pca_override"] = {
+                    "override_pc": override_pc,
+                    "dim1_party_d": dim1_d,
+                    "dim2_party_d": dim2_d,
+                    "swapped_to": dim2_label,
+                }
+            else:
+                metadata["pca_override"] = {
+                    "override_pc": override_pc,
+                    "dim1_party_d": dim1_d,
+                    "dim2_party_d": dim2_d,
+                    "kept": source,
+                    "reason": "dim1 has better party separation despite PC2 override",
+                }
+
+    # ── W-NOMINATE cross-validation diagnostic (ADR-0123, demoted) ───────
     if wnom_dir is not None:
         wnom_scores = load_wnominate_scores(wnom_dir, chamber)
         if wnom_scores is not None:
@@ -562,12 +632,14 @@ def route_canonical_ideal_points(
                 if ip_h2d_dim2 is not None:
                     candidates["hierarchical_2d_dim2"] = ip_h2d_dim2
 
-            ip, source, gate_meta = apply_wnominate_gate(ip, source, candidates, wnom_scores)
+            ip, source, gate_meta = apply_wnominate_gate(
+                ip, source, candidates, wnom_scores, diagnostic_only=True
+            )
             metadata["wnom_gate"] = gate_meta
-            if gate_meta["swapped"]:
+            if gate_meta.get("would_swap"):
                 print(
-                    f"  → W-NOMINATE gate: swapped {gate_meta['selected_before']} "
-                    f"→ {gate_meta['selected_after']}"
+                    f"  W-NOMINATE diagnostic: would swap {gate_meta['selected_before']} "
+                    f"→ {gate_meta['would_swap_to']} (diagnostic only, not applied)"
                 )
 
     # ── Add extra columns from 1D and finalize ────────────────────────────
@@ -593,6 +665,7 @@ def write_canonical_ideal_points(
     pca_dir: Path | None = None,
     h2d_dir: Path | None = None,
     wnom_dir: Path | None = None,
+    session: str | None = None,
 ) -> dict[str, str]:
     """Write canonical ideal points for all chambers.
 
@@ -606,8 +679,8 @@ def write_canonical_ideal_points(
             Optional. When available and converged, preferred over flat 2D for horseshoe
             chambers.
         wnom_dir: Phase 16 run directory (contains data/wnominate_coords_{chamber}.parquet).
-            Optional. When available, cross-validates the selected dimension against
-            W-NOMINATE Dim 1 and swaps if a better IRT dimension exists (ADR-0123).
+            Optional. Provides diagnostic W-NOMINATE cross-validation (ADR-0123).
+        session: Canonical session string for PCA override lookup. Optional.
 
     Returns dict mapping chamber → source_label ("1d_irt", "2d_dim1",
     "2d_dim2", "hierarchical_2d_dim1", or "hierarchical_2d_dim2").
@@ -630,6 +703,7 @@ def write_canonical_ideal_points(
                 pca_dir=pca_dir,
                 h2d_dir=h2d_dir,
                 wnom_dir=wnom_dir,
+                session=session,
             )
             ip.write_parquet(output_dir / f"canonical_ideal_points_{chamber.lower()}.parquet")
             sources[chamber] = source

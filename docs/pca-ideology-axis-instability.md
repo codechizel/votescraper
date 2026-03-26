@@ -374,3 +374,11 @@ See `docs/84th-legislature-common-space-analysis.md` for the full per-session cr
 - Poole, K. T., & Rosenthal, H. (2007). *Ideology and Congress* (2nd ed.). Transaction.
 - Shin, M., Lim, D., & Park, J. (2024). L1-based Bayesian ideal point model for multidimensional politics. *JASA*, 120(550).
 - Shor, B., & McCarty, N. (2011). The ideological mapping of American legislatures. *APSR*, 105(3), 530-551.
+
+---
+
+## Resolution (2026-03-26)
+
+PCA rotation methods (varimax, promax, oblimin, Procrustes) were evaluated and rejected — they cannot solve variance-ordering problems. The automated quality gates (R1-R7) and W-NOMINATE cross-validation gate (ADR-0123) catch most failures but still misroute 6/28 sessions.
+
+**Implemented fix:** Manual PCA override file (`analysis/pca_overrides.yaml`) with entries for all 8 problematic sessions (78th-84th, 88th Senate). The W-NOMINATE gate is demoted from auto-routing to diagnostic-only. See `docs/pca-rotation-and-human-intervention.md` for the full analysis.

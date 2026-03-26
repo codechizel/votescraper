@@ -1,0 +1,57 @@
+# Manual PCA dimension overrides for sessions where automated detection is ambiguous.
+#
+# Each entry specifies which PC to use as the ideology axis for IRT initialization
+# and canonical routing. Sessions not listed here use automated detect_ideology_pc()
+# logic (point-biserial correlation with party).
+#
+# Key format: "{legislature_name}_{Chamber}" (e.g., "79th_Senate")
+# See docs/pca-rotation-and-human-intervention.md for the full rationale.
+
+78th_Senate:
+  ideology_pc: PC2
+  rationale: >
+    PC1 d=2.11, PC2 d=2.56. Intra-Republican factional axis on PC1.
+    68% Republican supermajority, moderate-conservative split dominates.
+
+79th_Senate:
+  ideology_pc: PC2
+  rationale: >
+    PC1 d=0.28, PC2 d=4.98. λ₁/λ₂=1.45. Worst case — near-zero party
+    separation on PC1. 75% R supermajority, epicenter of Kansas R civil war.
+
+80th_Senate:
+  ideology_pc: PC2
+  rationale: >
+    PC1 d=0.27, PC2 d=2.56. Factional axis dominates.
+    72% Republican supermajority.
+
+81st_Senate:
+  ideology_pc: PC2
+  rationale: >
+    PC1 d=1.72, PC2 d=2.25. Moderate R still more ideologically diverse
+    than D caucus. 75% Republican supermajority.
+
+82nd_Senate:
+  ideology_pc: PC2
+  rationale: >
+    PC1 d=0.89, PC2 d=2.41. Strong factional structure pre-purge.
+    75% Republican supermajority.
+
+83rd_Senate:
+  ideology_pc: PC2
+  rationale: >
+    PC1 d=0.79, PC2 d=4.40. Last session before 2012 primary purge.
+    78% Republican supermajority.
+
+84th_Senate:
+  ideology_pc: PC2
+  rationale: >
+    PC1 d=1.84, PC2 d=1.30. Transitional session — purge in progress.
+    Neither PC cleanly separates parties. W-NOMINATE validates PC2
+    (r=0.992 vs 0.392 for Dim 1). 81% Republican supermajority.
+
+88th_Senate:
+  ideology_pc: PC2
+  rationale: >
+    PC1 d=1.72, PC2 d=3.10. Late-era exception — post-Brownback
+    moderate resurgence. 73% Republican supermajority.

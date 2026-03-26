@@ -79,6 +79,16 @@ WNOM_GATE_DELTA: float = 0.10
 WNOM_GATE_MIN_R: float = 0.70
 """Minimum W-NOMINATE correlation for any candidate canonical source."""
 
+# ── PCA axis ambiguity ─────────────────────────────────────────────────
+
+EIGENVALUE_RATIO_AMBIGUOUS: float = 2.0
+"""Eigenvalue ratio (λ₁/λ₂) below which the PCA axis ordering is ambiguous.
+
+When the first two eigenvalues are close, PC1 and PC2 capture similar amounts of
+variance and the component ordering may not reflect the party-vs-faction distinction.
+Sessions below this threshold should have manual overrides in pca_overrides.yaml.
+"""
+
 # ── Exploratory Graph Analysis (EGA) ────────────────────────────────────
 
 EGA_GLASSO_GAMMA: float = 0.50
