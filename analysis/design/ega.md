@@ -55,7 +55,7 @@ wTO measures structural equivalence — items sharing the same neighbors with si
 - **Phase 05 (IRT)**: EGA's K estimate informs whether to run 2D IRT (Phase 06). If EGA finds K=1 for both chambers, 2D IRT can be skipped (saving ~20 min/chamber).
 - **Phase 08 (PPC)**: EGA community assignments enable per-community Q3 analysis — Q3 violations within a community suggest the community is multidimensional.
 - **Phase 11 (Network)**: Tetrachoric correlation matrix provides a principled alternative to Kappa for network construction.
-- **Canonical routing**: EGA is advisory input, not a routing signal. Convergence diagnostics and W-NOMINATE cross-validation remain authoritative.
+- **Canonical routing**: EGA is advisory input, not a routing signal. Convergence diagnostics, manual PCA overrides, and W-NOMINATE cross-validation (diagnostic) remain authoritative.
 
 ## Kansas-Specific Notes
 

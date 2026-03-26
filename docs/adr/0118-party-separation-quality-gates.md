@@ -62,7 +62,7 @@ After extraction, check if Dim 2 separates parties better than Dim 1. If so, swa
 - Soft minimum separation penalty in hierarchical model adds a non-standard prior
 - Dynamic IRT canonical score loading adds complexity to the data loading path
 
-**Known limitation (ADR-0123):** Party separation (d > 1.5) is necessary but not sufficient for correct dimension identification. The hierarchical model's party-pooling prior guarantees some party separation on Dim 1 by construction, making the party-d gate easy to pass even when the dimension doesn't match the unsupervised ideology axis. A systemic audit found 6/28 chamber-sessions where the canonical dimension passes all party-separation gates but disagrees with W-NOMINATE Dim 1 (r as low as 0.33). A W-NOMINATE cross-validation gate (ADR-0123) addresses this gap.
+**Known limitation:** Party separation (d > 1.5) is necessary but not sufficient for correct dimension identification. The hierarchical model's party-pooling prior guarantees some party separation on Dim 1 by construction, making the party-d gate easy to pass even when the dimension doesn't match the unsupervised ideology axis. A systemic audit found 6/28 chamber-sessions where the canonical dimension passes all party-separation gates but disagrees with W-NOMINATE Dim 1 (r as low as 0.33). Manual PCA overrides (`analysis/pca_overrides.yaml`) now provide stable dimension assignments for these sessions. The W-NOMINATE gate (ADR-0123, demoted to diagnostic-only) retains the cross-validation as a reported metric without auto-swapping.
 
 **Key references:**
 - Bafumi et al. (2005), Clinton/Jackman/Rivers (2004) — IRT identification

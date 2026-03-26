@@ -75,7 +75,7 @@ The routing manifest records the tier classification. The report displays:
 - Tier 2: ~15 chamber-sessions (most Senates, several Houses)
 - Tier 3: rare (only if mode-splitting is so severe that rankings are meaningless)
 
-**Known limitation (ADR-0123):** The tiered gate checks convergence quality and party separation, but does not validate whether the selected dimension is the correct ideology axis. The hierarchical model's party-pooling prior can create party separation on a non-ideology dimension, causing Tier 1 or Tier 2 to pass even when the dimension is wrong. A W-NOMINATE cross-validation gate (ADR-0123) adds dimension correctness checking as a final step after the convergence tiers.
+**Known limitation:** The tiered gate checks convergence quality and party separation, but does not validate whether the selected dimension is the correct ideology axis. The hierarchical model's party-pooling prior can create party separation on a non-ideology dimension, causing Tier 1 or Tier 2 to pass even when the dimension is wrong. Manual PCA overrides (`analysis/pca_overrides.yaml`) handle dimension correctness for the 8 problematic sessions. The W-NOMINATE gate (ADR-0123) is retained as a diagnostic cross-check but no longer auto-swaps dimensions.
 
 **Related:**
 - ADR-0109 — Canonical ideal point routing (original binary gate, now superseded by tiered gate)

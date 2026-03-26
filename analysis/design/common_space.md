@@ -11,7 +11,7 @@ Produce a single ideological scale spanning all 14 bienniums (78th-91st, 1999-20
 
 ## Assumptions
 
-1. **Canonical ideal points are the input.** Horseshoe-corrected scores from the routing system (ADR-0109), validated by the W-NOMINATE cross-validation gate (ADR-0123). The common space phase does not estimate ideal points — it links existing ones. Correct per-session dimension identification is critical; 6/28 sessions have wrong dimensions without the W-NOMINATE gate.
+1. **Canonical ideal points are the input.** Horseshoe-corrected scores from the routing system (ADR-0109), with dimension correctness ensured by manual PCA overrides (`analysis/pca_overrides.yaml`) for the 8 problematic sessions. The W-NOMINATE gate (ADR-0123, diagnostic-only) provides cross-validation metrics but does not auto-swap. The common space phase does not estimate ideal points — it links existing ones.
 
 2. **Chambers are aligned separately, then linked.** House and Senate have different bills and different ideal point scales. Each chamber is aligned independently across time (steps 2-5), then the two chambers are linked via an affine transform estimated from 54 chamber-switcher bridge legislators. The unified scale uses House as the reference; Senate scores are mapped via `xi_unified = A * xi_senate + B`. Career scores are computed both per-chamber (for within-chamber analysis) and unified (one number per legislator across both chambers).
 

@@ -75,7 +75,7 @@ Phase 06 now generates a forest plot of Dim 1 ideal points per chamber — the v
 **Research flags retained:**
 - `--dim1-prior` (ADR-0108), `--horseshoe-remediate` (ADR-0104), and `--init-strategy 2d-dim1` (ADR-0107) are retained for research but superseded for production pipelines
 
-**Known limitation (ADR-0123):** Convergence and party-separation gates do not guarantee the selected dimension is the ideology axis. In 6/28 chamber-sessions, the hierarchical model's party-pooling prior forces party separation on a non-ideology dimension, producing a canonical source that disagrees with W-NOMINATE Dim 1 (r as low as 0.33). A W-NOMINATE cross-validation gate (ADR-0123) addresses this by checking whether an alternative IRT dimension better agrees with the unsupervised W-NOMINATE dimension ordering.
+**Known limitation:** Convergence and party-separation gates do not guarantee the selected dimension is the ideology axis. In 6/28 chamber-sessions, the hierarchical model's party-pooling prior forces party separation on a non-ideology dimension, producing a canonical source that disagrees with W-NOMINATE Dim 1 (r as low as 0.33). Manual PCA overrides (`analysis/pca_overrides.yaml`) now provide human-vetted dimension assignments for these sessions. The canonical routing checks overrides before applying its standard preference order, preferring Dim 2 when the override indicates PC2 is the ideology axis. The W-NOMINATE gate (ADR-0123, demoted to diagnostic-only) reports correlation diagnostics without auto-swapping. See `docs/pca-rotation-and-human-intervention.md` for the full rationale.
 
 **Related:**
 - `docs/canonical-ideal-points.md` — Full article documenting the journey
