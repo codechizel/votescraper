@@ -4051,17 +4051,22 @@ def main() -> None:
                     pass
 
                 else:
-                    # PCA-informed init (standard for anchor-pca)
-                    slug_order = {s: i for i, s in enumerate(data["leg_slugs"])}
-                    pc1_vals = (
-                        pca_scores.filter(pl.col("legislator_slug").is_in(data["leg_slugs"]))
-                        .sort(pl.col("legislator_slug").replace_strict(slug_order))["PC1"]
-                        .to_numpy()
+                    # PCA-informed init — delegates to resolve_init_source()
+                    # which handles manual overrides (pca_overrides.yaml) and
+                    # automated party-correlation PC detection (ADR-0128).
+                    ch_lower = chamber.lower()
+                    init_vals, _, init_src = resolve_init_source(
+                        strategy="pca-informed",
+                        slugs=data["leg_slugs"],
+                        pca_scores=pca_scores,
+                        pca_column="PC1",
+                        session=args.session,
+                        chamber=ch_lower,
                     )
-                    pc1_std = (pc1_vals - pc1_vals.mean()) / (pc1_vals.std() + 1e-8)
-                    xi_init = pc1_std[free_pos].astype(np.float64)
+                    xi_init = init_vals[free_pos].astype(np.float64)
                     print(
-                        f"  PCA init: {len(xi_init)} free params, "
+                        f"  PCA init: {init_src}, "
+                        f"{len(xi_init)} free params, "
                         f"range [{xi_init.min():.2f}, {xi_init.max():.2f}]"
                     )
 

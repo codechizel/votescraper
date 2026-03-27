@@ -156,6 +156,8 @@ All strategies pass through `validate_sign()` as a post-hoc safety net. Every ru
 
 **Impact:** Eliminates all 5 convergence failures. No known downsides when PC1 cleanly separates the ideological dimension (true for all Kansas sessions, with PCA-IRT r > 0.93 when converged).
 
+**PCA axis delegation (ADR-0128):** Phase 05 now delegates PCA column selection to `resolve_init_source()` with `session` and `chamber` parameters. This enables manual PCA overrides (`pca_overrides.yaml`) and automated `detect_ideology_pc()` party-correlation detection. Previously, Phase 05 hardcoded `["PC1"]`, causing sign-flipped ideal points in 3 sessions (79th, 84th, 91st Senate) where PC1 was not the ideology axis or the sampler found a flipped mode.
+
 ### Init strategy override (`--init-strategy`)
 
 **Decision:** Accept `--init-strategy {auto,irt-informed,pca-informed,2d-dim1}` to override the default PCA-informed initialization. Uses the shared `analysis/init_strategy.py` module (ADR-0107).
