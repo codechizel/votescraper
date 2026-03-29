@@ -112,6 +112,7 @@ What are the trade-offs?
 | [0014](0014-clustering-visualization-overhaul.md) | Clustering visualization overhaul |
 | [0026](0026-eda-literature-diagnostics.md) | EDA literature-backed diagnostics |
 | [0028](0028-clustering-deep-dive-improvements.md) | Clustering deep dive improvements |
+| [0130](0130-bootstrap-support-values.md) | Bootstrap support values for hierarchical clustering |
 | [0029](0029-leiden-community-detection.md) | Leiden community detection (replacing Louvain) |
 | [0031](0031-prediction-deep-dive-improvements.md) | Prediction deep dive improvements |
 | [0034](0034-synthesis-deep-dive-improvements.md) | Synthesis deep dive improvements |
@@ -324,6 +325,7 @@ What are the trade-offs?
 | [0127](0127-wnominate-shared-variance-ordering-vulnerability.md) | W-NOMINATE shares PCA's variance-ordering vulnerability; gate removed | Accepted | 2026-03-26 |
 | [0128](0128-phase05-pca-init-delegation.md) | Phase 05 PCA init delegation (fix hardcoded PC1, 3 flipped sessions) | Accepted | 2026-03-26 |
 | [0129](0129-lda-ideology-projection.md) | Fisher's LDA ideology projection — automated axis instability resolution | Accepted | 2026-03-26 |
+| [0130](0130-bootstrap-support-values.md) | Bootstrap support values for hierarchical clustering | Accepted | 2026-03-28 |
 
 ## Creating a New ADR
 

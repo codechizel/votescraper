@@ -33,6 +33,8 @@
 | `SENSITIVITY_THRESHOLD` | 0.10 | Alternative contested threshold for sensitivity analysis | `clustering.py:206` |
 | `MIN_VOTES` | 20 | Inherited from EDA; minimum substantive votes per legislator | `clustering.py:207` |
 | `CONTESTED_PARTY_THRESHOLD` | 0.10 | A vote is "contested" for a party if >= 10% of the party dissents | `clustering.py:208` |
+| `BOOTSTRAP_N_REPLICATES` | 1000 | Bootstrap resamples for per-branch confidence (ADR-0130) | `clustering.py` |
+| `MIN_SHARED_VOTES_BOOTSTRAP` | 10 | Minimum shared votes for pairwise Kappa in bootstrap | `clustering.py` |
 
 ## Methodological Choices
 
@@ -108,6 +110,18 @@ Cross-method agreement (measured by Adjusted Rand Index) validates that the clus
 ### Horseshoe-aware cluster labeling
 
 When `horseshoe_detected=True` is passed to `characterize_clusters()`, the labeling strategy changes: instead of xi_mean-based labels like "Conservative R" / "Moderate R", clusters are labeled by party composition (e.g., `"R-dominated (14R/0D)"`). This avoids misleading ideological labels when horseshoe distortion compresses the 1D scale. See ADR-0114.
+
+### Bootstrap support values (ADR-0130)
+
+**Decision:** Resample roll-call columns with replacement (B=1,000), recompute pairwise Kappa distance, rebuild the dendrogram, and count how often each clade (branch) survives. The resulting percentage is displayed directly on dendrogram and icicle chart plots.
+
+**Why:** Global metrics (cophenetic, silhouette, ARI) answer "is the tree generally good?" but not "is this specific branch reliable?" Bootstrap support answers the per-branch question directly — the same approach used in phylogenetics (pvclust). For Kansas, this matters because intra-party variation is continuous: the party split is 100% reliable but sub-splits dissolve when you resample the votes.
+
+**Vectorized Kappa:** Pairwise Cohen's Kappa is computed via matrix multiplication (`V @ V.T`, `mask @ mask.T`) rather than pairwise Python loops, achieving ~100x speedup. This makes 1,000 replicates for 126 legislators feasible in ~3 seconds.
+
+**Color coding on plots:** Green (>=95%, strong), gold (70-95%, moderate), red (<50%, unreliable). Only branches wide enough to read (>=1.5 legislators) get labels on the icicle chart.
+
+**Output:** `bootstrap_support_{chamber}.parquet` with columns `node_index`, `merge_distance`, `support`. Report sections: summary table + per-chamber interactive branch detail table.
 
 ## Key Findings (2026-02-20)
 

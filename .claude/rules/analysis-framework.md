@@ -59,7 +59,7 @@ Each phase has a design doc in `analysis/design/` — **read before interpreting
 - `ega.md` — Tetrachoric correlations, GLASSO network, community detection, bootEGA stability, TEFI, UVA redundancy (ADR-0124)
 - `mca.md` — Categorical encoding (Yea/Nay/Absent), prince library, Greenacre correction, horseshoe detection, PCA validation
 - `irt.md` — Priors, MCMC settings, PCA-informed chain initialization, convergence diagnostics (R-hat, bulk/tail-ESS, E-BFMI)
-- `clustering.md` — Three methods for robustness, k=2 finding
+- `clustering.md` — Three methods for robustness, k=2 finding, bootstrap support values (ADR-0130)
 - `prediction.md` — XGBoost primary, IRT features dominate, NLP topic features
 - `beta_binomial.md` — Empirical Bayes, per-party-per-chamber priors, shrinkage
 - `synthesis.md` — Data-driven detection thresholds, graceful degradation

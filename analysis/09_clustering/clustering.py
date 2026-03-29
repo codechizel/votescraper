@@ -294,6 +294,17 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Override optimal k (default: auto-select via silhouette)",
     )
+    parser.add_argument(
+        "--skip-bootstrap",
+        action="store_true",
+        help="Skip bootstrap support computation (saves ~2-3 min per chamber)",
+    )
+    parser.add_argument(
+        "--bootstrap-n",
+        type=int,
+        default=BOOTSTRAP_N_REPLICATES,
+        help=f"Number of bootstrap replicates (default: {BOOTSTRAP_N_REPLICATES})",
+    )
     return parser.parse_args()
 
 
@@ -529,6 +540,182 @@ def run_hierarchical(
     return Z, float(coph_corr), slugs, distance_arr
 
 
+# ── Bootstrap Support ────────────────────────────────────────────────────────
+
+MIN_SHARED_VOTES_BOOTSTRAP = 10  # Minimum shared votes for pairwise Kappa in bootstrap
+BOOTSTRAP_N_REPLICATES = 1000
+
+
+def _pairwise_kappa_from_votes(vote_matrix: np.ndarray) -> np.ndarray:
+    """Compute pairwise Cohen's Kappa from a binary vote matrix (legislators x votes).
+
+    NaN = absent. Returns n x n Kappa matrix. Pairs with < MIN_SHARED_VOTES_BOOTSTRAP
+    shared votes get NaN (filled downstream as max distance).
+
+    Fully vectorized via matrix multiplication — ~100x faster than pairwise loops.
+    """
+    # Masks and cleaned vote arrays
+    mask = (~np.isnan(vote_matrix)).astype(np.float64)  # (n, v)
+    v_clean = np.where(np.isnan(vote_matrix), 0.0, vote_matrix)  # (n, v)
+    v_nay = mask - v_clean  # 1 where voted Nay, 0 otherwise
+
+    # Shared vote count per pair
+    shared = mask @ mask.T  # (n, n)
+
+    # Observed agreement: both Yea + both Nay
+    both_yea = v_clean @ v_clean.T
+    both_nay = v_nay @ v_nay.T
+    agree = both_yea + both_nay
+
+    # Avoid division by zero
+    shared_safe = np.where(shared > 0, shared, 1.0)
+    p_o = agree / shared_safe
+
+    # Expected agreement: p_e = p_i1*p_j1 + (1-p_i1)*(1-p_j1)
+    # p_i1[i,j] = yea rate of legislator i on votes shared with j
+    yea_on_shared = v_clean @ mask.T  # (n, n): sum of i's yea votes on j's present votes
+    p_i1 = yea_on_shared / shared_safe
+    p_j1 = p_i1.T
+    p_e = p_i1 * p_j1 + (1 - p_i1) * (1 - p_j1)
+
+    # Kappa = (p_o - p_e) / (1 - p_e)
+    denom = 1.0 - p_e
+    kappa = np.where(denom > 0, (p_o - p_e) / denom, 1.0)
+
+    # NaN out pairs with too few shared votes
+    kappa = np.where(shared >= MIN_SHARED_VOTES_BOOTSTRAP, kappa, np.nan)
+
+    # Ensure diagonal = 1.0 and symmetry
+    np.fill_diagonal(kappa, 1.0)
+    kappa = (kappa + kappa.T) / 2
+
+    return kappa
+
+
+def _extract_clades(Z: np.ndarray, n_leaves: int) -> set[frozenset[int]]:
+    """Extract all clades (sets of leaf indices) from a linkage matrix."""
+    # Build subtree membership for each internal node
+    children: dict[int, frozenset[int]] = {}
+    for i in range(n_leaves):
+        children[i] = frozenset([i])
+
+    clades: set[frozenset[int]] = set()
+    for idx in range(len(Z)):
+        left = int(Z[idx, 0])
+        right = int(Z[idx, 1])
+        clade = children[left] | children[right]
+        children[n_leaves + idx] = clade
+        clades.add(clade)
+
+    return clades
+
+
+def compute_bootstrap_support(
+    vote_matrix: pl.DataFrame,
+    slugs: list[str],
+    Z_original: np.ndarray,
+    chamber: str,
+    n_boot: int = BOOTSTRAP_N_REPLICATES,
+    seed: int = RANDOM_SEED,
+) -> np.ndarray:
+    """Bootstrap support values for each internal node of the dendrogram.
+
+    Resamples roll-call columns with replacement, recomputes Kappa distance,
+    rebuilds the dendrogram, and counts how often each original clade appears
+    in the bootstrap trees.
+
+    Returns array of length n-1 (one per internal node in the linkage matrix),
+    values in [0, 1]. Index i corresponds to row i of Z_original.
+    """
+    slug_col = "legislator_slug"
+    vm_slugs = vote_matrix[slug_col].to_list()
+    vote_cols = [c for c in vote_matrix.columns if c != slug_col]
+
+    # Align vote matrix rows to match hierarchical clustering slug order
+    slug_to_row = {s: i for i, s in enumerate(vm_slugs)}
+    row_indices = [slug_to_row[s] for s in slugs if s in slug_to_row]
+
+    if len(row_indices) < len(slugs):
+        missing = len(slugs) - len(row_indices)
+        print(
+            f"  {chamber}: WARNING — {missing} slugs missing from vote matrix, skipping bootstrap"
+        )
+        return np.full(len(Z_original), np.nan)
+
+    vm_arr = vote_matrix.select(vote_cols).to_numpy().astype(float)
+    vm_arr = vm_arr[row_indices]
+    n_legislators, n_votes = vm_arr.shape
+    n_internal = len(Z_original)
+
+    # Map each internal node to its clade for counting
+    node_clades: list[frozenset[int]] = []
+    children: dict[int, frozenset[int]] = {i: frozenset([i]) for i in range(n_legislators)}
+    for idx in range(n_internal):
+        left = int(Z_original[idx, 0])
+        right = int(Z_original[idx, 1])
+        clade = children[left] | children[right]
+        children[n_legislators + idx] = clade
+        node_clades.append(clade)
+
+    support = np.zeros(n_internal)
+    rng = np.random.default_rng(seed)
+
+    print(
+        f"  {chamber}: Running {n_boot} bootstrap replicates ({n_legislators} legislators, "
+        f"{n_votes} votes)..."
+    )
+
+    for b in range(n_boot):
+        if (b + 1) % 200 == 0:
+            print(f"    Bootstrap {b + 1}/{n_boot}...")
+
+        # Resample vote columns with replacement
+        cols = rng.integers(0, n_votes, size=n_votes)
+        boot_votes = vm_arr[:, cols]
+
+        # Compute pairwise Kappa on resampled votes
+        boot_kappa = _pairwise_kappa_from_votes(boot_votes)
+        boot_dist = 1.0 - boot_kappa
+
+        # Symmetry + zero diagonal
+        boot_dist = (boot_dist + boot_dist.T) / 2
+        np.fill_diagonal(boot_dist, 0.0)
+
+        # Fill NaN with max finite distance
+        max_finite = np.nanmax(boot_dist)
+        if np.isnan(max_finite):
+            max_finite = 1.0
+        boot_dist = np.where(np.isnan(boot_dist), max_finite, boot_dist)
+        boot_dist = np.clip(boot_dist, 0.0, None)
+
+        # Rebuild linkage
+        boot_condensed = squareform(boot_dist, checks=False)
+        Z_boot = linkage(boot_condensed, method=LINKAGE_METHOD)
+
+        # Extract bootstrap clades
+        boot_clades = _extract_clades(Z_boot, n_legislators)
+
+        # Count which original clades appear
+        for i, clade in enumerate(node_clades):
+            if clade in boot_clades:
+                support[i] += 1
+
+    support /= n_boot
+
+    # Summary statistics
+    top_split_support = support[-1] if n_internal > 0 else 0.0
+    median_support = float(np.median(support))
+    strong_branches = int(np.sum(support >= 0.95))
+    weak_branches = int(np.sum(support < 0.50))
+    print(
+        f"  {chamber}: Bootstrap complete. Top split: {top_split_support:.1%}, "
+        f"median: {median_support:.1%}, "
+        f"strong (>=95%): {strong_branches}, weak (<50%): {weak_branches}"
+    )
+
+    return support
+
+
 def find_optimal_k_hierarchical(
     Z: np.ndarray,
     distance_arr: np.ndarray,
@@ -556,14 +743,40 @@ def find_optimal_k_hierarchical(
     return scores, optimal_k
 
 
+def _map_ddata_to_linkage(
+    dcoord: np.ndarray,
+    Z: np.ndarray,
+) -> list[int]:
+    """Map dendrogram branch indices to linkage matrix row indices.
+
+    Each branch in the dendrogram has a merge distance (dcoord[i][1]).
+    Match to the closest Z row by merge distance.
+    """
+    merge_distances = Z[:, 2]
+    mapping: list[int] = []
+    used: set[int] = set()
+    for i in range(len(dcoord)):
+        branch_dist = dcoord[i][1]
+        # Find closest unused Z row
+        diffs = np.abs(merge_distances - branch_dist)
+        sorted_indices = np.argsort(diffs)
+        for j in sorted_indices:
+            if j not in used:
+                mapping.append(int(j))
+                used.add(int(j))
+                break
+    return mapping
+
+
 def plot_dendrogram(
     Z: np.ndarray,
     slugs: list[str],
     ideal_points: pl.DataFrame,
     chamber: str,
     out_dir: Path,
+    bootstrap_support: np.ndarray | None = None,
 ) -> None:
-    """Plot dendrogram with party-colored leaf labels."""
+    """Plot dendrogram with party-colored leaf labels and optional bootstrap support."""
     party_map = dict(
         zip(
             ideal_points["legislator_slug"].to_list(),
@@ -589,7 +802,7 @@ def plot_dendrogram(
 
     if truncate:
         # Truncated dendrogram for House (130 members unreadable at full)
-        dendrogram(
+        ddata = dendrogram(
             Z,
             truncate_mode="lastp",
             p=12,
@@ -598,9 +811,33 @@ def plot_dendrogram(
             leaf_font_size=9,
         )
         ax.set_title(f"{chamber} — Hierarchical Clustering Dendrogram (truncated, top 12)")
+
+        # Annotate bootstrap support on visible branches
+        if bootstrap_support is not None and len(ddata["dcoord"]) > 0:
+            dcoord = np.array(ddata["dcoord"])
+            icoord = np.array(ddata["icoord"])
+            z_indices = _map_ddata_to_linkage(dcoord, Z)
+            for i in range(len(dcoord)):
+                z_idx = z_indices[i]
+                pct = bootstrap_support[z_idx] * 100
+                # Position at the top of the U-shape (merge point)
+                x_pos = (icoord[i][1] + icoord[i][2]) / 2
+                y_pos = dcoord[i][1]
+                color = "#006400" if pct >= 95 else "#B8860B" if pct >= 70 else "#8B0000"
+                ax.text(
+                    x_pos,
+                    y_pos,
+                    f"{pct:.0f}%",
+                    fontsize=7,
+                    fontweight="bold",
+                    color=color,
+                    ha="center",
+                    va="bottom",
+                    bbox={"boxstyle": "round,pad=0.15", "fc": "white", "alpha": 0.8, "lw": 0},
+                )
     else:
         # Full dendrogram for Senate (42 members readable)
-        dendrogram(
+        ddata = dendrogram(
             Z,
             labels=labels,
             ax=ax,
@@ -625,6 +862,30 @@ def plot_dendrogram(
                 lbl.set_color(color)
 
         ax.set_title(f"{chamber} — Hierarchical Clustering Dendrogram")
+
+        # Annotate bootstrap support on branches (orientation="left": x=distance, y=position)
+        if bootstrap_support is not None and len(ddata["dcoord"]) > 0:
+            dcoord = np.array(ddata["dcoord"])
+            icoord = np.array(ddata["icoord"])
+            z_indices = _map_ddata_to_linkage(dcoord, Z)
+            for i in range(len(dcoord)):
+                z_idx = z_indices[i]
+                pct = bootstrap_support[z_idx] * 100
+                # For orientation="left": x=distance, y=position
+                x_pos = dcoord[i][1]
+                y_pos = (icoord[i][1] + icoord[i][2]) / 2
+                color = "#006400" if pct >= 95 else "#B8860B" if pct >= 70 else "#8B0000"
+                ax.text(
+                    x_pos,
+                    y_pos,
+                    f"{pct:.0f}%",
+                    fontsize=6,
+                    fontweight="bold",
+                    color=color,
+                    ha="left",
+                    va="center",
+                    bbox={"boxstyle": "round,pad=0.12", "fc": "white", "alpha": 0.8, "lw": 0},
+                )
 
     ax.set_xlabel("Distance (1 - Kappa)")
     legend_handles = [
@@ -886,12 +1147,13 @@ def plot_icicle(
     ideal_points: pl.DataFrame,
     chamber: str,
     out_dir: Path,
+    bootstrap_support: np.ndarray | None = None,
 ) -> None:
     """Icicle (flame) chart: top-down rectangular hierarchy of voting blocs.
 
     Each merge is a horizontal span proportional to its child count.
     Y-axis = merge distance (top = most distant), bottom row = individual legislators.
-    Colored by majority party in each subtree.
+    Colored by majority party in each subtree. Bootstrap support annotated when available.
     """
     party_map = dict(
         zip(
@@ -990,6 +1252,28 @@ def plot_icicle(
             alpha=0.5,
         )
         ax.add_patch(rect)
+
+        # Annotate bootstrap support at the merge point
+        if bootstrap_support is not None:
+            pct = bootstrap_support[idx] * 100
+            x_mid = (x_left + x_right) / 2
+            txt_color = "#006400" if pct >= 95 else "#B8860B" if pct >= 70 else "#8B0000"
+            # Only label branches wide enough to read (>= 2 legislators)
+            width = x_right - x_left
+            if width >= 1.5:
+                fontsize_bp = max(5, min(8, width * 0.8))
+                ax.text(
+                    x_mid,
+                    y_bottom + (parent_height - y_bottom) * 0.5,
+                    f"{pct:.0f}%",
+                    fontsize=fontsize_bp,
+                    fontweight="bold",
+                    color=txt_color,
+                    ha="center",
+                    va="center",
+                    bbox={"boxstyle": "round,pad=0.12", "fc": "white", "alpha": 0.85, "lw": 0},
+                    zorder=5,
+                )
 
     # Draw bottom row: individual legislators
     fontsize = max(4, min(7, 500 / n))
@@ -2373,10 +2657,36 @@ def main() -> None:
             )
             print(f"  Saved: hierarchical_assignments_{chamber.lower()}.parquet")
 
-            plot_dendrogram(Z, slugs, irt_ip, chamber, ctx.plots_dir)
+            # ── Phase 3b: Bootstrap Support ──
+            boot_support = None
+            if not args.skip_bootstrap and vm is not None:
+                print_header(f"PHASE 3b: BOOTSTRAP SUPPORT — {chamber}")
+                boot_support = compute_bootstrap_support(
+                    vm,
+                    slugs,
+                    Z,
+                    chamber,
+                    n_boot=args.bootstrap_n,
+                )
+                if not np.any(np.isnan(boot_support)):
+                    boot_df = pl.DataFrame(
+                        {
+                            "node_index": list(range(len(boot_support))),
+                            "merge_distance": Z[:, 2].tolist(),
+                            "support": boot_support.tolist(),
+                        }
+                    )
+                    boot_df.write_parquet(
+                        ctx.data_dir / f"bootstrap_support_{chamber.lower()}.parquet"
+                    )
+                    print(f"  Saved: bootstrap_support_{chamber.lower()}.parquet")
+            elif args.skip_bootstrap:
+                print_header(f"PHASE 3b: BOOTSTRAP SUPPORT (SKIPPED) — {chamber}")
+
+            plot_dendrogram(Z, slugs, irt_ip, chamber, ctx.plots_dir, boot_support)
             plot_voting_blocs(Z, slugs, irt_ip, chamber, ctx.plots_dir)
             plot_polar_dendrogram(Z, slugs, irt_ip, chamber, ctx.plots_dir)
-            plot_icicle(Z, slugs, irt_ip, chamber, ctx.plots_dir)
+            plot_icicle(Z, slugs, irt_ip, chamber, ctx.plots_dir, boot_support)
 
             chamber_results["hierarchical"] = {
                 "Z": Z,
@@ -2386,6 +2696,7 @@ def main() -> None:
                 "labels": hier_labels_optimal,
                 "labels_default_k": hier_labels_default,
                 "slugs": slugs,
+                "bootstrap_support": boot_support,
             }
 
             # ── Phase 4: K-Means on IRT ──
@@ -2680,10 +2991,13 @@ def main() -> None:
                 "SENSITIVITY_THRESHOLD": SENSITIVITY_THRESHOLD,
                 "MIN_VOTES": MIN_VOTES,
                 "CONTESTED_PARTY_THRESHOLD": CONTESTED_PARTY_THRESHOLD,
+                "BOOTSTRAP_N_REPLICATES": args.bootstrap_n,
+                "MIN_SHARED_VOTES_BOOTSTRAP": MIN_SHARED_VOTES_BOOTSTRAP,
             },
             "k_override": args.k,
             "skip_gmm": args.skip_gmm,
             "skip_sensitivity": args.skip_sensitivity,
+            "skip_bootstrap": args.skip_bootstrap,
         }
 
         for chamber, result in results.items():
@@ -2691,6 +3005,12 @@ def main() -> None:
             manifest[f"{ch}_n_legislators"] = result["ideal_points"].height
             manifest[f"{ch}_cophenetic_r"] = result["hierarchical"]["cophenetic_r"]
             manifest[f"{ch}_hier_optimal_k"] = result["hierarchical"]["optimal_k"]
+            boot = result["hierarchical"].get("bootstrap_support")
+            if boot is not None and not np.any(np.isnan(boot)):
+                manifest[f"{ch}_bootstrap_top_split"] = float(boot[-1])
+                manifest[f"{ch}_bootstrap_median"] = float(np.median(boot))
+                manifest[f"{ch}_bootstrap_strong_branches"] = int(np.sum(boot >= 0.95))
+                manifest[f"{ch}_bootstrap_weak_branches"] = int(np.sum(boot < 0.50))
             manifest[f"{ch}_kmeans_optimal_k"] = result["kmeans"]["optimal_k"]
             if "gmm" in result:
                 manifest[f"{ch}_gmm_optimal_k"] = result["gmm"]["optimal_k"]

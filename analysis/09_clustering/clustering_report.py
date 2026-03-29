@@ -89,6 +89,8 @@ def build_clustering_report(
     for chamber in results:
         _add_icicle_figure(report, plots_dir, chamber)
 
+    _add_bootstrap_support(report, results)
+
     for chamber in results:
         _add_model_selection_figure(report, plots_dir, chamber)
 
@@ -293,6 +295,113 @@ def _add_icicle_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> 
                     f"{chamber}. Width represents group size, height represents merge "
                     f"distance, and color indicates majority party in each subtree."
                 ),
+            )
+        )
+
+
+def _add_bootstrap_support(
+    report: ReportBuilder,
+    results: dict[str, dict],
+) -> None:
+    """Table: Bootstrap support summary per chamber — how reliable is each level of the tree."""
+    import numpy as np
+
+    has_bootstrap = False
+    for result in results.values():
+        boot = result.get("hierarchical", {}).get("bootstrap_support")
+        if boot is not None and not np.any(np.isnan(boot)):
+            has_bootstrap = True
+            break
+
+    if not has_bootstrap:
+        return
+
+    # Build summary table
+    rows = []
+    for chamber, result in results.items():
+        boot = result.get("hierarchical", {}).get("bootstrap_support")
+        if boot is None or np.any(np.isnan(boot)):
+            continue
+
+        n_internal = len(boot)
+        rows.append(
+            {
+                "Chamber": chamber,
+                "Top Split": f"{boot[-1] * 100:.0f}%",
+                "Median": f"{np.median(boot) * 100:.0f}%",
+                "Strong (>= 95%)": int(np.sum(boot >= 0.95)),
+                "Moderate (70-95%)": int(np.sum((boot >= 0.70) & (boot < 0.95))),
+                "Weak (50-70%)": int(np.sum((boot >= 0.50) & (boot < 0.70))),
+                "Unreliable (< 50%)": int(np.sum(boot < 0.50)),
+                "Total Branches": n_internal,
+            }
+        )
+
+    if not rows:
+        return
+
+    df = pl.DataFrame(rows)
+    html = make_gt(
+        df,
+        title="Bootstrap Support Summary",
+        subtitle=(
+            "How often each branch appears across 1,000 resampled vote matrices. "
+            "Strong branches (>= 95%) are reliable groupings; weak branches (< 50%) "
+            "depend on which specific votes happened to occur."
+        ),
+    )
+    report.add(TableSection(id="bootstrap-summary", title="Bootstrap Support", html=html))
+
+    # Per-chamber: show top N branches by merge distance with their support
+    for chamber, result in results.items():
+        boot = result.get("hierarchical", {}).get("bootstrap_support")
+        Z = result.get("hierarchical", {}).get("Z")
+        if boot is None or Z is None or np.any(np.isnan(boot)):
+            continue
+
+        n_show = min(20, len(boot))
+
+        # Top branches by merge distance (the most visible splits)
+        top_indices = np.argsort(Z[:, 2])[::-1][:n_show]
+        detail_rows = []
+        for idx in top_indices:
+            merge_dist = float(Z[idx, 2])
+            child_count = int(Z[idx, 3])
+            pct = boot[idx] * 100
+            confidence = (
+                "Strong"
+                if pct >= 95
+                else "Moderate"
+                if pct >= 70
+                else "Weak"
+                if pct >= 50
+                else "Unreliable"
+            )
+            detail_rows.append(
+                {
+                    "Branch": idx + 1,
+                    "Merge Distance": f"{merge_dist:.4f}",
+                    "Group Size": child_count,
+                    "Bootstrap %": f"{pct:.0f}%",
+                    "Confidence": confidence,
+                }
+            )
+
+        detail_df = pl.DataFrame(detail_rows)
+        detail_html = make_interactive_table(
+            detail_df,
+            title=f"{chamber} — Top {n_show} Branches by Merge Distance",
+            caption=(
+                "Branches sorted from the top of the tree (most dissimilar merge) downward. "
+                "Bootstrap % = fraction of 1,000 resampled datasets that produce "
+                "this same grouping."
+            ),
+        )
+        report.add(
+            InteractiveTableSection(
+                id=f"bootstrap-detail-{chamber.lower()}",
+                title=f"{chamber} Bootstrap Branch Detail",
+                html=detail_html,
             )
         )
 
@@ -1104,6 +1213,21 @@ def _generate_clustering_key_findings(results: dict[str, dict]) -> list[str]:
 
         break  # First chamber only
 
+    # Bootstrap support
+    import numpy as np
+
+    for chamber, result in results.items():
+        boot = result.get("hierarchical", {}).get("bootstrap_support")
+        if boot is not None and not np.any(np.isnan(boot)):
+            top_pct = boot[-1] * 100
+            strong = int(np.sum(boot >= 0.95))
+            total = len(boot)
+            findings.append(
+                f"{chamber} top split bootstrap: <strong>{top_pct:.0f}%</strong> "
+                f"({strong}/{total} branches >= 95% support)."
+            )
+            break
+
     # HDBSCAN noise
     for chamber, result in results.items():
         hdb = result.get("hdbscan")
@@ -1125,6 +1249,7 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
     """Table: All constants and settings used in this run."""
     try:
         from analysis.clustering import (
+            BOOTSTRAP_N_REPLICATES,
             CLUSTER_CMAP,
             COMPARISON_K,
             CONTESTED_PARTY_THRESHOLD,
@@ -1136,6 +1261,7 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
             HDBSCAN_MIN_SAMPLES,
             K_RANGE,
             LINKAGE_METHOD,
+            MIN_SHARED_VOTES_BOOTSTRAP,
             MIN_VOTES,
             RANDOM_SEED,
             SENSITIVITY_THRESHOLD,
@@ -1144,6 +1270,7 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
         )
     except ModuleNotFoundError:
         from clustering import (  # type: ignore[no-redef]
+            BOOTSTRAP_N_REPLICATES,
             CLUSTER_CMAP,
             COMPARISON_K,
             CONTESTED_PARTY_THRESHOLD,
@@ -1155,6 +1282,7 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
             HDBSCAN_MIN_SAMPLES,
             K_RANGE,
             LINKAGE_METHOD,
+            MIN_SHARED_VOTES_BOOTSTRAP,
             MIN_VOTES,
             RANDOM_SEED,
             SENSITIVITY_THRESHOLD,
@@ -1181,6 +1309,8 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
                 "Min Substantive Votes",
                 "Contested Party Threshold",
                 "Within-Party Min Size",
+                "Bootstrap Replicates",
+                "Bootstrap Min Shared Votes",
             ],
             "Value": [
                 str(RANDOM_SEED),
@@ -1199,6 +1329,8 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
                 str(MIN_VOTES),
                 f"{CONTESTED_PARTY_THRESHOLD:.2f} ({CONTESTED_PARTY_THRESHOLD * 100:.0f}%)",
                 str(WITHIN_PARTY_MIN_SIZE),
+                str(BOOTSTRAP_N_REPLICATES),
+                str(MIN_SHARED_VOTES_BOOTSTRAP),
             ],
             "Description": [
                 "For reproducible k-means/GMM initialization",
@@ -1217,6 +1349,8 @@ def _add_analysis_parameters(report: ReportBuilder) -> None:
                 "Inherited from EDA; legislators with < this filtered",
                 "A vote is contested for a party if >= this fraction dissents",
                 "Minimum caucus size for within-party clustering",
+                "Number of bootstrap resamples for branch confidence",
+                "Minimum shared votes between a legislator pair for bootstrap Kappa",
             ],
         }
     )

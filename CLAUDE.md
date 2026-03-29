@@ -115,7 +115,7 @@ Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `
 
 ## Documentation
 
-- ADRs: `docs/adr/README.md` (129 decisions)
+- ADRs: `docs/adr/README.md` (130 decisions)
 - Design docs: `analysis/design/README.md`
 - Deep dives: `docs/*.md` (search by topic name)
 - Resolved: `docs/pca-ideology-axis-instability.md` — PCA axis instability resolved via Fisher's LDA ideology projection (ADR-0129, `docs/lda-ideology-projection.md`)
