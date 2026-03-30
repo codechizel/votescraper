@@ -16,6 +16,7 @@ import polars as pl
 try:
     from analysis.report import (
         FigureSection,
+        InteractiveSection,
         InteractiveTableSection,
         KeyFindingsSection,
         ReportBuilder,
@@ -27,6 +28,7 @@ try:
 except ModuleNotFoundError:
     from report import (  # type: ignore[no-redef]
         FigureSection,
+        InteractiveSection,
         InteractiveTableSection,
         KeyFindingsSection,
         ReportBuilder,
@@ -61,6 +63,7 @@ def build_bifactor_report(
         _add_ideal_point_table(report, result, chamber)
         _add_general_forest_figure(report, plots_dir, chamber)
         _add_scatter_figure(report, plots_dir, chamber)
+        _add_scatter_interactive(report, plots_dir, chamber)
         _add_ecv_bar_figure(report, plots_dir, chamber)
         _add_loadings_figure(report, plots_dir, chamber)
         _add_general_vs_1d_figure(report, plots_dir, chamber)
@@ -337,6 +340,25 @@ def _add_scatter_figure(report: ReportBuilder, plots_dir: Path, chamber: str) ->
                 alt_text=f"Bifactor scatter plot for {chamber}",
             )
         )
+
+
+def _add_scatter_interactive(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:
+    """Embed Plotly interactive bifactor scatter with hover tooltips."""
+    path = plots_dir / f"bifactor_scatter_interactive_{chamber.lower()}.html"
+    if not path.exists():
+        return
+    report.add(
+        InteractiveSection(
+            id=f"interactive-bifactor-scatter-{chamber.lower()}",
+            title=f"{chamber} Bifactor Scatter (Interactive)",
+            html=path.read_text(),
+            caption=(
+                f"Interactive bifactor scatter ({chamber}). "
+                "Hover over any dot to see legislator name, party, and all three factor scores."
+            ),
+            aria_label=f"Interactive bifactor scatter plot for {chamber}",
+        )
+    )
 
 
 def _add_ecv_bar_figure(report: ReportBuilder, plots_dir: Path, chamber: str) -> None:

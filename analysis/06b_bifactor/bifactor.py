@@ -895,6 +895,83 @@ def plot_ecv_bar(
     save_fig(fig, output_dir / f"ecv_bar_{chamber.lower()}.png")
 
 
+def plot_bifactor_scatter_interactive(
+    ideal_bf: pl.DataFrame,
+    chamber: str,
+    output_dir: Path,
+) -> None:
+    """Plotly interactive scatter: theta_G vs theta_S1 with hover details."""
+    import plotly.graph_objects as go
+
+    fig = go.Figure()
+    for party, color in PARTY_COLORS.items():
+        subset = ideal_bf.filter(pl.col("party") == party)
+        if subset.is_empty():
+            continue
+
+        hover_text = [
+            f"<b>{row['full_name']}</b><br>"
+            f"Party: {row['party']}<br>"
+            f"General (ideology): {row['theta_G_mean']:+.3f} "
+            f"[{row['theta_G_hdi_3%']:+.3f}, {row['theta_G_hdi_97%']:+.3f}]<br>"
+            f"Specific 1 (partisan): {row['theta_S1_mean']:+.3f} "
+            f"[{row['theta_S1_hdi_3%']:+.3f}, {row['theta_S1_hdi_97%']:+.3f}]<br>"
+            f"Specific 2 (bipartisan): {row['theta_S2_mean']:+.3f} "
+            f"[{row['theta_S2_hdi_3%']:+.3f}, {row['theta_S2_hdi_97%']:+.3f}]"
+            for row in subset.iter_rows(named=True)
+        ]
+
+        fig.add_trace(
+            go.Scatter(
+                x=subset["theta_G_mean"].to_list(),
+                y=subset["theta_S1_mean"].to_list(),
+                mode="markers",
+                name=party,
+                marker={
+                    "color": color,
+                    "size": 9,
+                    "opacity": 0.7,
+                    "line": {"width": 0.5, "color": "white"},
+                },
+                text=hover_text,
+                hoverinfo="text",
+            )
+        )
+
+    fig.update_layout(
+        title=f"Bifactor IRT — Kansas {chamber} (EXPERIMENTAL)",
+        xaxis_title="General Factor (Ideology: Liberal ← → Conservative)",
+        yaxis_title="Specific Factor 1 (Partisan Bills)",
+        hovermode="closest",
+        template="plotly_white",
+        width=800,
+        height=640,
+        shapes=[
+            {
+                "type": "line",
+                "x0": 0,
+                "x1": 0,
+                "y0": 0,
+                "y1": 1,
+                "yref": "paper",
+                "line": {"color": "gray", "width": 0.5, "dash": "dash"},
+            },
+            {
+                "type": "line",
+                "y0": 0,
+                "y1": 0,
+                "x0": 0,
+                "x1": 1,
+                "xref": "paper",
+                "line": {"color": "gray", "width": 0.5, "dash": "dash"},
+            },
+        ],
+    )
+    html = fig.to_html(full_html=False, include_plotlyjs="cdn")
+    (output_dir / f"bifactor_scatter_interactive_{chamber.lower()}.html").write_text(html)
+    print(f"  Saved: bifactor_scatter_interactive_{chamber.lower()}.html")
+
+
 def plot_factor_loadings_heatmap(
     bill_params: pl.DataFrame,
     chamber: str,
@@ -1209,6 +1286,7 @@ def main() -> None:
 
             # ── Generate plots ──
             plot_bifactor_scatter(ideal_bf, chamber, ctx.plots_dir)
+            plot_bifactor_scatter_interactive(ideal_bf, chamber, ctx.plots_dir)
             plot_general_forest(ideal_bf, chamber, ctx.plots_dir)
             plot_ecv_bar(bf_diag, chamber, ctx.plots_dir)
             plot_factor_loadings_heatmap(bill_params_bf, chamber, ctx.plots_dir)
