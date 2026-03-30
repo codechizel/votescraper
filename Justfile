@@ -99,6 +99,10 @@ irt *args:
 irt-2d *args:
     uv run python analysis/06_irt_2d/irt_2d.py {{args}}
 
+# Run bifactor IRT (general + specific factors)
+bifactor *args:
+    uv run python analysis/06b_bifactor/bifactor.py {{args}}
+
 # Run hierarchical Bayesian IRT
 hierarchical *args:
     uv run python analysis/07_hierarchical/hierarchical.py {{args}}
@@ -210,6 +214,7 @@ pipeline session="2025-26" *args:
     just text-analysis --session {{session}} --run-id "$RUN_ID" {{args}}
     just irt        --session {{session}} --run-id "$RUN_ID" {{args}}
     just irt-2d     --session {{session}} --run-id "$RUN_ID" {{args}}
+    just bifactor   --session {{session}} --run-id "$RUN_ID" {{args}}
     just hierarchical --session {{session}} --run-id "$RUN_ID" {{args}}
     just hierarchical-2d --session {{session}} --run-id "$RUN_ID" {{args}}
     just ppc        --session {{session}} --run-id "$RUN_ID" {{args}}

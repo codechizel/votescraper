@@ -8,6 +8,7 @@ Single-biennium pipeline (01-25 + 07b):
   20_bill_text        — Bill Text NLP
   05_irt              — Bayesian IRT (1D)
   06_irt_2d           — 2D Bayesian IRT
+  06b_bifactor        — Bifactor IRT (general + specific factors)
   07_hierarchical     — Hierarchical Bayesian IRT
   07b_hierarchical_2d — Hierarchical 2D IRT (party-pooled M2PL)
   08_ppc              — Posterior Predictive Checks + LOO-CV
@@ -67,6 +68,8 @@ _MODULE_MAP: dict[str, str] = {
     "irt_linking": "07_hierarchical",
     "hierarchical_2d": "07b_hierarchical_2d",
     "hierarchical_2d_report": "07b_hierarchical_2d",
+    "bifactor": "06b_bifactor",
+    "bifactor_report": "06b_bifactor",
     "ppc": "08_ppc",
     "ppc_data": "08_ppc",
     "ppc_report": "08_ppc",
