@@ -517,6 +517,57 @@ def check_2d_convergence(idata: az.InferenceData, chamber: str) -> dict:
     return diag
 
 
+# ── Explained Common Variance ────────────────────────────────────────────────
+
+
+def compute_ecv_from_2d(idata: az.InferenceData) -> dict:
+    """Compute Explained Common Variance from 2D discrimination parameters.
+
+    ECV = sum(a_dim1^2) / [sum(a_dim1^2) + sum(a_dim2^2)]
+
+    High ECV (>0.70) means the first dimension dominates and a unidimensional
+    model is likely adequate.  Low ECV (<0.60) means the second dimension
+    carries meaningful discriminating variance.
+
+    Uses posterior means of beta_col0 (Dim 1) and the assembled beta_col1
+    (Dim 2: item 0 = 0, item 1 = HalfNormal anchor, items 2+ = free).
+    """
+    # Dim 1 loadings (all free)
+    a1 = idata.posterior["beta_col0"].mean(dim=["chain", "draw"]).values  # (n_votes,)
+    sum_a1_sq = float(np.sum(a1**2))
+
+    # Dim 2 loadings: reconstruct from components
+    n_votes = len(a1)
+    a2 = np.zeros(n_votes)
+    # Item 0: fixed to 0 (rotation anchor)
+    a2[1] = float(idata.posterior["beta_anchor_positive"].mean(dim=["chain", "draw"]).values)
+    if "beta_col1_rest" in idata.posterior:
+        a2[2:] = idata.posterior["beta_col1_rest"].mean(dim=["chain", "draw"]).values
+    sum_a2_sq = float(np.sum(a2**2))
+
+    total = sum_a1_sq + sum_a2_sq
+    ecv = sum_a1_sq / total if total > 0 else 1.0
+
+    result = {
+        "ecv": ecv,
+        "sum_a1_sq": sum_a1_sq,
+        "sum_a2_sq": sum_a2_sq,
+    }
+
+    if ecv > 0.70:
+        interpretation = "high — unidimensional model likely adequate"
+    elif ecv > 0.60:
+        interpretation = "moderate — second dimension carries some signal"
+    else:
+        interpretation = "low — meaningful multidimensional structure"
+    result["interpretation"] = interpretation
+
+    print(f"  ECV = {ecv:.3f} ({interpretation})")
+    print(f"    Dim 1 sum(a²) = {sum_a1_sq:.2f},  Dim 2 sum(a²) = {sum_a2_sq:.2f}")
+
+    return result
+
+
 # ── Extract ideal points ─────────────────────────────────────────────────────
 
 
@@ -1280,6 +1331,11 @@ def main() -> None:
 
             # ── Convergence diagnostics ──
             diag = check_2d_convergence(idata, chamber)
+
+            # ── Explained Common Variance ──
+            ecv_result = compute_ecv_from_2d(idata)
+            diag["ecv"] = ecv_result["ecv"]
+            diag["ecv_interpretation"] = ecv_result["interpretation"]
 
             # ── Extract 2D ideal points ──
             print_header(f"EXTRACT 2D IDEAL POINTS — {chamber}")

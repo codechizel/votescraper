@@ -2045,6 +2045,10 @@ def main() -> None:
         # ── 3. Descriptive stats ──
         print_descriptive_stats(rollcalls)
         vote_alignment = classify_party_line(votes, rollcalls, legislators)
+        if not vote_alignment.is_empty():
+            vote_alignment.write_parquet(ctx.data_dir / "vote_alignment.parquet")
+            ctx.export_csv(vote_alignment, "vote_alignment.csv", "Party-line vote classification")
+            print("  Saved: vote_alignment.parquet")
 
         # ── 3b. Party Unity Scores ──
         party_unity = compute_party_unity_scores(votes, rollcalls, legislators)

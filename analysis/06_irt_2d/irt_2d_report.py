@@ -61,6 +61,7 @@ def build_irt_2d_report(
 
     for chamber, result in results.items():
         _add_convergence_table(report, result, chamber)
+        _add_ecv_section(report, result, chamber)
         _add_ideal_point_table(report, result, chamber)
         _add_dim1_forest_figure(report, plots_dir, chamber)
         _add_scatter_figure(report, plots_dir, chamber)
@@ -248,6 +249,39 @@ def _add_convergence_table(
             id=f"convergence-2d-{chamber.lower()}",
             title=f"{chamber} Convergence (2D IRT)",
             html=html,
+        )
+    )
+
+
+def _add_ecv_section(
+    report: ReportBuilder,
+    result: dict,
+    chamber: str,
+) -> None:
+    """Explained Common Variance diagnostic for 2D discrimination structure."""
+    diag = result["diagnostics"]
+    ecv = diag.get("ecv")
+    if ecv is None:
+        return
+
+    interpretation = diag.get("ecv_interpretation", "")
+    color = "#28a745" if ecv > 0.70 else "#ffc107" if ecv > 0.60 else "#dc3545"
+
+    report.add(
+        TextSection(
+            id=f"ecv-{chamber.lower()}",
+            title=f"{chamber} Explained Common Variance (ECV)",
+            html=(
+                f'<div style="border-left: 4px solid {color}; padding: 12px 16px; '
+                f'margin: 12px 0; background: #f8f9fa;">'
+                f"<p><strong>ECV = {ecv:.3f}</strong> &mdash; {interpretation}</p>"
+                "<p>ECV measures the proportion of total discriminating variance "
+                "attributable to Dimension 1 (ideology). "
+                "ECV &gt; 0.70 suggests a unidimensional model is adequate. "
+                "ECV &lt; 0.60 suggests meaningful multidimensional structure "
+                "that a bifactor or 2D model can capture.</p>"
+                "</div>"
+            ),
         )
     )
 
