@@ -1,6 +1,6 @@
 # Appendix C: Phases at a Glance
 
-> *The 29 analysis phases in pipeline execution order, with inputs, outputs, and the guide chapter that explains each one.*
+> *The 31 analysis phases in pipeline execution order, with inputs, outputs, and the guide chapter that explains each one.*
 
 ---
 
@@ -8,7 +8,7 @@
 
 The pipeline runs phases in a specific order (matching the dashboard sidebar). Each phase reads upstream output and produces its own. This table lists every phase with its key inputs, outputs, and the guide chapter where it's explained.
 
-**Run command:** `just pipeline 2025-26` runs phases 01-25 (plus 07b). `just cross-pipeline` runs phases 26-28.
+**Run command:** `just pipeline 2025-26` runs phases 01-25 (plus 02b, 06b, 07b). `just cross-pipeline` runs phases 26-28.
 
 ---
 
@@ -18,10 +18,12 @@ The pipeline runs phases in a specific order (matching the dashboard sidebar). E
 |---|-------|-------|--------|------------|-------------|
 | 01 | **EDA** | Vol. 3, Ch. 1 | Descriptive statistics, vote matrix construction | Raw CSVs (votes, rollcalls, legislators) | Vote matrix, filtering manifest, summary stats |
 | 02 | **PCA** | Vol. 3, Ch. 3 | Principal Component Analysis | Vote matrix from 01 | PC scores, scree plot, explained variance, loadings |
+| 02b | **EGA** | Vol. 3, Ch. 3 | Exploratory Graph Analysis (network psychometrics) | Vote matrix from 01 | Dimensionality estimate (K), item stability, TEFI, UVA redundancy |
 | 03 | **MCA** | Vol. 3, Ch. 4 | Multiple Correspondence Analysis | Vote matrix from 01 | MCA coordinates, inertia, biplot |
 | 20 | **Bill Text NLP** | Vol. 7, Ch. 3 | BERTopic, embeddings, topic modeling | Bill text CSVs | Topic assignments, embeddings, companion bill detection |
 | 05 | **IRT (1D)** | Vol. 4, Ch. 2-3 | Bayesian 1D Item Response Theory (nutpie NUTS) | Vote matrix from 01, PCA from 02 | Ideal points (ξ), bill params (α, β), convergence diagnostics |
 | 06 | **2D IRT** | Vol. 4, Ch. 4 | Bayesian 2D IRT (M2PL with PLT identification) | Vote matrix from 01, PCA from 02 | 2D ideal points, canonical routing manifest |
+| 06b | **Bifactor IRT** | Vol. 4, Ch. 4 | Bifactor IRT (general + specific factors) | Vote matrix from 01, bill params from 05 | General/specific ideal points, ECV, omega_h diagnostics |
 | 07 | **Hierarchical IRT** | Vol. 4, Ch. 5 | Hierarchical Bayesian IRT (party-pooled) | Vote matrix from 01, canonical IRT from 06 | Party means, within-party SD, shrinkage, ICC |
 | 07b | **Hierarchical 2D** | Vol. 4, Ch. 5 | Hierarchical 2D IRT (M2PL + party structure) | Vote matrix from 01, PCA from 02 | 2D hierarchical ideal points, party-pooled shrinkage |
 | 08 | **PPC** | Vol. 5, Ch. 2 | Posterior predictive checks | IRT posteriors from 05/06/07 | GMP, APRE, item/person fit, LOO-CV, model comparison |

@@ -28,7 +28,7 @@ just test                                    # → uv run pytest tests/ -v (~298
 just test-scraper                            # → pytest -m scraper (~643 tests)
 just test-fast                               # → pytest -m "not slow" (skip integration)
 just test-web                                # → Django tests only (-m web, requires PostgreSQL)
-just pipeline 2025-26                        # → single-biennium pipeline (phases 01-25 + 07b)
+just pipeline 2025-26                        # → single-biennium pipeline (phases 01-25 + 02b + 06b + 07b)
 just cross-pipeline                          # → cross-biennium pipeline (phases 26-30)
 just common-space                            # → common space ideal points (cross-temporal scale)
 just wnominate-common-space                  # → W-NOMINATE common space (Phase 30)
@@ -115,7 +115,7 @@ Django project at `src/web/` for PostgreSQL-backed REST API at `/api/v1/`. See `
 
 ## Documentation
 
-- ADRs: `docs/adr/README.md` (130 decisions)
+- ADRs: `docs/adr/README.md` (131 decisions)
 - Design docs: `analysis/design/README.md`
 - Deep dives: `docs/*.md` (search by topic name)
 - Resolved: `docs/pca-ideology-axis-instability.md` — PCA axis instability resolved via Fisher's LDA ideology projection (ADR-0129, `docs/lda-ideology-projection.md`)
